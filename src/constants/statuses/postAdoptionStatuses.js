@@ -1,0 +1,88 @@
+// Auto-generated status labels from Monday.com.
+export const POST_ADOPTION_STATUS_OPTIONS = {
+  POST_ADOPTION_STATUS: {
+    WAITING_FOR_RESPONSE: "Waiting for Response",
+    COMPLETED: "Completed",
+    CONCERN: "Concern",
+    ARCHIVED: "Archived",
+    ACTIVE: "Active",
+    NOT_STARTED: "Not Started",
+  },
+  CHECK_IN_24H_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  CHECK_IN_72H_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  WEEK_1_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  WEEK_2_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  WEEK_3_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  WEEK_4_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  CHECK_IN_3_MONTH_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  CHECK_IN_6_MONTH_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  CHECK_IN_1_YEAR_CHECK_IN_STATUS: {
+    NO_RESPONSE: "No Response",
+    RECEIVED: "Received",
+    CONCERN: "Concern",
+    SENT: "Sent",
+    NOT_DUE: "Not Due",
+  },
+  ESCALATION_REQUIRED: {
+    YES: "Yes",
+    NO: "No",
+    URGENT: "Urgent",
+  },
+  AI_CONCERN_FLAG: {
+    YELLOW: "Yellow",
+    GREEN: "Green",
+    RED: "Red",
+  },
+  ALL_REQUIRED_CHECK_INS_COMPLETE: {
+    YES: "Yes",
+    NO: "No",
+  },
+};

@@ -1,0 +1,10 @@
+// Auto-generated from Monday.com board schema.
+export const BOARDS = {
+  USERS: "5098492656",
+  RESCUERS: "5098375508",
+  CATS: "5098369241",
+  ADOPTIONS: "5098444415",
+  TRAVEL: "5098462214",
+  POST_ADOPTION: "5098487184",
+  TASKS: "5098495153",
+};
