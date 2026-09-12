@@ -32,6 +32,8 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
         run: npm run build -- --base=/ibkt-frontend/
 
       - name: Setup Pages

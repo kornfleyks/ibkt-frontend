@@ -1,9 +1,14 @@
-# IBKT Upload Proxy
+# IBKT Server
 
-Monday.com's file-upload endpoint (`/v2/file`) doesn't send CORS headers, so
-the browser can never call it directly - this is a small local server whose
-only job is to receive a file from the frontend, hold the Monday API token
-server-side, and forward the upload to Monday from a server context instead.
+Small Express server the frontend talks to instead of calling Monday.com
+directly. It holds the Monday API token server-side and does two things:
+
+- Proxies every Monday GraphQL request (`POST /api/monday`), so the token is
+  never shipped to the browser. A public GitHub Pages build has no way to
+  keep a token secret otherwise - anyone can read a bundled JS file.
+- Proxies file uploads (`POST /api/upload`) to Monday's `/v2/file` endpoint,
+  which doesn't send CORS headers and so can't be called from a browser at
+  all.
 
 ## Setup
 
@@ -15,17 +20,25 @@ npm start
 ```
 
 Runs on `http://localhost:4000` by default. The frontend's `.env` needs
-`VITE_UPLOAD_PROXY_URL` pointing at wherever this is running (already set to
+`VITE_SERVER_URL` pointing at wherever this is running (already set to
 `http://localhost:4000` for local dev).
 
-`ALLOWED_ORIGIN` in `.env` must match the URL the frontend dev server is
-actually running on (default Vite port `5173`) or the browser will block the
-request as a CORS mismatch.
+`ALLOWED_ORIGIN` in `.env` is a comma-separated list of origins allowed to
+call this server - it must include whatever the frontend is actually served
+from (the local Vite dev server, and the deployed GitHub Pages origin).
 
-## Scope
+## Deployment
 
-This only proxies file uploads. Everything else (fetching boards, updating
-column values, creating items) still goes straight from the browser to
-Monday's regular GraphQL endpoint, which does support CORS - that part is
-unchanged. This is a narrow fix for the one thing that was actually broken,
-not a general-purpose backend.
+This needs to run somewhere persistent (GitHub Pages only serves static
+files, and GitHub Actions runners aren't meant to host a long-running
+service). Deploy this folder as its own service - e.g. on Render:
+
+- Root directory: `server`
+- Build command: `npm install`
+- Start command: `npm start`
+- Environment variables: `MONDAY_API_TOKEN`, `MONDAY_API_URL`,
+  `ALLOWED_ORIGIN` (Render sets `PORT` itself, already handled)
+
+Once deployed, set the frontend's `VITE_SERVER_URL` (a GitHub Actions
+repository *variable*, not a secret - it's just a public URL) to this
+service's URL so the production build points at it.

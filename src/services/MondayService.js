@@ -1,14 +1,11 @@
-const API_URL = import.meta.env.VITE_MONDAY_API_URL;
-
-const API_TOKEN = import.meta.env.VITE_MONDAY_API_TOKEN;
-
-const UPLOAD_PROXY_URL = import.meta.env.VITE_UPLOAD_PROXY_URL;
+// All Monday requests go through our own server, which holds the API
+// token. The browser never sees it (see /server/index.js).
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
 export async function mondayRequest(query, variables = {}) {
-    const response = await fetch(API_URL, {
+    const response = await fetch(`${SERVER_URL}/api/monday`, {
         method: 'POST',
         headers: {
-            Authorization: API_TOKEN,
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -19,9 +16,9 @@ export async function mondayRequest(query, variables = {}) {
 
     const result = await response.json();
 
-    if (result.errors) {
-        console.error(result.errors);
-        throw new Error(result.errors[0].message);
+    if (!response.ok || result.error) {
+        console.error(result.error);
+        throw new Error(result.error || 'Monday request failed.');
     }
 
     return result.data;
@@ -97,18 +94,16 @@ export async function createMondayItem(
   return data.create_item.id;
 }
 
-// Monday's file-upload endpoint doesn't send CORS headers, so a browser can
-// never call it directly (verified: identical request works from Node,
-// fails from the browser with a CORS preflight error). This goes through a
-// small local proxy server (see /server) that holds the token and forwards
-// the upload from a server context instead.
+// Monday's file-upload endpoint doesn't send CORS headers on top of that
+// (verified: identical request works from Node, fails from the browser with
+// a CORS preflight error), so this always has to go through the server.
 export async function uploadMondayFile(itemId, columnId, file) {
   const formData = new FormData();
   formData.append("itemId", itemId);
   formData.append("columnId", columnId);
   formData.append("file", file);
 
-  const response = await fetch(`${UPLOAD_PROXY_URL}/api/upload`, {
+  const response = await fetch(`${SERVER_URL}/api/upload`, {
     method: "POST",
     body: formData,
   });

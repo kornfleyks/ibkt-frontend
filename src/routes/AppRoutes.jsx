@@ -18,7 +18,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 
 function AppRoutes() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         {/* Public */}
 

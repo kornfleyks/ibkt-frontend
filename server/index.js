@@ -6,7 +6,10 @@ import multer from "multer";
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "http://localhost:5173";
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGIN || "http://localhost:5173")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 if (!MONDAY_API_URL || !MONDAY_API_TOKEN) {
   throw new Error(
@@ -19,7 +22,43 @@ const COLUMN_ID_PATTERN = /^[a-zA-Z0-9_]+$/;
 
 const app = express();
 
-app.use(cors({ origin: ALLOWED_ORIGIN }));
+app.use(cors({ origin: ALLOWED_ORIGINS }));
+app.use(express.json());
+
+// The frontend never talks to Monday directly: it has no way to hold an API
+// token without shipping it in the public JS bundle. Every Monday GraphQL
+// call is proxied through here instead, so the token only ever lives on
+// this server.
+app.post("/api/monday", async (req, res) => {
+  const { query, variables } = req.body;
+
+  if (!query) {
+    return res.status(400).json({ error: "query is required." });
+  }
+
+  try {
+    const response = await fetch(MONDAY_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: MONDAY_API_TOKEN,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query, variables }),
+    });
+
+    const result = await response.json();
+
+    if (result.errors) {
+      console.error(result.errors);
+      return res.status(502).json({ error: result.errors[0].message });
+    }
+
+    res.json({ data: result.data });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Request to Monday failed." });
+  }
+});
 
 const upload = multer({
   storage: multer.memoryStorage(),
