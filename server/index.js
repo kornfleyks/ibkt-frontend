@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 
+import { isMutation, getCached, setCached, clearCache } from "./mondayCache.js";
+
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
@@ -30,10 +32,20 @@ app.use(express.json());
 // call is proxied through here instead, so the token only ever lives on
 // this server.
 app.post("/api/monday", async (req, res) => {
-  const { query, variables } = req.body;
+  const { query, variables, cacheTtlMs } = req.body;
 
   if (!query) {
     return res.status(400).json({ error: "query is required." });
+  }
+
+  const mutation = isMutation(query);
+
+  if (!mutation) {
+    const cached = getCached(query, variables);
+
+    if (cached !== undefined) {
+      return res.json({ data: cached });
+    }
   }
 
   try {
@@ -51,6 +63,16 @@ app.post("/api/monday", async (req, res) => {
     if (result.errors) {
       console.error(result.errors);
       return res.status(502).json({ error: result.errors[0].message });
+    }
+
+    if (mutation) {
+      // A mutation can change data behind any cached read (e.g. matching a
+      // cat updates both the cats and active-applications boards), so the
+      // simplest correct move is to drop everything rather than track which
+      // reads it could have affected.
+      clearCache();
+    } else {
+      setCached(query, variables, result.data, cacheTtlMs);
     }
 
     res.json({ data: result.data });

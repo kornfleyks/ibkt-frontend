@@ -2,7 +2,7 @@
 // token. The browser never sees it (see /server/index.js).
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
-export async function mondayRequest(query, variables = {}) {
+export async function mondayRequest(query, variables = {}, { cacheTtlMs } = {}) {
     const response = await fetch(`${SERVER_URL}/api/monday`, {
         method: 'POST',
         headers: {
@@ -11,6 +11,7 @@ export async function mondayRequest(query, variables = {}) {
         body: JSON.stringify({
             query,
             variables,
+            cacheTtlMs,
         }),
     });
 
@@ -121,6 +122,10 @@ export async function uploadMondayFile(itemId, columnId, file) {
 // Dropdown columns don't expose their configured options through
 // column_values on items - the option list lives on the column definition
 // itself (settings_str, a JSON string) and has to be fetched separately.
+// Column definitions change rarely (only when someone edits board setup),
+// so this is cached far longer than the default.
+const COLUMN_SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000;
+
 export async function getColumnSettings(boardId, columnIds) {
   const query = `
     query ($boardId: ID!, $columnIds: [String!]) {
@@ -133,7 +138,11 @@ export async function getColumnSettings(boardId, columnIds) {
     }
   `;
 
-  const data = await mondayRequest(query, { boardId, columnIds });
+  const data = await mondayRequest(
+    query,
+    { boardId, columnIds },
+    { cacheTtlMs: COLUMN_SETTINGS_CACHE_TTL_MS },
+  );
 
   return data.boards[0].columns;
 }

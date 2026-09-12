@@ -9,6 +9,12 @@ directly. It holds the Monday API token server-side and does two things:
 - Proxies file uploads (`POST /api/upload`) to Monday's `/v2/file` endpoint,
   which doesn't send CORS headers and so can't be called from a browser at
   all.
+- Caches Monday query results in memory (`mondayCache.js`) for
+  `MONDAY_CACHE_TTL_MS` (default 30s), shared across every client hitting
+  this server. Mutations always bypass the cache and clear it afterwards,
+  since a mutation can change data behind more than one cached read. A
+  caller can request a longer TTL for a specific query via `cacheTtlMs` in
+  the request body (used for `getColumnSettings`, which rarely changes).
 
 ## Setup
 
