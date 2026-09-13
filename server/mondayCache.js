@@ -3,7 +3,7 @@
 // how often we hit Monday's rate limits). Mutations always bypass it and
 // clear it afterwards - simplest correct option at this scale, versus
 // tracking which cached reads a given mutation could affect.
-const DEFAULT_TTL_MS = Number(process.env.MONDAY_CACHE_TTL_MS) || 30_000;
+const DEFAULT_TTL_MS = Number(process.env.MONDAY_CACHE_TTL_MS) || 60_000;
 
 const cache = new Map();
 

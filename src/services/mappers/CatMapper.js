@@ -23,6 +23,7 @@ export function mapCat(item) {
     adoptionReady: columns[CATS.COLUMNS.ADOPTION_READY]?.text ?? "N/A",
     age: columns[CATS.COLUMNS.AGE]?.text ?? "N/A",
     rescuer: columns[CATS.COLUMNS.LINKED_RESCUER]?.display_value ?? "N/A",
+    rescuerId: columns[CATS.COLUMNS.LINKED_RESCUER]?.linked_items?.[0]?.id ?? null,
     foster: columns[CATS.COLUMNS.FOSTER_CONTACT]?.text ?? "",
     passportFile: getFileValue(columns[CATS.COLUMNS.PASSPORT_FILE]),
     medicalDocuments: getFileValue(columns[CATS.COLUMNS.MEDICAL_DOCUMENTS]),

@@ -2,6 +2,7 @@ import { mockCats } from "../mock/cats";
 import {
   mondayRequest,
   createMondayItem,
+  changeMondayColumnValue,
   uploadMondayFile,
   getColumnSettings,
 } from "./MondayService";
@@ -84,6 +85,14 @@ export async function getCat(id) {
                             type
                             text
                             value
+                            ... on BoardRelationValue {
+                                id
+                                display_value
+                                linked_items {
+                                    id
+                                    name
+                                }
+                            }
                         }
                     }
                 }
@@ -133,6 +142,23 @@ export async function getCatDropdownOptions() {
     breed: settingsByColumn[CATS.COLUMNS.BREED] ?? [],
     colour: settingsByColumn[CATS.COLUMNS.COLOUR] ?? [],
   };
+}
+
+// Rescuer isn't mandatory when a cat is added, so this also has to support
+// clearing it (rescuerId === null unlinks rather than leaving it untouched).
+export async function updateCatRescuer(catId, rescuerId) {
+  return changeMondayColumnValue(
+    CATS.BOARD_ID,
+    catId,
+    CATS.COLUMNS.LINKED_RESCUER,
+    { item_ids: rescuerId ? [Number(rescuerId)] : [] },
+  );
+}
+
+export async function updateCatStatus(catId, status) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.STATUS, {
+    label: status,
+  });
 }
 
 function parseDropdownLabels(settingsStr) {

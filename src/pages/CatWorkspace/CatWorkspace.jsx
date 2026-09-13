@@ -40,8 +40,12 @@ function CatWorkspace() {
         return null;
     }
 
+    function handleCatUpdate(updates) {
+        setCat((current) => ({ ...current, ...updates }));
+    }
+
     const tabComponents = {
-        0: <OverviewTab cat={cat} />,
+        0: <OverviewTab cat={cat} onCatUpdate={handleCatUpdate} />,
         1: <MedicalTab cat={cat} />,
         2: <DocumentsTab cat={cat} />,
         3: <CommunicationsTab cat={cat} />,
