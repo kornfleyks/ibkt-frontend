@@ -4,6 +4,7 @@ import {
   createMondayItem,
   changeMondayColumnValue,
   uploadMondayFile,
+  updateColumnAssets,
   getColumnSettings,
 } from "./MondayService";
 import { CATS } from "../constants/boards/cats";
@@ -193,6 +194,90 @@ export async function updateCatColour(catId, colour) {
     { labels: [colour] },
     { createLabelsIfMissing: true },
   );
+}
+
+export async function updateCatVaccinated(catId, vaccinated) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.VACCINATED, {
+    label: vaccinated,
+  });
+}
+
+export async function updateCatNeutered(catId, neutered) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.NEUTERED, {
+    label: neutered,
+  });
+}
+
+export async function updateCatMedicationRequired(catId, medicationRequired) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.MEDICATION_REQUIRED, {
+    label: medicationRequired,
+  });
+}
+
+export async function updateCatPassportComplete(catId, checked) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.PASSPORT_COMPLETE, {
+    checked,
+  });
+}
+
+export async function uploadCatPassportFile(catId, file) {
+  return uploadMondayFile(catId, CATS.COLUMNS.PASSPORT_FILE, file);
+}
+
+export async function uploadCatMedicalDocument(catId, file) {
+  return uploadMondayFile(catId, CATS.COLUMNS.MEDICAL_DOCUMENTS, file);
+}
+
+function toFileInputs(files) {
+  return files.map((file) => ({
+    assetId: file.assetId,
+    fileType: "asset",
+    name: file.name,
+  }));
+}
+
+export async function deleteCatPassportFile(catId, remainingFiles) {
+  return updateColumnAssets(
+    CATS.BOARD_ID,
+    catId,
+    CATS.COLUMNS.PASSPORT_FILE,
+    toFileInputs(remainingFiles),
+  );
+}
+
+export async function deleteCatMedicalDocument(catId, remainingFiles) {
+  return updateColumnAssets(
+    CATS.BOARD_ID,
+    catId,
+    CATS.COLUMNS.MEDICAL_DOCUMENTS,
+    toFileInputs(remainingFiles),
+  );
+}
+
+export async function uploadCatPhoto(catId, file) {
+  return uploadMondayFile(catId, CATS.COLUMNS.PHOTOS, file);
+}
+
+export async function deleteCatPhoto(catId, remainingFiles) {
+  return updateColumnAssets(CATS.BOARD_ID, catId, CATS.COLUMNS.PHOTOS, toFileInputs(remainingFiles));
+}
+
+export async function uploadCatVideo(catId, file) {
+  return uploadMondayFile(catId, CATS.COLUMNS.VIDEOS, file);
+}
+
+export async function deleteCatVideo(catId, remainingFiles) {
+  return updateColumnAssets(CATS.BOARD_ID, catId, CATS.COLUMNS.VIDEOS, toFileInputs(remainingFiles));
+}
+
+export async function updateCatMicrochipNumber(catId, microchipNumber) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.MICROCHIP_NUMBER, microchipNumber);
+}
+
+export async function updateCatFelvFivStatus(catId, felvFivStatus) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.FELV_FIV_STATUS, {
+    label: felvFivStatus,
+  });
 }
 
 function parseDropdownLabels(settingsStr) {

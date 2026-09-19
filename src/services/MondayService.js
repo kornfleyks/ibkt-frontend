@@ -61,6 +61,31 @@ export async function changeMondayColumnValue(
   });
 }
 
+// The file column API has no per-file delete - the only way to remove one
+// file is to re-set the whole column to the list of files that should
+// remain (verified against the live API: `files` fully replaces, not merges).
+export async function updateColumnAssets(boardId, itemId, columnId, files) {
+  const query = `
+    mutation (
+      $boardId: ID!,
+      $itemId: ID!,
+      $columnId: String!,
+      $files: [FileInput!]!
+    ) {
+      update_assets_on_item(
+        board_id: $boardId,
+        item_id: $itemId,
+        column_id: $columnId,
+        files: $files
+      ) {
+        id
+      }
+    }
+  `;
+
+  return mondayRequest(query, { boardId, itemId, columnId, files });
+}
+
 export async function createMondayItem(
   boardId,
   itemName,

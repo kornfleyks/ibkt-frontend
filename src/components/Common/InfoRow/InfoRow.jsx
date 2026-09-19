@@ -2,7 +2,8 @@ import { Box, Typography } from '@mui/material';
 
 function InfoRow({
     label,
-    value
+    value,
+    labelWidth = 120
 }) {
 
     return (
@@ -17,7 +18,9 @@ function InfoRow({
 
             <Typography
                 sx={{
-                    width:120,
+                    width:labelWidth,
+                    flexShrink:0,
+                    whiteSpace:'nowrap',
                     fontWeight:600,
                     color:'text.secondary'
                 }}

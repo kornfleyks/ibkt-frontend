@@ -46,8 +46,8 @@ function CatWorkspace() {
 
     const tabComponents = {
         0: <OverviewTab cat={cat} onCatUpdate={handleCatUpdate} />,
-        1: <MedicalTab cat={cat} />,
-        2: <DocumentsTab cat={cat} />,
+        1: <MedicalTab cat={cat} onCatUpdate={handleCatUpdate} />,
+        2: <DocumentsTab cat={cat} onCatUpdate={handleCatUpdate} />,
         3: <CommunicationsTab cat={cat} />,
         4: <TasksTab />,
         5: <Typography>Matching Coming Soon</Typography>,
