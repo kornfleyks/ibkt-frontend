@@ -112,7 +112,7 @@ function Cats() {
         />
 
         <Card sx={{ mb: 3 }}>
-            <CardContent>
+            <CardContent sx={{ '&:last-child': { pb: 2 } }}>
                 <Tabs
                     value={tab}
                     onChange={(event, newValue) => setTab(newValue)}

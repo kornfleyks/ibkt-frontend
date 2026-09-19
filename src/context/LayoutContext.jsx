@@ -3,7 +3,7 @@ import { createContext, useContext, useState } from "react";
 const LayoutContext = createContext();
 
 function LayoutProvider({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const value = {
     sidebarOpen,

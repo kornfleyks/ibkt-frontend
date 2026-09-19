@@ -14,6 +14,7 @@ export const TASKS = {
     LINKED_ADOPTION: "board_relation_mm49qydj", // Linked Adoption | board_relation
     LINKED_ADOPTION_ID: "lookup_mm49yrk", // Linked Adoption ID | mirror
     TASK: "dropdown_mm498nr0", // Task | dropdown
+    DUE_DATE: "date_mm49w45s", // Due Date | date
   },
   RELATIONS: {
     OWNER: ["5098492656"],

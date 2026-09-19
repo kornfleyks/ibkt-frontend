@@ -60,11 +60,11 @@ function CatWorkspace() {
         <>
             <PageHeader
                 title={cat.name}
-                subtitle={`${cat.gender} • ${cat.age}y • ${cat.country}`}
+                subtitle={`${cat.gender} • ${cat.age}y`}
             />
 
             <Card>
-                <CardContent>
+                <CardContent sx={{ '&:last-child': { pb: 2 } }}>
                     <Stack direction="row" spacing={3}>
                         <Avatar sx={{ width: 80, height: 80 }}>
                             <PetsIcon />
@@ -77,14 +77,13 @@ function CatWorkspace() {
 
                             <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 2 }}>
                                 <Chip label={cat.status} color="primary" size="small" />
-                                <Chip label={cat.medicalStatus} color="success" size="small" />
+                                <Chip label={`FeLV/FIV: ${cat.felvFivStatus}`} color="success" size="small" />
                             </Stack>
 
                             <Divider sx={{ mb: 2 }} />
 
                             <Stack>
                                 <InfoRow label="Rescuer" value={cat.rescuer} />
-                                <InfoRow label="Country" value={cat.country} />
                                 <InfoRow label="Age" value={`${cat.age} years`} />
                             </Stack>
                         </Box>
@@ -93,7 +92,7 @@ function CatWorkspace() {
             </Card>
 
             <Card sx={{ mt: 3 }}>
-                <CardContent>
+                <CardContent sx={{ '&:last-child': { pb: 2 } }}>
                     <Tabs
                         value={tab}
                         onChange={(event, newValue) => setTab(newValue)}
@@ -108,7 +107,7 @@ function CatWorkspace() {
             </Card>
 
             <Card sx={{ mt: 3 }}>
-                <CardContent>
+                <CardContent sx={{ '&:last-child': { pb: 2 } }}>
                     {tabComponents[tab]}
                 </CardContent>
             </Card>

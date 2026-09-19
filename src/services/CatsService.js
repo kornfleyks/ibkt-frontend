@@ -161,6 +161,40 @@ export async function updateCatStatus(catId, status) {
   });
 }
 
+export async function updateCatName(catId, name) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.NAME, name);
+}
+
+export async function updateCatGender(catId, gender) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.GENDER, {
+    label: gender,
+  });
+}
+
+export async function updateCatAge(catId, age) {
+  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.AGE, String(age));
+}
+
+export async function updateCatBreed(catId, breed) {
+  return changeMondayColumnValue(
+    CATS.BOARD_ID,
+    catId,
+    CATS.COLUMNS.BREED,
+    { labels: [breed] },
+    { createLabelsIfMissing: true },
+  );
+}
+
+export async function updateCatColour(catId, colour) {
+  return changeMondayColumnValue(
+    CATS.BOARD_ID,
+    catId,
+    CATS.COLUMNS.COLOUR,
+    { labels: [colour] },
+    { createLabelsIfMissing: true },
+  );
+}
+
 function parseDropdownLabels(settingsStr) {
   if (!settingsStr) {
     return [];

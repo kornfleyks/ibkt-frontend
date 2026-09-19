@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Grid,
     Autocomplete,
@@ -7,6 +7,7 @@ import {
     IconButton,
     Stack,
     Typography,
+    CircularProgress,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import CheckIcon from '@mui/icons-material/CheckOutlined';
@@ -14,10 +15,93 @@ import CloseIcon from '@mui/icons-material/CloseOutlined';
 import InfoRow from '../../../Common/InfoRow';
 import SectionCard from '../../../Common/SectionCard';
 import { getRescuers } from '../../../../services/RescuersService';
-import { updateCatRescuer, updateCatStatus } from '../../../../services/CatsService';
+import {
+    updateCatRescuer,
+    updateCatStatus,
+    updateCatName,
+    updateCatGender,
+    updateCatAge,
+    updateCatBreed,
+    updateCatColour,
+    getCatDropdownOptions,
+} from '../../../../services/CatsService';
 import { CATS_STATUS_OPTIONS } from '../../../../constants/statuses/catsStatuses';
 
 const STATUS_OPTIONS = Object.values(CATS_STATUS_OPTIONS.STATUS);
+const GENDER_OPTIONS = Object.values(CATS_STATUS_OPTIONS.GENDER);
+
+// Shared scaffold for a single editable "label: value" row - hover-to-reveal
+// edit pencil, inline editor, Check/Close to save or cancel. The actual
+// input control is left to the caller since it differs per field (plain
+// text, select, autocomplete).
+function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEditor }) {
+    const [editing, setEditing] = useState(false);
+    const [value, setValue] = useState(null);
+    const [saving, setSaving] = useState(false);
+
+    function startEditing() {
+        setValue(getEditValue());
+        setEditing(true);
+    }
+
+    async function handleSave() {
+        setSaving(true);
+
+        try {
+            await onSave(value);
+            setEditing(false);
+        } catch (error) {
+            console.error(`Failed to update ${label}:`, error);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    if (!editing) {
+        return (
+            <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1.5}
+                sx={{
+                    '&:hover .row-edit-button, &:focus-within .row-edit-button': {
+                        opacity: 1,
+                    },
+                }}
+            >
+                <InfoRow label={label} value={displayValue} />
+
+                <IconButton
+                    size="small"
+                    onClick={startEditing}
+                    aria-label={`Edit ${label}`}
+                    className="row-edit-button"
+                    sx={{ opacity: 0, transition: 'opacity 0.15s' }}
+                >
+                    <EditIcon fontSize="small" />
+                </IconButton>
+            </Stack>
+        );
+    }
+
+    return (
+        <Stack direction="row" alignItems="center" spacing={1} sx={{ py: 0.5 }}>
+            <Typography sx={{ width: 120, fontWeight: 600, color: 'text.secondary' }}>
+                {label}
+            </Typography>
+
+            {renderEditor(value, setValue, saving)}
+
+            <IconButton size="small" onClick={handleSave} disabled={saving} aria-label={`Save ${label}`}>
+                {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
+            </IconButton>
+
+            <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
+                <CloseIcon fontSize="small" />
+            </IconButton>
+        </Stack>
+    );
+}
 
 function RescuerRow({ cat, onCatUpdate }) {
     const [editing, setEditing] = useState(false);
@@ -69,6 +153,7 @@ function RescuerRow({ cat, onCatUpdate }) {
             <Stack
                 direction="row"
                 alignItems="center"
+                spacing={1.5}
                 sx={{
                     '&:hover .row-edit-button, &:focus-within .row-edit-button': {
                         opacity: 1,
@@ -112,7 +197,7 @@ function RescuerRow({ cat, onCatUpdate }) {
             />
 
             <IconButton size="small" onClick={handleSave} disabled={saving} aria-label="Save rescuer">
-                <CheckIcon fontSize="small" />
+                {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
             </IconButton>
 
             <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
@@ -153,6 +238,7 @@ function StatusRow({ cat, onCatUpdate }) {
             <Stack
                 direction="row"
                 alignItems="center"
+                spacing={1.5}
                 sx={{
                     '&:hover .row-edit-button, &:focus-within .row-edit-button': {
                         opacity: 1,
@@ -196,7 +282,7 @@ function StatusRow({ cat, onCatUpdate }) {
             </TextField>
 
             <IconButton size="small" onClick={handleSave} disabled={saving} aria-label="Save status">
-                <CheckIcon fontSize="small" />
+                {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
             </IconButton>
 
             <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
@@ -207,6 +293,18 @@ function StatusRow({ cat, onCatUpdate }) {
 }
 
 function OverviewTab({ cat, onCatUpdate }) {
+
+    const [breedOptions, setBreedOptions] = useState([]);
+    const [colourOptions, setColourOptions] = useState([]);
+
+    useEffect(() => {
+        getCatDropdownOptions()
+            .then((options) => {
+                setBreedOptions(options.breed);
+                setColourOptions(options.colour);
+            })
+            .catch((error) => console.error('Failed to load Breed/Colour options:', error));
+    }, []);
 
     return (
 
@@ -221,29 +319,117 @@ function OverviewTab({ cat, onCatUpdate }) {
                 }}
             >
                 <SectionCard title="Basic Information">
-                        <InfoRow
+                        <EditableInfoRow
                             label="Name"
-                            value={cat.name}
+                            displayValue={cat.name}
+                            getEditValue={() => cat.name}
+                            onSave={async (value) => {
+                                if (!value.trim()) {
+                                    throw new Error('Name is required.');
+                                }
+
+                                await updateCatName(cat.id, value);
+                                onCatUpdate({ name: value });
+                            }}
+                            renderEditor={(value, setValue, saving) => (
+                                <TextField
+                                    size="small"
+                                    sx={{ flex: 1 }}
+                                    disabled={saving}
+                                    value={value}
+                                    onChange={(event) => setValue(event.target.value)}
+                                />
+                            )}
                         />
 
-                        <InfoRow
+                        <EditableInfoRow
                             label="Gender"
-                            value={cat.gender}
+                            displayValue={cat.gender}
+                            getEditValue={() => cat.gender}
+                            onSave={async (value) => {
+                                await updateCatGender(cat.id, value);
+                                onCatUpdate({ gender: value });
+                            }}
+                            renderEditor={(value, setValue, saving) => (
+                                <TextField
+                                    select
+                                    size="small"
+                                    sx={{ flex: 1 }}
+                                    disabled={saving}
+                                    value={value}
+                                    onChange={(event) => setValue(event.target.value)}
+                                >
+                                    {GENDER_OPTIONS.map((option) => (
+                                        <MenuItem key={option} value={option}>
+                                            {option}
+                                        </MenuItem>
+                                    ))}
+                                </TextField>
+                            )}
                         />
 
-                        <InfoRow
+                        <EditableInfoRow
                             label="Age"
-                            value={`${cat.age} years`}
+                            displayValue={`${cat.age} years`}
+                            getEditValue={() => cat.age}
+                            onSave={async (value) => {
+                                await updateCatAge(cat.id, value);
+                                onCatUpdate({ age: value });
+                            }}
+                            renderEditor={(value, setValue, saving) => (
+                                <TextField
+                                    type="number"
+                                    size="small"
+                                    sx={{ flex: 1 }}
+                                    disabled={saving}
+                                    value={value}
+                                    onChange={(event) => setValue(event.target.value)}
+                                />
+                            )}
                         />
 
-                        <InfoRow
+                        <EditableInfoRow
                             label="Breed"
-                            value={cat.breed}
+                            displayValue={cat.breed}
+                            getEditValue={() => cat.breed}
+                            onSave={async (value) => {
+                                await updateCatBreed(cat.id, value);
+                                onCatUpdate({ breed: value });
+                            }}
+                            renderEditor={(value, setValue, saving) => (
+                                <Autocomplete
+                                    freeSolo
+                                    size="small"
+                                    sx={{ flex: 1 }}
+                                    disabled={saving}
+                                    options={breedOptions}
+                                    value={value}
+                                    onInputChange={(event, newValue) => setValue(newValue)}
+                                    renderInput={(params) => <TextField {...params} />}
+                                />
+                            )}
                         />
 
-                        <InfoRow
+                        <EditableInfoRow
                             label="Colour"
-                            value={cat.colour}
+                            displayValue={cat.colour}
+                            getEditValue={() => cat.colour}
+                            onSave={async (value) => {
+                                await updateCatColour(cat.id, value);
+                                onCatUpdate({ colour: value });
+                            }}
+                            renderEditor={(value, setValue, saving) => (
+                                <Autocomplete
+                                    freeSolo
+                                    size="small"
+                                    sx={{ flex: 1 }}
+                                    disabled={saving}
+                                    options={colourOptions}
+                                    value={value}
+                                    onInputChange={(event, newValue) => setValue(newValue)}
+                                    renderInput={(params) => <TextField {...params} />}
+                                />
+                            )}
                         />
                 </SectionCard>
             </Grid>

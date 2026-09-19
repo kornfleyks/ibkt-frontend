@@ -5,12 +5,14 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  IconButton,
   Grid,
   TextField,
   MenuItem,
   Autocomplete,
   Alert,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
 
 import SectionCard from "../../Common/SectionCard";
 import { CATS_STATUS_OPTIONS } from "../../../constants/statuses/catsStatuses";
@@ -216,7 +218,16 @@ function AddCatDialog({ open, onClose, onCreated }) {
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ fontSize: "1.1rem" }}>Add Cat</DialogTitle>
+      <DialogTitle sx={{ fontSize: "1.1rem" }}>
+        Add Cat
+        <IconButton
+          onClick={handleClose}
+          disabled={saving}
+          sx={{ position: "absolute", right: 8, top: 8 }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
 
       <DialogContent dividers sx={{ "& > * + *": { mt: 3 } }}>
         {loadError && <Alert severity="warning">{loadError}</Alert>}

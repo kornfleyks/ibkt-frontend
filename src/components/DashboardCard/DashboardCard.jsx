@@ -2,12 +2,14 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
 
 function DashboardCard({
     title,
     value,
     icon,
-    color = 'primary.main'
+    color = 'primary.main',
+    loading = false
 }) {
 
     return (
@@ -62,17 +64,27 @@ function DashboardCard({
 
 
 
-                <Typography
-                    variant="h3"
-                    fontWeight={700}
+                <Box
                     sx={{
-                        mt: 2.5
+                        mt: 2.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        height: 48
                     }}
                 >
 
-                    {value}
+                    {loading ? (
+                        <CircularProgress size={28} sx={{ color: 'text.secondary' }} />
+                    ) : (
+                        <Typography
+                            variant="h3"
+                            fontWeight={700}
+                        >
+                            {value}
+                        </Typography>
+                    )}
 
-                </Typography>
+                </Box>
 
 
             </CardContent>
