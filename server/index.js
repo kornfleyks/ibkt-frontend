@@ -137,6 +137,10 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       return res.status(502).json({ error: result.errors[0].message });
     }
 
+    // Same reasoning as the mutation branch above: a cached read of this
+    // item's file column is now stale.
+    clearCache();
+
     res.json(result.data.add_file_to_column);
   } catch (err) {
     console.error(err);
