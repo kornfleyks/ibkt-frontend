@@ -214,12 +214,6 @@ export async function updateCatMedicationRequired(catId, medicationRequired) {
   });
 }
 
-export async function updateCatPassportComplete(catId, checked) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.PASSPORT_COMPLETE, {
-    checked,
-  });
-}
-
 export async function uploadCatPassportFile(catId, file) {
   return uploadMondayFile(catId, CATS.COLUMNS.PASSPORT_FILE, file);
 }
