@@ -6,9 +6,9 @@ import { getActiveApplication } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
 import { Box, Tabs, Tab } from "@mui/material";
 import { activeApplicationWorkspaceTabs } from "../../config/activeApplicationWorkspaceTabs";
-import MatchingTab from "../../components/ActiveApplications/Workspace/MatchingTab";
 import DecisionActions from "../../components/ActiveApplications/DecisionActions";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../constants/statuses/activeApplicationsStatuses";
+import useTabParam from "../../hooks/useTabParam";
 
 const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
@@ -16,7 +16,7 @@ function ActiveApplicationWorkspace() {
   const { id } = useParams();
 
   const [application, setApplication] = useState(null);
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useTabParam(activeApplicationWorkspaceTabs);
 
   const { showLoading, hideLoading } = useLoading();
 
@@ -68,9 +68,9 @@ function ActiveApplicationWorkspace() {
           ))}
         </Tabs>
       </Box>
-      {tab === 0 && <OverviewTab application={application} />}
-
-      {tab === 3 && <MatchingTab application={application} />}
+      {activeApplicationWorkspaceTabs[tab].slug === "overview" && (
+        <OverviewTab application={application} />
+      )}
     </>
   );
 }

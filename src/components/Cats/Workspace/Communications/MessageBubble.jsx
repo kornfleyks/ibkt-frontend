@@ -4,8 +4,31 @@ import {
     Avatar,
     Stack,
     Typography,
+    Link,
     Box
 } from '@mui/material';
+
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+
+// String.split with a capturing group interleaves the matched groups
+// between the surrounding text, so odd indices are always URLs here.
+function linkifyText(text) {
+    return text.split(URL_PATTERN).map((part, index) =>
+        index % 2 === 1 ? (
+            <Link
+                key={index}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                sx={{ wordBreak: 'break-all', color: 'info.main' }}
+            >
+                {part}
+            </Link>
+        ) : (
+            part
+        )
+    );
+}
 
 
 function MessageBubble({message}) {
@@ -59,9 +82,9 @@ color="text.secondary"
 
 
 
-<Typography>
+<Typography sx={{ whiteSpace: 'pre-wrap' }}>
 
-{message.message}
+{linkifyText(message.message)}
 
 </Typography>
 

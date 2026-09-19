@@ -20,11 +20,14 @@ import { getCats } from '../services/CatsService';
 import { CATS_STATUS_OPTIONS } from '../constants/statuses/catsStatuses';
 
 import { useLoading } from '../context/LoadingContext';
+import useTabParam from '../hooks/useTabParam';
+import { slugify } from '../utils/slugify';
 
 const TABS = [
-    { label: 'All', status: null },
+    { label: 'All', slug: 'all', status: null },
     ...Object.values(CATS_STATUS_OPTIONS.STATUS).map((status) => ({
         label: status,
+        slug: slugify(status),
         status,
     })),
 ];
@@ -33,7 +36,7 @@ function Cats() {
 
     const [cats, setCats] = useState([]);
     const [addCatOpen, setAddCatOpen] = useState(false);
-    const [tab, setTab] = useState(0);
+    const [tab, setTab] = useTabParam(TABS);
 
     const {
         showLoading,

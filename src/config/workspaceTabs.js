@@ -1,29 +1,34 @@
 export const workspaceTabs = [
     {
-        label: 'Overview'
+        label: 'Overview',
+        slug: 'overview'
     },
     {
-        label: 'Medical'
+        label: 'Medical',
+        slug: 'medical'
     },
     {
-        label: 'Documents'
+        label: 'Documents',
+        slug: 'documents'
     },
     {
-        label: 'Communications'
+        label: 'Communications',
+        slug: 'communications'
     },
     {
-        label: 'Tasks'
+        label: 'Tasks',
+        slug: 'tasks'
     },
     {
-        label: 'Matching'
+        label: 'Travel',
+        slug: 'travel'
     },
     {
-        label: 'Travel'
+        label: 'Post Adoption',
+        slug: 'post-adoption'
     },
     {
-        label: 'Post Adoption'
-    },
-    {
-        label: 'Timeline'
+        label: 'Timeline',
+        slug: 'timeline'
     }
 ];

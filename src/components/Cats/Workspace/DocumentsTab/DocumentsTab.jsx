@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Divider,
 } from "@mui/material";
 
 import UploadIcon from "@mui/icons-material/UploadOutlined";
@@ -220,6 +221,8 @@ function DocumentsTab({ cat, onCatUpdate }) {
           uploadFn={uploadCatMedicalDocument}
           deleteFn={deleteCatMedicalDocument}
         />
+
+        <Divider />
 
         <DocumentSection
           cat={cat}

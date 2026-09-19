@@ -1,9 +1,28 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, CardContent, Typography, Avatar, Stack, Box, Tabs, Tab, Chip, Divider } from '@mui/material';
+import useTabParam from '../../hooks/useTabParam';
+import {
+    Card,
+    CardContent,
+    Typography,
+    Avatar,
+    Stack,
+    Box,
+    Tabs,
+    Tab,
+    Chip,
+    Divider,
+    TextField,
+    MenuItem,
+    IconButton,
+    CircularProgress,
+} from '@mui/material';
 import PetsIcon from '@mui/icons-material/PetsOutlined';
+import EditIcon from '@mui/icons-material/EditOutlined';
+import CheckIcon from '@mui/icons-material/CheckOutlined';
+import CloseIcon from '@mui/icons-material/CloseOutlined';
 import PageHeader from '../../components/PageHeader';
-import { getCat } from '../../services/CatsService';
+import { getCat, updateCatStatus } from '../../services/CatsService';
 import { useLoading } from '../../context/LoadingContext';
 import OverviewTab from '../../components/Cats/Workspace/OverviewTab';
 import MedicalTab from '../../components/Cats/Workspace/MedicalTab';
@@ -13,11 +32,93 @@ import InfoRow from '../../components/Common/InfoRow';
 import { workspaceTabs } from '../../config/workspaceTabs';
 import CommunicationsTab from '../../components/Cats/Workspace/Communications/CommunicationsTab';
 import TasksTab from '../../components/Cats/Workspace/Tasks/TasksTab';
+import { CATS_STATUS_OPTIONS } from '../../constants/statuses/catsStatuses';
+
+const STATUS_OPTIONS = Object.values(CATS_STATUS_OPTIONS.STATUS);
+
+function StatusChipEditor({ cat, onCatUpdate }) {
+    const [editing, setEditing] = useState(false);
+    const [status, setStatus] = useState(cat.status);
+    const [saving, setSaving] = useState(false);
+
+    function startEditing() {
+        setStatus(cat.status);
+        setEditing(true);
+    }
+
+    async function handleSave() {
+        setSaving(true);
+
+        try {
+            await updateCatStatus(cat.id, status);
+            onCatUpdate({ status });
+            setEditing(false);
+        } catch (err) {
+            console.error('Failed to update status:', err);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    if (!editing) {
+        return (
+            <Stack
+                direction="row"
+                alignItems="center"
+                spacing={0.5}
+                sx={{
+                    '&:hover .row-edit-button, &:focus-within .row-edit-button': {
+                        opacity: 1,
+                    },
+                }}
+            >
+                <Chip label={cat.status} color="primary" size="small" />
+
+                <IconButton
+                    size="small"
+                    onClick={startEditing}
+                    aria-label="Edit status"
+                    className="row-edit-button"
+                    sx={{ opacity: 0, transition: 'opacity 0.15s' }}
+                >
+                    <EditIcon fontSize="small" />
+                </IconButton>
+            </Stack>
+        );
+    }
+
+    return (
+        <Stack direction="row" alignItems="center" spacing={0.5}>
+            <TextField
+                select
+                size="small"
+                sx={{ minWidth: 170 }}
+                disabled={saving}
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+            >
+                {STATUS_OPTIONS.map((option) => (
+                    <MenuItem key={option} value={option}>
+                        {option}
+                    </MenuItem>
+                ))}
+            </TextField>
+
+            <IconButton size="small" onClick={handleSave} disabled={saving} aria-label="Save status">
+                {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
+            </IconButton>
+
+            <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
+                <CloseIcon fontSize="small" />
+            </IconButton>
+        </Stack>
+    );
+}
 
 function CatWorkspace() {
     const { id } = useParams();
     const [cat, setCat] = useState(null);
-    const [tab, setTab] = useState(0);
+    const [tab, setTab] = useTabParam(workspaceTabs);
     const { showLoading, hideLoading } = useLoading();
 
     async function loadCat() {
@@ -45,15 +146,14 @@ function CatWorkspace() {
     }
 
     const tabComponents = {
-        0: <OverviewTab cat={cat} onCatUpdate={handleCatUpdate} />,
-        1: <MedicalTab cat={cat} onCatUpdate={handleCatUpdate} />,
-        2: <DocumentsTab cat={cat} onCatUpdate={handleCatUpdate} />,
-        3: <CommunicationsTab cat={cat} />,
-        4: <TasksTab />,
-        5: <Typography>Matching Coming Soon</Typography>,
-        6: <Typography>Travel Coming Soon</Typography>,
-        7: <Typography>Post Adoption Coming Soon</Typography>,
-        8: <TimelineTab cat={cat} />
+        overview: <OverviewTab cat={cat} onCatUpdate={handleCatUpdate} />,
+        medical: <MedicalTab cat={cat} onCatUpdate={handleCatUpdate} />,
+        documents: <DocumentsTab cat={cat} onCatUpdate={handleCatUpdate} />,
+        communications: <CommunicationsTab cat={cat} />,
+        tasks: <TasksTab cat={cat} />,
+        travel: <Typography>Travel Coming Soon</Typography>,
+        'post-adoption': <Typography>Post Adoption Coming Soon</Typography>,
+        timeline: <TimelineTab cat={cat} />
     };
 
     return (
@@ -75,8 +175,8 @@ function CatWorkspace() {
                                 {cat.name}
                             </Typography>
 
-                            <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 2 }}>
-                                <Chip label={cat.status} color="primary" size="small" />
+                            <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1, mb: 2 }}>
+                                <StatusChipEditor cat={cat} onCatUpdate={handleCatUpdate} />
                                 <Chip label={`FeLV/FIV: ${cat.felvFivStatus}`} color="success" size="small" />
                             </Stack>
 
@@ -108,7 +208,7 @@ function CatWorkspace() {
 
             <Card sx={{ mt: 3 }}>
                 <CardContent sx={{ '&:last-child': { pb: 2 } }}>
-                    {tabComponents[tab]}
+                    {tabComponents[workspaceTabs[tab].slug]}
                 </CardContent>
             </Card>
         </>

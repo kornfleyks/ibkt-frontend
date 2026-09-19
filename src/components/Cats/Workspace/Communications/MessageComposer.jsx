@@ -1,14 +1,14 @@
-import {useState} from 'react';
+import { useState } from 'react';
 
 import {
-Stack,
-TextField,
-Button
+    Stack,
+    TextField,
+    Button
 } from '@mui/material';
 
 
 
-function MessageComposer({onSend}) {
+function MessageComposer({ onSend, disabled = false }) {
 
 
 const [text,setText]=useState('');
@@ -50,6 +50,7 @@ onChange={(e)=>setText(e.target.value)}
 
 placeholder="Write internal note..."
 
+disabled={disabled}
 
 />
 
@@ -61,9 +62,13 @@ variant="contained"
 
 onClick={handleSend}
 
+disabled={disabled}
+
+sx={{ alignSelf: 'flex-start' }}
+
 >
 
-Send
+{disabled ? 'Sending...' : 'Send'}
 
 
 </Button>

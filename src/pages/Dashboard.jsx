@@ -19,6 +19,7 @@ import Stack from '@mui/material/Stack';
 
 import DashboardCard from '../components/DashboardCard';
 import AddCatDialog from '../components/Cats/AddCatDialog/AddCatDialog';
+import AddTaskDialog from '../components/Cats/Workspace/Tasks/AddTaskDialog';
 
 import { getCats } from '../services/CatsService';
 import { getActiveApplications } from '../services/ActiveApplicationsService';
@@ -45,6 +46,7 @@ function todayDateString() {
 function Dashboard() {
 
     const [addCatOpen, setAddCatOpen] = useState(false);
+    const [addTaskOpen, setAddTaskOpen] = useState(false);
 
     const [stats, setStats] = useState({
         awaitingPassport: null,
@@ -344,6 +346,7 @@ function Dashboard() {
 
                         <Button
                             variant="contained"
+                            onClick={() => setAddTaskOpen(true)}
                         >
                             Create Task
                         </Button>
@@ -362,6 +365,11 @@ function Dashboard() {
         <AddCatDialog
             open={addCatOpen}
             onClose={() => setAddCatOpen(false)}
+        />
+
+        <AddTaskDialog
+            open={addTaskOpen}
+            onClose={() => setAddTaskOpen(false)}
         />
 
     </>

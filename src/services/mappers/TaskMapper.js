@@ -7,9 +7,14 @@ export function mapTask(item) {
 
   return {
     id: item.id,
-    name: item.name,
-    status: columns[TASKS.COLUMNS.STATUS]?.text ?? "N/A",
-    priority: columns[TASKS.COLUMNS.PRIORITY]?.text ?? "N/A",
+    title: columns[TASKS.COLUMNS.TASK]?.text || "N/A",
+    status: columns[TASKS.COLUMNS.STATUS]?.text || "N/A",
+    priority: columns[TASKS.COLUMNS.PRIORITY]?.text || "N/A",
     dueDate: columns[TASKS.COLUMNS.DUE_DATE]?.text || null,
+    ownerId: columns[TASKS.COLUMNS.OWNER]?.linked_items?.[0]?.id ?? null,
+    ownerName: columns[TASKS.COLUMNS.OWNER]?.display_value || "Unassigned",
+    linkedCatId: columns[TASKS.COLUMNS.LINKED_CAT]?.linked_items?.[0]?.id ?? null,
+    waitingReason: columns[TASKS.COLUMNS.WAITING_REASON]?.text ?? "",
+    description: columns[TASKS.COLUMNS.TASK_DESCRIPTION]?.text ?? "",
   };
 }

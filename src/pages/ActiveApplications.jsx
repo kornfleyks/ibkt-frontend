@@ -12,18 +12,19 @@ import CardContent from "@mui/material/CardContent";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Typography from "@mui/material/Typography";
+import useTabParam from "../hooks/useTabParam";
 
 const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
 const TABS = [
-  { label: "New Applications", stage: ADOPTION_STAGE.NEW_APPLICATION },
-  { label: "Active", stage: ADOPTION_STAGE.ACTIVE_APPLICATION },
-  { label: "Rejected", stage: ADOPTION_STAGE.REJECTED_APPLICATION },
+  { label: "New Applications", slug: "new-applications", stage: ADOPTION_STAGE.NEW_APPLICATION },
+  { label: "Active", slug: "active", stage: ADOPTION_STAGE.ACTIVE_APPLICATION },
+  { label: "Rejected", slug: "rejected", stage: ADOPTION_STAGE.REJECTED_APPLICATION },
 ];
 
 function ActiveApplications() {
   const [applications, setApplications] = useState([]);
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useTabParam(TABS);
   const { showLoading, hideLoading } = useLoading();
 
   async function loadActiveApplications() {

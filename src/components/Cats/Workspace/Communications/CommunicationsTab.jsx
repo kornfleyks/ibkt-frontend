@@ -1,85 +1,142 @@
-import {useState} from 'react';
+import { useEffect, useState } from 'react';
 
 import {
-Stack
+    Stack,
+    CircularProgress,
+    Alert
 } from '@mui/material';
-
-import mockMessages from './mockMessages';
 
 import MessageBubble from './MessageBubble';
 import MessageComposer from './MessageComposer';
+import {
+    getCatCommunications,
+    createCatCommunication,
+    formatCommunicationBody,
+} from '../../../../services/CommunicationsService';
+import { useAuth } from '../../../../context/AuthContext';
 
 
 
-function CommunicationsTab() {
+function CommunicationsTab({ cat }) {
 
+    const { user } = useAuth();
 
-const [messages,setMessages]=useState(mockMessages);
+    const [messages, setMessages] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [sending, setSending] = useState(false);
+    const [error, setError] = useState(null);
 
+    useEffect(() => {
 
+        let cancelled = false;
 
-const handleSend=(text)=>{
+        async function loadMessages() {
 
+            setLoading(true);
+            setError(null);
 
-const newMessage={
+            try {
 
-id:Date.now(),
+                const data = await getCatCommunications(cat.id);
 
-author:"Current User",
+                if (!cancelled) {
+                    setMessages(data);
+                }
 
-role:"Volunteer",
+            } catch (err) {
 
-message:text,
+                console.error('Failed to load communications:', err);
 
-createdAt:new Date()
+                if (!cancelled) {
+                    setError('Failed to load messages.');
+                }
 
-};
+            } finally {
 
+                if (!cancelled) {
+                    setLoading(false);
+                }
 
+            }
 
-setMessages(prev=>[
-...prev,
-newMessage
-]);
+        }
 
+        loadMessages();
 
-};
+        return () => {
+            cancelled = true;
+        };
 
+    }, [cat.id]);
 
+    async function handleSend(text) {
 
-return(
+        setSending(true);
+        setError(null);
 
+        try {
 
-<Stack spacing={2}>
+            const body = formatCommunicationBody(user, text);
+            const newMessage = await createCatCommunication(cat.id, body);
 
+            setMessages((current) => [...current, newMessage]);
 
-{messages.map(message=>(
+        } catch (err) {
 
-<MessageBubble
+            console.error('Failed to send message:', err);
+            setError('Failed to send message.');
 
-key={message.id}
+        } finally {
 
-message={message}
+            setSending(false);
 
-/>
+        }
 
-))}
+    }
 
+    if (loading) {
 
+        return (
+            <Stack alignItems="center" sx={{ py: 4 }}>
+                <CircularProgress size={28} sx={{ color: 'text.secondary' }} />
+            </Stack>
+        );
 
-<MessageComposer
+    }
 
-onSend={handleSend}
+    return(
 
-/>
+        <Stack spacing={2}>
 
+            {messages.map(message=>(
 
-</Stack>
+                <MessageBubble
 
+                    key={message.id}
 
+                    message={message}
 
-);
+                />
 
+            ))}
+
+            {error && (
+                <Alert severity="error" sx={{ fontSize: '0.8125rem' }}>
+                    {error}
+                </Alert>
+            )}
+
+            <MessageComposer
+
+                onSend={handleSend}
+
+                disabled={sending}
+
+            />
+
+        </Stack>
+
+    );
 
 }
 
