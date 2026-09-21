@@ -18,8 +18,12 @@ export const USERS = {
     LINKED_RESCUER_ID: "lookup_mm49dav0", // Linked Rescuer ID | mirror
     LINKED_ADOPTER: "board_relation_mm492rdy", // Linked Adopter | board_relation
     LINKED_ADOPTER_ID: "lookup_mm49psw5", // Linked Adopter ID | mirror
+    LAST_LOGIN: "date_mm49bcnd", // Last Login | date
+    LAST_ACTIVITY: "date_mm49c29a", // Last Activity | date
     LOGIN_TOKEN: "text_mm49fq5a", // Login Token | text
+    LOGIN_TOKEN_EXPIRY: "date_mm4965qg", // Login Token Expiry | date
     PASSWORD_RESET_TOKEN: "text_mm49pkgb", // Password Reset Token | text
+    PASSWORD_RESET_EXPIRY: "date_mm49qrcj", // Password Reset Expiry | date
     NOTES: "long_text_mm49b7d8", // Notes | long_text
   },
   RELATIONS: {
