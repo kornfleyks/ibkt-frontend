@@ -13,12 +13,12 @@ import {
   ADOPTION_EDITABLE_FIELDS,
 } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
-import { useAuth } from "../../context/AuthContext";
+import useAuth from "../../hooks/useAuth";
 
 function AdoptionDetail() {
   const { id } = useParams();
   const { hasRole } = useAuth();
-  const canEdit = hasRole("SuperAdmin");
+  const canEdit = hasRole("Admin");
 
   const [adoption, setAdoption] = useState(null);
   const [editing, setEditing] = useState(false);

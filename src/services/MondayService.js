@@ -1,12 +1,63 @@
+import { readAuth, clearAuth } from './authStorage';
+
 // All Monday requests go through our own server, which holds the API
 // token. The browser never sees it (see /server/index.js).
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
+function getAuthToken() {
+    return readAuth()?.token ?? null;
+}
+
+// This is a plain module, not a component, so it can't read AuthContext -
+// on an expired/invalid session it just clears storage and hard-redirects,
+// same end state a logout would produce.
+function handleUnauthorized() {
+    clearAuth();
+
+    const loginUrl = `${import.meta.env.BASE_URL}login`.replace(/\/+/g, '/');
+
+    if (!window.location.pathname.endsWith('/login')) {
+        window.location.href = loginUrl;
+    }
+}
+
+// For authenticated server endpoints that aren't the generic Monday
+// proxy (e.g. admin-only account actions that must hash/verify server-side).
+export async function serverPost(path, body) {
+    const token = getAuthToken();
+
+    const response = await fetch(`${SERVER_URL}${path}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (response.status === 401) {
+        handleUnauthorized();
+        throw new Error('Not authenticated.');
+    }
+
+    const result = await response.json();
+
+    if (!response.ok || result.error) {
+        console.error(result.error);
+        throw new Error(result.error || 'Request failed.');
+    }
+
+    return result;
+}
+
 export async function mondayRequest(query, variables = {}, { cacheTtlMs } = {}) {
+    const token = getAuthToken();
+
     const response = await fetch(`${SERVER_URL}/api/monday`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
             query,
@@ -14,6 +65,11 @@ export async function mondayRequest(query, variables = {}, { cacheTtlMs } = {}) 
             cacheTtlMs,
         }),
     });
+
+    if (response.status === 401) {
+        handleUnauthorized();
+        throw new Error('Not authenticated.');
+    }
 
     const result = await response.json();
 
@@ -129,10 +185,18 @@ export async function uploadMondayFile(itemId, columnId, file) {
   formData.append("columnId", columnId);
   formData.append("file", file);
 
+  const token = getAuthToken();
+
   const response = await fetch(`${SERVER_URL}/api/upload`, {
     method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
   });
+
+  if (response.status === 401) {
+    handleUnauthorized();
+    throw new Error("Not authenticated.");
+  }
 
   const result = await response.json();
 

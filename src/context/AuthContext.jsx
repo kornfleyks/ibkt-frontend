@@ -1,52 +1,36 @@
-import { createContext, useContext, useState } from "react";
-
-const AuthContext = createContext();
+import { useState } from "react";
+import * as AuthService from "../services/AuthService";
+import { readAuth, writeAuth, clearAuth } from "../services/authStorage";
+import { AuthContext } from "./authContextInstance";
 
 function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("user");
+  const [auth, setAuth] = useState(readAuth);
 
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
+  async function login(email, password) {
+    const { token, user } = await AuthService.login(email, password);
+    const nextAuth = { token, user };
 
-  function login(userData) {
-    setUser(userData);
-
-    localStorage.setItem(
-      "user",
-
-      JSON.stringify(userData),
-    );
+    setAuth(nextAuth);
+    writeAuth(nextAuth);
   }
 
   function logout() {
-    setUser(null);
-
-    localStorage.removeItem("user");
+    setAuth(null);
+    clearAuth();
   }
 
   const value = {
-    user,
+    user: auth?.user ?? null,
 
     login,
     logout,
 
-    isAuthenticated: !!user,
+    isAuthenticated: !!auth,
 
-    hasRole: (role) => {
-      return user?.role === role;
-    },
-
-    hasPermission: (permission) => {
-      return user?.permissions?.includes(permission);
-    },
+    hasRole: (role) => auth?.user?.role === role,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-function useAuth() {
-  return useContext(AuthContext);
-}
-
-export { AuthProvider, useAuth };
+export { AuthProvider };

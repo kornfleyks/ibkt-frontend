@@ -5,7 +5,8 @@ import {
     Typography,
     Button,
     Box,
-    Alert
+    Alert,
+    CircularProgress
 } from '@mui/material';
 
 import AddIcon from '@mui/icons-material/AddOutlined';
@@ -101,13 +102,19 @@ function TasksTab({ cat }) {
                 </Alert>
             )}
 
+            {loading && (
+                <Stack alignItems="center" sx={{ py: 4 }}>
+                    <CircularProgress size={28} sx={{ color: 'text.secondary' }} />
+                </Stack>
+            )}
+
             {!loading && tasks.length === 0 && (
                 <Typography color="text.secondary">
                     No tasks for this cat yet.
                 </Typography>
             )}
 
-            {tasks.map((task) => (
+            {!loading && tasks.map((task) => (
                 <TaskCard
                     key={task.id}
                     task={task}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
 import {
     Box,
@@ -7,10 +7,12 @@ import {
     CardContent,
     Typography,
     TextField,
-    Button
+    Button,
+    Alert,
+    Link
 } from '@mui/material';
 
-import { useAuth } from '../../context/AuthContext';
+import useAuth from '../../hooks/useAuth';
 
 
 function Login() {
@@ -20,35 +22,35 @@ function Login() {
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState(null);
+    const [loggingIn, setLoggingIn] = useState(false);
 
 
-    function handleLogin() {
+    async function handleLogin() {
 
-        // Mock login
+        if (!email.trim() || !password) {
+            setError('Email and password are required.');
+            return;
+        }
 
-        login({
+        setLoggingIn(true);
+        setError(null);
 
-            id: 1,
+        try {
 
-            firstName: 'Vasilis',
+            await login(email, password);
 
-            lastName: 'Kifonidis',
+            navigate('/dashboard');
 
-            email,
+        } catch (err) {
 
-            role: 'Administrator',
+            setError(err.message || 'Login failed.');
 
-            permissions: [
+        } finally {
 
-                'cats.read',
-                'cats.write',
-                'users.manage'
+            setLoggingIn(false);
 
-            ]
-
-        });
-
-        navigate('/dashboard');
+        }
 
     }
 
@@ -125,6 +127,8 @@ function Login() {
 
                         value={email}
 
+                        disabled={loggingIn}
+
                         onChange={(e)=>setEmail(e.target.value)}
 
                         sx={{ mb:3 }}
@@ -144,13 +148,19 @@ function Login() {
 
                         value={password}
 
+                        disabled={loggingIn}
+
                         onChange={(e)=>setPassword(e.target.value)}
 
-                        sx={{ mb:4 }}
+                        sx={{ mb:3 }}
 
                     />
 
-
+                    {error && (
+                        <Alert severity="error" sx={{ mb: 3 }}>
+                            {error}
+                        </Alert>
+                    )}
 
 
                     <Button
@@ -161,11 +171,19 @@ function Login() {
 
                         onClick={handleLogin}
 
+                        disabled={loggingIn}
+
                     >
 
-                        Sign In
+                        {loggingIn ? 'Signing In...' : 'Sign In'}
 
                     </Button>
+
+                    <Typography textAlign="center" sx={{ mt: 3 }}>
+                        <Link component={RouterLink} to="/register" sx={{ color: 'info.main' }}>
+                            Create an account
+                        </Link>
+                    </Typography>
 
 
                 </CardContent>

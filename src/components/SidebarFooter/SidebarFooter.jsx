@@ -1,8 +1,14 @@
 import { useLayout } from "../../context/LayoutContext";
+import useAuth from "../../hooks/useAuth";
 
 function SidebarFooter() {
 
     const { sidebarOpen } = useLayout();
+    const { user } = useAuth();
+
+    const initials = user
+        ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
+        : '';
 
     return (
 
@@ -20,7 +26,7 @@ function SidebarFooter() {
                     fontWeight: 600
                 }}
             >
-                {sidebarOpen ? 'VK' : '👤'}
+                {sidebarOpen ? (initials || '👤') : '👤'}
             </div>
 
 
@@ -33,7 +39,7 @@ function SidebarFooter() {
                             opacity: 0.8
                         }}
                     >
-                        Administrator
+                        {user?.role}
                     </div>
 
 

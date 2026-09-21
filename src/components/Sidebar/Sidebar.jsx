@@ -4,7 +4,7 @@ import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 
 import { useLayout } from "../../context/LayoutContext";
-import { useAuth } from "../../context/AuthContext";
+import useAuth from "../../hooks/useAuth";
 
 import { navigationItems } from "../../config/navigation";
 

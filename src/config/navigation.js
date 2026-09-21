@@ -5,48 +5,55 @@ import AssignmentIcon from "@mui/icons-material/AssignmentOutlined";
 import VolunteerActivismIcon from "@mui/icons-material/VolunteerActivismOutlined";
 import FavoriteIcon from "@mui/icons-material/FavoriteOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
+import GroupIcon from "@mui/icons-material/GroupOutlined";
 
 export const navigationItems = [
     {
         title: "Dashboard",
         path: "/dashboard",
         icon: DashboardIcon,
-        roles: ["Administrator", "Volunteer", "Rescuer", "Foster", "Adopter", "SuperAdmin"]
+        roles: ["Admin", "Volunteer", "Rescuer", "Foster", "Adopter"]
     },
     {
         title: "Cats",
         path: "/cats",
         icon: PetsIcon,
-        roles: ["Administrator", "Volunteer"]
+        roles: ["Admin", "Volunteer"]
     },
     // {
     //     title: "Adopters",
     //     path: "/adopters",
     //     icon: PersonIcon,
-    //     roles: ["Administrator", "Volunteer"]
+    //     roles: ["Admin", "Volunteer"]
     // },
     {
         title: "Active Applications",
         path: "/active-applications",
         icon: AssignmentIcon,
-        roles: ["Administrator", "Volunteer"]
+        roles: ["Admin", "Volunteer"]
     },
     {
         title: "Matching",
         path: "/matching",
         icon: FavoriteIcon,
-        roles: ["Administrator", "Volunteer"]
+        roles: ["Admin", "Volunteer"]
     },
     {
         title: "Adoptions",
         path: "/adoptions",
         icon: VolunteerActivismIcon,
-        roles: ["Administrator", "Volunteer", "SuperAdmin"]
+        roles: ["Admin", "Volunteer"]
     },
     {
         title: "Tasks",
         path: "/tasks",
         icon: CheckCircleIcon,
-        roles: ["Administrator", "Volunteer", "Rescuer", "Foster"]
+        roles: ["Admin", "Volunteer", "Rescuer", "Foster"]
+    },
+    {
+        title: "Users",
+        path: "/users",
+        icon: GroupIcon,
+        roles: ["Admin"]
     }
 ];

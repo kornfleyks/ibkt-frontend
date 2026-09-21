@@ -5,7 +5,7 @@ import { mapMondayActiveApplication } from "./mappers/ActiveApplicationMapper";
 
 const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
-// Fields a SuperAdmin can edit from the Adoptions detail view, and how to
+// Fields an Admin can edit from the Adoptions detail view, and how to
 // shape each one for Monday's change_column_value mutation.
 export const ADOPTION_EDITABLE_FIELDS = {
   caseOwner: { column: ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER, type: "text" },

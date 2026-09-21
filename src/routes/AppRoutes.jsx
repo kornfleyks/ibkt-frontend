@@ -11,7 +11,9 @@ import Adoptions from "../pages/Adoptions";
 import AdoptionDetail from "../pages/Adoptions/AdoptionDetail";
 import Matching from "../pages/Matching";
 import Tasks from "../pages/Tasks";
+import Users from "../pages/Users";
 import Login from "../pages/Login/Login";
+import Register from "../pages/Register";
 import Forbidden from "../pages/Forbidden";
 
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -23,6 +25,7 @@ function AppRoutes() {
         {/* Public */}
 
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         {/* Protected */}
 
@@ -30,14 +33,7 @@ function AppRoutes() {
           path="/dashboard"
           element={
             <ProtectedRoute
-              roles={[
-                "Administrator",
-                "Volunteer",
-                "Rescuer",
-                "Foster",
-                "Adopter",
-                "SuperAdmin",
-              ]}
+              roles={["Admin", "Volunteer", "Rescuer", "Foster", "Adopter"]}
             >
               <AppLayout>
                 <Dashboard />
@@ -49,7 +45,7 @@ function AppRoutes() {
         <Route
           path="/cats"
           element={
-            <ProtectedRoute roles={["Administrator", "Volunteer"]}>
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
               <AppLayout>
                 <Cats />
               </AppLayout>
@@ -60,7 +56,7 @@ function AppRoutes() {
         <Route
           path="/cats/:id"
           element={
-            <ProtectedRoute roles={["Administrator", "Volunteer"]}>
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
               <AppLayout>
                 <CatWorkspace />
               </AppLayout>
@@ -71,7 +67,7 @@ function AppRoutes() {
         <Route
           path="/adopters"
           element={
-            <ProtectedRoute roles={["Administrator", "Volunteer"]}>
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
               <AppLayout>
                 <Adopters />
               </AppLayout>
@@ -82,7 +78,7 @@ function AppRoutes() {
         <Route
           path="/active-applications/:id"
           element={
-            <ProtectedRoute roles={["Administrator", "Volunteer"]}>
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
               <AppLayout>
                 <ActiveApplicationWorkspace />
               </AppLayout>
@@ -93,7 +89,7 @@ function AppRoutes() {
         <Route
           path="/active-applications"
           element={
-            <ProtectedRoute roles={["Administrator", "Volunteer"]}>
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
               <AppLayout>
                 <ActiveApplications />
               </AppLayout>
@@ -104,7 +100,7 @@ function AppRoutes() {
         <Route
           path="/matching"
           element={
-            <ProtectedRoute roles={["Administrator", "Volunteer"]}>
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
               <AppLayout>
                 <Matching />
               </AppLayout>
@@ -115,7 +111,7 @@ function AppRoutes() {
         <Route
           path="/adoptions/:id"
           element={
-            <ProtectedRoute roles={["Administrator", "Volunteer", "SuperAdmin"]}>
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
               <AppLayout>
                 <AdoptionDetail />
               </AppLayout>
@@ -126,7 +122,7 @@ function AppRoutes() {
         <Route
           path="/adoptions"
           element={
-            <ProtectedRoute roles={["Administrator", "Volunteer", "SuperAdmin"]}>
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
               <AppLayout>
                 <Adoptions />
               </AppLayout>
@@ -138,10 +134,21 @@ function AppRoutes() {
           path="/tasks"
           element={
             <ProtectedRoute
-              roles={["Administrator", "Volunteer", "Rescuer", "Foster"]}
+              roles={["Admin", "Volunteer", "Rescuer", "Foster"]}
             >
               <AppLayout>
                 <Tasks />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute roles={["Admin"]}>
+              <AppLayout>
+                <Users />
               </AppLayout>
             </ProtectedRoute>
           }

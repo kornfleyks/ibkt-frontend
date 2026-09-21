@@ -28,8 +28,10 @@ const FELV_FIV_OPTIONS = Object.values(CATS_STATUS_OPTIONS.FELV_FIV_STATUS);
 // with the plain Yes/No BooleanStatus - Planned falls back to its own label.
 function TriStateDisplay({ label, value }) {
   return (
-    <Stack direction="row" justifyContent="space-between" sx={{ flex: 1 }}>
-      <Typography sx={{ width: 150 }}>{label}</Typography>
+    <Stack direction="row" alignItems="center" spacing={1.5}>
+      <Typography sx={{ width: 120, flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 600, color: 'text.secondary' }}>
+        {label}
+      </Typography>
 
       {value === "Yes" || value === "No" ? (
         <BooleanStatus value={value === "Yes"} />
@@ -42,8 +44,10 @@ function TriStateDisplay({ label, value }) {
 
 function BooleanDisplay({ label, value }) {
   return (
-    <Stack direction="row" justifyContent="space-between" sx={{ flex: 1 }}>
-      <Typography sx={{ width: 150 }}>{label}</Typography>
+    <Stack direction="row" alignItems="center" spacing={1.5}>
+      <Typography sx={{ width: 120, flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 600, color: 'text.secondary' }}>
+        {label}
+      </Typography>
       <BooleanStatus value={value} />
     </Stack>
   );

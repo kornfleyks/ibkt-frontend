@@ -16,7 +16,7 @@ import ListItemText from "@mui/material/ListItemText";
 import DarkModeIcon from "@mui/icons-material/DarkModeOutlined";
 import LightModeIcon from "@mui/icons-material/LightModeOutlined";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import useAuth from "../../hooks/useAuth";
 
 import { useThemeMode } from "../../context/ThemeContext";
 
@@ -32,7 +32,7 @@ function Header() {
     } = useThemeMode();
     
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { user, logout } = useAuth();
 
     const [anchorEl, setAnchorEl] = useState(null);
     const [notificationsAnchor, setNotificationsAnchor] = useState(null);
@@ -155,7 +155,7 @@ function Header() {
                             bgcolor: "primary.main"
                         }}
                     >
-                        V
+                        {user?.firstName?.[0]?.toUpperCase() ?? '?'}
                     </Avatar>
                 </IconButton>
 
