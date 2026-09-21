@@ -30,5 +30,9 @@ export const workspaceTabs = [
     {
         label: 'Timeline',
         slug: 'timeline'
+    },
+    {
+        label: 'Activity',
+        slug: 'activity'
     }
 ];

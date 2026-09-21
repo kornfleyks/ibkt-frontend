@@ -9,6 +9,8 @@ import { activeApplicationWorkspaceTabs } from "../../config/activeApplicationWo
 import DecisionActions from "../../components/ActiveApplications/DecisionActions";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../constants/statuses/activeApplicationsStatuses";
 import useTabParam from "../../hooks/useTabParam";
+import ActivityTab from "../../components/ActivityLog/ActivityTab";
+import { ACTIVE_APPLICATIONS } from "../../constants/boards/activeApplications";
 
 const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
@@ -70,6 +72,9 @@ function ActiveApplicationWorkspace() {
       </Box>
       {activeApplicationWorkspaceTabs[tab].slug === "overview" && (
         <OverviewTab application={application} />
+      )}
+      {activeApplicationWorkspaceTabs[tab].slug === "activity" && (
+        <ActivityTab boardId={ACTIVE_APPLICATIONS.BOARD_ID} itemId={application.id} />
       )}
     </>
   );

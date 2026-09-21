@@ -12,6 +12,7 @@ import AdoptionDetail from "../pages/Adoptions/AdoptionDetail";
 import Matching from "../pages/Matching";
 import Tasks from "../pages/Tasks";
 import Users from "../pages/Users";
+import ActivityLog from "../pages/ActivityLog";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register";
 import Forbidden from "../pages/Forbidden";
@@ -149,6 +150,17 @@ function AppRoutes() {
             <ProtectedRoute roles={["Admin"]}>
               <AppLayout>
                 <Users />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/activity"
+          element={
+            <ProtectedRoute roles={["Admin"]}>
+              <AppLayout>
+                <ActivityLog />
               </AppLayout>
             </ProtectedRoute>
           }

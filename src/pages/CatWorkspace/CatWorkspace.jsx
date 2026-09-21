@@ -32,7 +32,9 @@ import InfoRow from '../../components/Common/InfoRow';
 import { workspaceTabs } from '../../config/workspaceTabs';
 import CommunicationsTab from '../../components/Cats/Workspace/Communications/CommunicationsTab';
 import TasksTab from '../../components/Cats/Workspace/Tasks/TasksTab';
+import ActivityTab from '../../components/ActivityLog/ActivityTab';
 import { CATS_STATUS_OPTIONS } from '../../constants/statuses/catsStatuses';
+import { CATS } from '../../constants/boards/cats';
 
 const STATUS_OPTIONS = Object.values(CATS_STATUS_OPTIONS.STATUS);
 
@@ -153,7 +155,8 @@ function CatWorkspace() {
         tasks: <TasksTab cat={cat} />,
         travel: <Typography>Travel Coming Soon</Typography>,
         'post-adoption': <Typography>Post Adoption Coming Soon</Typography>,
-        timeline: <TimelineTab cat={cat} />
+        timeline: <TimelineTab cat={cat} />,
+        activity: <ActivityTab boardId={CATS.BOARD_ID} itemId={cat.id} />
     };
 
     return (

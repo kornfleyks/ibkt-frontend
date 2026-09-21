@@ -1,5 +1,6 @@
 import { useState } from "react";
 import * as AuthService from "../services/AuthService";
+import { serverPost } from "../services/MondayService";
 import { readAuth, writeAuth, clearAuth } from "../services/authStorage";
 import { AuthContext } from "./authContextInstance";
 
@@ -15,6 +16,11 @@ function AuthProvider({ children }) {
   }
 
   function logout() {
+    // Fire-and-forget: this has to go out while the token is still valid
+    // (before clearAuth), but logout shouldn't wait on the network - it's
+    // purely so the Activity Log gets a Logout entry.
+    serverPost("/api/logout", {}).catch((err) => console.error("Failed to log logout:", err));
+
     setAuth(null);
     clearAuth();
   }

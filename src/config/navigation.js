@@ -6,6 +6,7 @@ import VolunteerActivismIcon from "@mui/icons-material/VolunteerActivismOutlined
 import FavoriteIcon from "@mui/icons-material/FavoriteOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
 import GroupIcon from "@mui/icons-material/GroupOutlined";
+import HistoryIcon from "@mui/icons-material/HistoryOutlined";
 
 export const navigationItems = [
     {
@@ -54,6 +55,12 @@ export const navigationItems = [
         title: "Users",
         path: "/users",
         icon: GroupIcon,
+        roles: ["Admin"]
+    },
+    {
+        title: "Activity Log",
+        path: "/activity",
+        icon: HistoryIcon,
         roles: ["Admin"]
     }
 ];
