@@ -1,13 +1,29 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent, Stack, CircularProgress, Alert } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { Card, CardContent, Stack, CircularProgress, Alert, TextField, InputAdornment } from '@mui/material';
+import SearchIcon from '@mui/icons-material/SearchOutlined';
 import PageHeader from '../../components/PageHeader';
 import ActivityFeedList from '../../components/ActivityLog/ActivityFeedList';
 import { getAllActivity } from '../../services/ActivityLogService';
+
+function matchesSearch(entry, term) {
+    const haystack = [
+        entry.description,
+        entry.actorName,
+        entry.board,
+        entry.itemName,
+        entry.actionType,
+    ]
+        .join(' ')
+        .toLowerCase();
+
+    return haystack.includes(term);
+}
 
 function ActivityLog() {
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [search, setSearch] = useState('');
 
     useEffect(() => {
         let cancelled = false;
@@ -42,6 +58,16 @@ function ActivityLog() {
         };
     }, []);
 
+    const filteredEntries = useMemo(() => {
+        const term = search.trim().toLowerCase();
+
+        if (!term) {
+            return entries;
+        }
+
+        return entries.filter((entry) => matchesSearch(entry, term));
+    }, [entries, search]);
+
     return (
         <>
             <PageHeader title="Activity Log" subtitle="Everything that's happened across the app" />
@@ -59,7 +85,33 @@ function ActivityLog() {
             ) : (
                 <Card>
                     <CardContent>
-                        <ActivityFeedList entries={entries} showItemContext />
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Search activity by person, item, board, or action..."
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            sx={{ mb: 2 }}
+                            slotProps={{
+                                input: {
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <SearchIcon fontSize="small" color="disabled" />
+                                        </InputAdornment>
+                                    ),
+                                },
+                            }}
+                        />
+
+                        <ActivityFeedList
+                            entries={filteredEntries}
+                            showItemContext
+                            emptyMessage={
+                                search.trim()
+                                    ? 'No activity matches your search.'
+                                    : 'No activity recorded yet.'
+                            }
+                        />
                     </CardContent>
                 </Card>
             )}

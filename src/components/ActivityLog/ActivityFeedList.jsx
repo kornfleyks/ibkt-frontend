@@ -4,11 +4,11 @@ import activityTypes, { DEFAULT_ACTIVITY_TYPE } from './activityTypes';
 // Shared row rendering for both a single item's Activity tab and the global
 // Activity feed - `showItemContext` adds a board/item chip, which only the
 // global feed (not scoped to one item already) needs.
-function ActivityFeedList({ entries, showItemContext = false }) {
+function ActivityFeedList({ entries, showItemContext = false, emptyMessage = 'No activity recorded yet.' }) {
     if (entries.length === 0) {
         return (
             <Typography color="text.secondary" sx={{ py: 2 }}>
-                No activity recorded yet.
+                {emptyMessage}
             </Typography>
         );
     }
