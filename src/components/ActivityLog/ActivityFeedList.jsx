@@ -30,7 +30,8 @@ function ActivityFeedList({ entries, showItemContext = false }) {
                     >
                         <Avatar
                             sx={{
-                                bgcolor: `${type.color}.main`,
+                                bgcolor: type.color,
+                                color: '#fff',
                                 width: 40,
                                 height: 40,
                             }}
