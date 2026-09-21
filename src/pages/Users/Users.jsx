@@ -22,8 +22,10 @@ import {
 import EditIcon from '@mui/icons-material/EditOutlined';
 import CheckIcon from '@mui/icons-material/CheckOutlined';
 import CloseIcon from '@mui/icons-material/CloseOutlined';
+import LockIcon from '@mui/icons-material/LockOutlined';
 
 import PageHeader from '../../components/PageHeader';
+import useAuth from '../../hooks/useAuth';
 import {
     getAllUsersFull,
     updateUserStatus,
@@ -345,7 +347,7 @@ function PasswordCell({ user }) {
     );
 }
 
-function UserRow({ user, onUpdate }) {
+function UserRow({ user, onUpdate, isCurrentUser }) {
     const [savingField, setSavingField] = useState(null);
     const [error, setError] = useState(null);
 
@@ -390,20 +392,27 @@ function UserRow({ user, onUpdate }) {
             </TableCell>
 
             <TableCell>
-                <TextField
-                    select
-                    size="small"
-                    value={user.role || ''}
-                    disabled={savingField === 'role'}
-                    onChange={(event) => handleRoleChange(event.target.value)}
-                    sx={{ minWidth: 130 }}
-                >
-                    {ROLE_OPTIONS.map((option) => (
-                        <MenuItem key={option} value={option}>
-                            {option}
-                        </MenuItem>
-                    ))}
-                </TextField>
+                {isCurrentUser ? (
+                    <Stack direction="row" alignItems="center" spacing={0.5} title="You can't change your own role.">
+                        <LockIcon fontSize="small" color="disabled" />
+                        <span>{user.role || 'N/A'}</span>
+                    </Stack>
+                ) : (
+                    <TextField
+                        select
+                        size="small"
+                        value={user.role || ''}
+                        disabled={savingField === 'role'}
+                        onChange={(event) => handleRoleChange(event.target.value)}
+                        sx={{ minWidth: 130 }}
+                    >
+                        {ROLE_OPTIONS.map((option) => (
+                            <MenuItem key={option} value={option}>
+                                {option}
+                            </MenuItem>
+                        ))}
+                    </TextField>
+                )}
             </TableCell>
 
             <TableCell>
@@ -474,6 +483,7 @@ function UserRow({ user, onUpdate }) {
 }
 
 function Users() {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -554,7 +564,12 @@ function Users() {
 
                                 <TableBody>
                                     {users.map((user) => (
-                                        <UserRow key={user.id} user={user} onUpdate={handleUserUpdate} />
+                                        <UserRow
+                                            key={user.id}
+                                            user={user}
+                                            onUpdate={handleUserUpdate}
+                                            isCurrentUser={String(user.id) === String(currentUser?.id)}
+                                        />
                                     ))}
                                 </TableBody>
                             </Table>
