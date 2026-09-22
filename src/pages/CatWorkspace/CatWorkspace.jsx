@@ -27,7 +27,6 @@ import { useLoading } from '../../context/LoadingContext';
 import OverviewTab from '../../components/Cats/Workspace/OverviewTab';
 import MedicalTab from '../../components/Cats/Workspace/MedicalTab';
 import DocumentsTab from '../../components/Cats/Workspace/DocumentsTab';
-import TimelineTab from '../../components/Cats/Workspace/TimelineTab';
 import InfoRow from '../../components/Common/InfoRow';
 import { workspaceTabs } from '../../config/workspaceTabs';
 import CommunicationsTab from '../../components/Cats/Workspace/Communications/CommunicationsTab';
@@ -155,7 +154,6 @@ function CatWorkspace() {
         tasks: <TasksTab cat={cat} />,
         travel: <Typography>Travel Coming Soon</Typography>,
         'post-adoption': <Typography>Post Adoption Coming Soon</Typography>,
-        timeline: <TimelineTab cat={cat} />,
         activity: <ActivityTab boardId={CATS.BOARD_ID} itemId={cat.id} />
     };
 

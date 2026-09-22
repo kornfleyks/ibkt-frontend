@@ -28,10 +28,6 @@ export const workspaceTabs = [
         slug: 'post-adoption'
     },
     {
-        label: 'Timeline',
-        slug: 'timeline'
-    },
-    {
         label: 'Activity',
         slug: 'activity'
     }
