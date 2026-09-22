@@ -29,7 +29,7 @@ const FELV_FIV_OPTIONS = Object.values(CATS_STATUS_OPTIONS.FELV_FIV_STATUS);
 function TriStateDisplay({ label, value }) {
   return (
     <Stack direction="row" alignItems="center" spacing={1.5}>
-      <Typography sx={{ width: 120, flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 600, color: 'text.secondary' }}>
+      <Typography sx={{ minWidth: 160, flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 600, color: 'text.secondary' }}>
         {label}
       </Typography>
 
@@ -45,7 +45,7 @@ function TriStateDisplay({ label, value }) {
 function BooleanDisplay({ label, value }) {
   return (
     <Stack direction="row" alignItems="center" spacing={1.5}>
-      <Typography sx={{ width: 120, flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 600, color: 'text.secondary' }}>
+      <Typography sx={{ minWidth: 160, flexShrink: 0, whiteSpace: 'nowrap', fontWeight: 600, color: 'text.secondary' }}>
         {label}
       </Typography>
       <BooleanStatus value={value} />
