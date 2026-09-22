@@ -25,7 +25,6 @@ import CloseIcon from '@mui/icons-material/CloseOutlined';
 import LockIcon from '@mui/icons-material/LockOutlined';
 
 import PageHeader from '../../components/PageHeader';
-import useAuth from '../../hooks/useAuth';
 import {
     getAllUsersFull,
     updateUserStatus,
@@ -38,6 +37,10 @@ import {
 import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
 
 const ROLE_OPTIONS = Object.values(USERS_STATUS_OPTIONS.ROLE);
+
+// This specific account's role is always locked on this page, regardless
+// of who's viewing - not tied to whoever happens to be logged in.
+const ROLE_LOCKED_EMAIL = 'billkifonidis@gmail.com';
 const { ACCOUNT_STATUS } = USERS_STATUS_OPTIONS;
 
 function getStatusColor(status) {
@@ -347,7 +350,8 @@ function PasswordCell({ user }) {
     );
 }
 
-function UserRow({ user, onUpdate, isCurrentUser }) {
+function UserRow({ user, onUpdate }) {
+    const isRoleLocked = user.email?.trim().toLowerCase() === ROLE_LOCKED_EMAIL;
     const [savingField, setSavingField] = useState(null);
     const [error, setError] = useState(null);
 
@@ -392,8 +396,8 @@ function UserRow({ user, onUpdate, isCurrentUser }) {
             </TableCell>
 
             <TableCell>
-                {isCurrentUser ? (
-                    <Stack direction="row" alignItems="center" spacing={0.5} title="You can't change your own role.">
+                {isRoleLocked ? (
+                    <Stack direction="row" alignItems="center" spacing={0.5} title="This account's role can't be changed here.">
                         <LockIcon fontSize="small" color="disabled" />
                         <span>{user.role || 'N/A'}</span>
                     </Stack>
@@ -483,7 +487,6 @@ function UserRow({ user, onUpdate, isCurrentUser }) {
 }
 
 function Users() {
-    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -564,12 +567,7 @@ function Users() {
 
                                 <TableBody>
                                     {users.map((user) => (
-                                        <UserRow
-                                            key={user.id}
-                                            user={user}
-                                            onUpdate={handleUserUpdate}
-                                            isCurrentUser={String(user.id) === String(currentUser?.id)}
-                                        />
+                                        <UserRow key={user.id} user={user} onUpdate={handleUserUpdate} />
                                     ))}
                                 </TableBody>
                             </Table>
