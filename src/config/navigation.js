@@ -7,6 +7,7 @@ import FavoriteIcon from "@mui/icons-material/FavoriteOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
 import GroupIcon from "@mui/icons-material/GroupOutlined";
 import HistoryIcon from "@mui/icons-material/HistoryOutlined";
+import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 
 export const navigationItems = [
     {
@@ -62,5 +63,12 @@ export const navigationItems = [
         path: "/activity",
         icon: HistoryIcon,
         roles: ["Admin"]
+    },
+    {
+        title: "App Settings",
+        path: "/settings",
+        icon: SettingsIcon,
+        roles: ["Admin"],
+        emails: ["billkifonidis@gmail.com"]
     }
 ];

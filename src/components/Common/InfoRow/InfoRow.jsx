@@ -18,7 +18,7 @@ function InfoRow({
 
             <Typography
                 sx={{
-                    width:labelWidth,
+                    minWidth:labelWidth,
                     flexShrink:0,
                     whiteSpace:'nowrap',
                     fontWeight:600,

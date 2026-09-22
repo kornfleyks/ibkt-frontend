@@ -61,7 +61,7 @@ function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEdit
 
     return (
         <Stack direction="row" alignItems="center" spacing={1} sx={{ py: 0.5 }}>
-            <Typography sx={{ width: 120, fontWeight: 600, color: 'text.secondary' }}>
+            <Typography sx={{ minWidth: 120, flexShrink: 0, fontWeight: 600, color: 'text.secondary' }}>
                 {label}
             </Typography>
 

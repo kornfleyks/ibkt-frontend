@@ -24,7 +24,17 @@ function Sidebar() {
   }
 
   const visibleItems = navigationItems.filter((item) => {
-    return item.roles.includes(user?.role);
+    if (!item.roles.includes(user?.role)) {
+      return false;
+    }
+
+    // A handful of items (e.g. App Settings) are further restricted to one
+    // specific account, on top of the role check above.
+    if (item.emails && !item.emails.includes(user?.email)) {
+      return false;
+    }
+
+    return true;
   });
 
   return (
