@@ -90,6 +90,23 @@ export function describeColumnValue(rawValue) {
   return JSON.stringify(value);
 }
 
+// Concurrent create_item calls against the Activity Log board have been
+// observed to occasionally corrupt each other on Monday's side (a status
+// column value landing on the wrong row - e.g. a Login entry showing
+// "Register"). logActivity is always called fire-and-forget, so without
+// this queue, several log writes from near-simultaneous actions could hit
+// Monday at the same time. Chaining them through one promise forces every
+// write to this board to happen one at a time, in order.
+let writeQueue = Promise.resolve();
+
+function enqueueWrite(task) {
+  const result = writeQueue.then(task, task);
+
+  writeQueue = result.catch(() => {});
+
+  return result;
+}
+
 // This module writes to Monday with the server's own API token, bypassing
 // the public /api/monday proxy - logging must never route back through the
 // very handler it's attached to.
@@ -223,12 +240,14 @@ export async function logActivity({
       }
     `;
 
-    await mondayDirectRequest(mutation, {
-      boardId: ACTIVITY_LOG.BOARD_ID,
-      itemName: (description || `${actionType} on ${boardName}`).slice(0, 255),
-      columnValues: JSON.stringify(columnValues),
-      createLabelsIfMissing: true,
-    });
+    await enqueueWrite(() =>
+      mondayDirectRequest(mutation, {
+        boardId: ACTIVITY_LOG.BOARD_ID,
+        itemName: (description || `${actionType} on ${boardName}`).slice(0, 255),
+        columnValues: JSON.stringify(columnValues),
+        createLabelsIfMissing: true,
+      }),
+    );
   } catch (err) {
     console.error("Activity log: failed to write log entry.", err);
   }
