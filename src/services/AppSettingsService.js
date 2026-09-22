@@ -1,15 +1,7 @@
 import { mondayRequest, changeMondayColumnValue, createMondayItem } from "./MondayService";
-import { APP_SETTINGS } from "../constants/boards/appSettings";
+import { APP_SETTINGS, SETTING_KEYS } from "../constants/boards/appSettings";
 
-// Machine keys for each row on the App Settings board - looked up by
-// `Setting Key`, not by item id, so the row order/id never matters.
-export const SETTING_KEYS = {
-  MAX_BONDED_CATS: "MAX_BONDED_CATS",
-};
-
-// Used whenever a setting can't be read (row missing, board unreachable) -
-// callers should never be broken by an App Settings hiccup.
-const DEFAULT_MAX_BONDED_CATS = 5;
+export { SETTING_KEYS };
 
 function mapSetting(item) {
   const columns = Object.fromEntries(item.column_values.map((column) => [column.id, column]));
@@ -60,15 +52,26 @@ export async function createSetting({ name, key, value, description }) {
   return createMondayItem(APP_SETTINGS.BOARD_ID, name, columnValues);
 }
 
-export async function getMaxBondedCats() {
+// Shared by every numeric-setting getter below - a settings-board hiccup
+// (row missing, board unreachable, bad value) always degrades to the given
+// default rather than breaking whatever feature depends on it.
+async function getNumericSetting(key, defaultValue) {
   try {
     const settings = await getSettings();
-    const setting = settings.find((item) => item.key === SETTING_KEYS.MAX_BONDED_CATS);
+    const setting = settings.find((item) => item.key === key);
     const parsed = Number(setting?.value);
 
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_MAX_BONDED_CATS;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
   } catch (err) {
-    console.error("Failed to load Max Bonded Cats setting:", err);
-    return DEFAULT_MAX_BONDED_CATS;
+    console.error(`Failed to load the ${key} setting:`, err);
+    return defaultValue;
   }
+}
+
+export function getMaxBondedCats() {
+  return getNumericSetting(SETTING_KEYS.MAX_BONDED_CATS, 5);
+}
+
+export function getActivityLogPageSize() {
+  return getNumericSetting(SETTING_KEYS.ACTIVITY_LOG_PAGE_SIZE, 500);
 }

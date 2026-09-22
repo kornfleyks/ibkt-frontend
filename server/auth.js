@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { getSessionExpiryHours } from "./appSettings.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
@@ -157,7 +158,9 @@ export function comparePassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(user) {
+export async function signToken(user) {
+  const sessionExpiryHours = await getSessionExpiryHours();
+
   return jwt.sign(
     {
       sub: user.id,
@@ -167,7 +170,7 @@ export function signToken(user) {
       role: user.role,
     },
     JWT_SECRET,
-    { expiresIn: "12h" },
+    { expiresIn: `${sessionExpiryHours}h` },
   );
 }
 

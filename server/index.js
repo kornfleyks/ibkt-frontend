@@ -24,6 +24,7 @@ import {
   getItemName,
   CATS_BOARD_ID,
 } from "./activityLog.js";
+import { getLoginMaxAttempts, getLoginLockoutMinutes } from "./appSettings.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -50,6 +51,48 @@ const ITEM_ID_PATTERN = /^\d+$/;
 const COLUMN_ID_PATTERN = /^[a-zA-Z0-9_]+$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACTIVE_ACCOUNT_STATUSES = new Set(["Active"]);
+
+// Per-email login lockout state, in memory - resets on server restart, same
+// tradeoff already accepted for mondayCache.js. Keyed by normalized email,
+// not IP: this is account lockout (protecting one account from being
+// brute-forced), not general request throttling.
+const loginAttempts = new Map();
+
+function normalizeEmail(email) {
+  return email.trim().toLowerCase();
+}
+
+async function checkLoginLockout(email) {
+  const entry = loginAttempts.get(normalizeEmail(email));
+
+  if (!entry?.lockedUntil || entry.lockedUntil <= Date.now()) {
+    return null;
+  }
+
+  return Math.ceil((entry.lockedUntil - Date.now()) / 60_000);
+}
+
+async function recordFailedLogin(email) {
+  const key = normalizeEmail(email);
+  const entry = loginAttempts.get(key) ?? { failureCount: 0, lockedUntil: null };
+
+  entry.failureCount += 1;
+
+  const maxAttempts = await getLoginMaxAttempts();
+
+  if (entry.failureCount >= maxAttempts) {
+    const lockoutMinutes = await getLoginLockoutMinutes();
+
+    entry.lockedUntil = Date.now() + lockoutMinutes * 60_000;
+    entry.failureCount = 0;
+  }
+
+  loginAttempts.set(key, entry);
+}
+
+function clearLoginAttempts(email) {
+  loginAttempts.delete(normalizeEmail(email));
+}
 
 // The whole app's mutations funnel through exactly these 4 shapes (verified
 // against every services/*.js file) - matching on the mutation name in the
@@ -176,6 +219,14 @@ app.post("/api/login", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required." });
   }
 
+  const lockedMinutesRemaining = await checkLoginLockout(email);
+
+  if (lockedMinutesRemaining !== null) {
+    return res.status(429).json({
+      error: `Too many failed login attempts. Try again in ${lockedMinutesRemaining} minute(s).`,
+    });
+  }
+
   try {
     const user = await findUserByEmail(email);
 
@@ -188,6 +239,7 @@ app.post("/api/login", async (req, res) => {
     const passwordMatches = await comparePassword(password, user.passwordHash);
 
     if (!passwordMatches) {
+      await recordFailedLogin(email);
       return res.status(401).json({ error: "Invalid email or password." });
     }
 
@@ -195,7 +247,9 @@ app.post("/api/login", async (req, res) => {
       return res.status(403).json({ error: "This account is not active yet." });
     }
 
-    const token = signToken(user);
+    clearLoginAttempts(email);
+
+    const token = await signToken(user);
     const fullName = `${user.firstName} ${user.lastName}`.trim();
 
     logActivity({
@@ -398,7 +452,7 @@ app.post("/api/monday", requireAuth, async (req, res) => {
 
       logMutationActivity({ query, variables, result, req, priorSnapshot });
     } else {
-      setCached(query, variables, result.data, cacheTtlMs);
+      await setCached(query, variables, result.data, cacheTtlMs);
     }
 
     res.json({ data: result.data });
