@@ -47,6 +47,7 @@ export const CATS = {
     LINKED_POST_ADOPTION_MANAGEMENT: "board_relation_mm49kxgg", // Linked Post-Adoption Management | board_relation
     LINKED_POST_ADOPTION_MANAGEMENT_ID: "lookup_mm49yhah", // Linked Post-Adoption Management ID | mirror
     AGE: "numeric_mm4yymz3", // Age | numeric
+    BONDED_WITH: "board_relation_mm7eepfj", // Bonded With | board_relation
   },
   RELATIONS: {
     LINKED_RESCUER: ["5098375508"],
@@ -54,5 +55,6 @@ export const CATS = {
     LINKED_ADOPTER_2: ["5098444415"],
     LINKED_TRAVEL_MANAGEMENT: ["5098462214"],
     LINKED_POST_ADOPTION_MANAGEMENT: ["5098487184"],
+    BONDED_WITH: ["5098369241"],
   },
 };

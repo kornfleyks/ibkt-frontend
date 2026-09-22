@@ -25,7 +25,11 @@ import {
     updateCatBreed,
     updateCatColour,
     getCatDropdownOptions,
+    getCats,
+    getCat,
+    linkBondedCats,
 } from '../../../../services/CatsService';
+import { getMaxBondedCats } from '../../../../services/AppSettingsService';
 import { CATS_STATUS_OPTIONS } from '../../../../constants/statuses/catsStatuses';
 
 const STATUS_OPTIONS = Object.values(CATS_STATUS_OPTIONS.STATUS);
@@ -131,6 +135,153 @@ function RescuerRow({ cat, onCatUpdate }) {
             <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
                 <CloseIcon fontSize="small" />
             </IconButton>
+        </Stack>
+    );
+}
+
+function BondedWithRow({ cat, onCatUpdate }) {
+    const [editing, setEditing] = useState(false);
+    const [candidates, setCandidates] = useState([]);
+    const [loadingCandidates, setLoadingCandidates] = useState(false);
+    const [selectedCat, setSelectedCat] = useState(null);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState(null);
+
+    async function startEditing() {
+        setSelectedCat(null);
+        setSaveError(null);
+        setEditing(true);
+
+        if (candidates.length === 0) {
+            setLoadingCandidates(true);
+
+            try {
+                const allCats = await getCats();
+
+                setCandidates(
+                    allCats.filter(
+                        (candidate) =>
+                            candidate.id !== cat.id && !cat.bondedWithIds.includes(candidate.id),
+                    ),
+                );
+            } catch (error) {
+                console.error('Failed to load cats to bond with:', error);
+            } finally {
+                setLoadingCandidates(false);
+            }
+        }
+    }
+
+    async function handleSave() {
+        if (!selectedCat) {
+            setEditing(false);
+            return;
+        }
+
+        setSaving(true);
+        setSaveError(null);
+
+        try {
+            // Welds the two cats' existing bonded groups together (if either
+            // already had one) so everyone ends up mutually linked, not just
+            // this cat and the one just picked.
+            const fullGroup = [
+                ...new Set([
+                    cat.id,
+                    ...cat.bondedWithIds,
+                    selectedCat.id,
+                    ...selectedCat.bondedWithIds,
+                ]),
+            ];
+
+            const maxBondedCats = await getMaxBondedCats();
+
+            if (fullGroup.length > maxBondedCats) {
+                setSaveError(`A bonded group can have at most ${maxBondedCats} cats.`);
+                return;
+            }
+
+            await linkBondedCats(fullGroup);
+
+            const refreshed = await getCat(cat.id);
+
+            onCatUpdate({
+                bondedWith: refreshed.bondedWith,
+                bondedWithIds: refreshed.bondedWithIds,
+            });
+
+            setEditing(false);
+        } catch (error) {
+            console.error('Failed to link bonded cat:', error);
+            setSaveError('Failed to link this cat.');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    if (!editing) {
+        return (
+            <Stack
+                direction="row"
+                alignItems="center"
+                spacing={1.5}
+                sx={{
+                    '&:hover .row-edit-button, &:focus-within .row-edit-button': {
+                        opacity: 1,
+                    },
+                }}
+            >
+                <InfoRow label="Bonded With" value={cat.bondedWith || 'None'} />
+
+                <IconButton
+                    size="small"
+                    onClick={startEditing}
+                    aria-label="Link another cat"
+                    className="row-edit-button"
+                    sx={{ opacity: 0, transition: 'opacity 0.15s' }}
+                >
+                    <EditIcon fontSize="small" />
+                </IconButton>
+            </Stack>
+        );
+    }
+
+    return (
+        <Stack spacing={0.5} sx={{ py: 0.5 }}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+                <Typography sx={{ width: 120, flexShrink: 0, fontWeight: 600, color: 'text.secondary' }}>
+                    Bonded With
+                </Typography>
+
+                <Autocomplete
+                    size="small"
+                    sx={{ flex: 1 }}
+                    options={candidates}
+                    loading={loadingCandidates}
+                    disabled={saving}
+                    getOptionLabel={(option) => option.name ?? ''}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    value={selectedCat}
+                    onChange={(event, value) => setSelectedCat(value)}
+                    renderInput={(params) => (
+                        <TextField {...params} placeholder="Choose a cat to link" />
+                    )}
+                />
+
+                <IconButton size="small" onClick={handleSave} disabled={saving} aria-label="Save bonded cat">
+                    {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
+                </IconButton>
+
+                <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
+                    <CloseIcon fontSize="small" />
+                </IconButton>
+            </Stack>
+
+            {saveError && (
+                <Typography variant="caption" color="error">
+                    {saveError}
+                </Typography>
+            )}
         </Stack>
     );
 }
@@ -316,6 +467,8 @@ function OverviewTab({ cat, onCatUpdate }) {
                                 />
                             )}
                         />
+
+                        <BondedWithRow cat={cat} onCatUpdate={onCatUpdate} />
 
                         <EditableInfoRow
                             label="Breed"

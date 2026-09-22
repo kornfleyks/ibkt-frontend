@@ -31,6 +31,9 @@ export function mapCat(item) {
     videos: getFileValues(columns[CATS.COLUMNS.VIDEOS]),
     linkedAdopterId:
       columns[CATS.COLUMNS.LINKED_ADOPTER_2]?.linked_items?.[0]?.id ?? null,
+    bondedWith: columns[CATS.COLUMNS.BONDED_WITH]?.display_value || "",
+    bondedWithIds:
+      columns[CATS.COLUMNS.BONDED_WITH]?.linked_items?.map((item) => item.id) ?? [],
   };
 }
 

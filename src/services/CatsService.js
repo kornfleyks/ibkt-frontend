@@ -268,6 +268,21 @@ export async function updateCatMicrochipNumber(catId, microchipNumber) {
   return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.MICROCHIP_NUMBER, microchipNumber);
 }
 
+// Cross-links every cat in a bonded group to every other cat in it (not
+// including itself) - each cat's Bonded With column ends up pointing at all
+// its groupmates, so the relationship reads correctly from any of them.
+export async function linkBondedCats(catIds) {
+  const uniqueIds = [...new Set(catIds.map(Number))];
+
+  await Promise.all(
+    uniqueIds.map((catId) =>
+      changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.BONDED_WITH, {
+        item_ids: uniqueIds.filter((id) => id !== catId),
+      }),
+    ),
+  );
+}
+
 export async function updateCatFelvFivStatus(catId, felvFivStatus) {
   return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.FELV_FIV_STATUS, {
     label: felvFivStatus,

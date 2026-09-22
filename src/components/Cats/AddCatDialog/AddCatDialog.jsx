@@ -6,39 +6,23 @@ import {
   DialogActions,
   Button,
   IconButton,
-  Grid,
-  TextField,
-  MenuItem,
-  Autocomplete,
   Alert,
+  Tabs,
+  Tab,
+  Box,
+  Stack,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import AddIcon from "@mui/icons-material/Add";
 
-import SectionCard from "../../Common/SectionCard";
-import { CATS_STATUS_OPTIONS } from "../../../constants/statuses/catsStatuses";
+import CatFormFields from "./CatFormFields";
 import {
   createCat,
   getCatDropdownOptions,
+  linkBondedCats,
 } from "../../../services/CatsService";
 import { getRescuers } from "../../../services/RescuersService";
-
-const YES_NO = [
-  CATS_STATUS_OPTIONS.MEDICATION_REQUIRED.YES,
-  CATS_STATUS_OPTIONS.MEDICATION_REQUIRED.NO,
-];
-
-const YES_NO_SOMETIMES_UNKNOWN = [
-  CATS_STATUS_OPTIONS.LAP_CAT.YES,
-  CATS_STATUS_OPTIONS.LAP_CAT.NO,
-  CATS_STATUS_OPTIONS.LAP_CAT.SOMETIMES,
-  CATS_STATUS_OPTIONS.LAP_CAT.UNKNOWN,
-];
-
-const YES_NO_PLANNED = [
-  CATS_STATUS_OPTIONS.VACCINATED.PLANNED,
-  CATS_STATUS_OPTIONS.VACCINATED.YES,
-  CATS_STATUS_OPTIONS.VACCINATED.NO,
-];
+import { getMaxBondedCats } from "../../../services/AppSettingsService";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
@@ -88,32 +72,17 @@ const initialForm = {
   microchipNumber: "",
 };
 
-function SelectField({ label, value, onChange, options }) {
-  return (
-    <TextField
-      select
-      fullWidth
-      size="small"
-      label={label}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      <MenuItem value="">—</MenuItem>
-      {options.map((option) => (
-        <MenuItem key={option} value={option}>
-          {option}
-        </MenuItem>
-      ))}
-    </TextField>
-  );
+function emptyCatEntry() {
+  return { form: { ...initialForm }, files: {} };
 }
 
 function AddCatDialog({ open, onClose, onCreated }) {
-  const [form, setForm] = useState(initialForm);
-  const [files, setFiles] = useState({});
+  const [cats, setCats] = useState([emptyCatEntry()]);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [breedOptions, setBreedOptions] = useState([]);
   const [colourOptions, setColourOptions] = useState([]);
   const [rescuers, setRescuers] = useState([]);
+  const [maxBondedCats, setMaxBondedCats] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -146,15 +115,27 @@ function AddCatDialog({ open, onClose, onCreated }) {
           current ?? "Couldn't load the rescuer list from Monday - try reopening this dialog.",
         );
       });
+
+    // getMaxBondedCats already falls back to a sane default internally on
+    // failure, so no .catch/loadError handling is needed here.
+    getMaxBondedCats().then(setMaxBondedCats);
   }, [open]);
 
-  function setField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
+  function setField(index, field, value) {
+    setCats((current) =>
+      current.map((entry, i) =>
+        i === index ? { ...entry, form: { ...entry.form, [field]: value } } : entry,
+      ),
+    );
   }
 
-  function setFile(field, fileList, acceptPrefix) {
+  function setFile(index, field, fileList, acceptPrefix) {
     if (!fileList) {
-      setFiles((current) => ({ ...current, [field]: null }));
+      setCats((current) =>
+        current.map((entry, i) =>
+          i === index ? { ...entry, files: { ...entry.files, [field]: null } } : entry,
+        ),
+      );
       return;
     }
 
@@ -166,7 +147,21 @@ function AddCatDialog({ open, onClose, onCreated }) {
       return;
     }
 
-    setFiles((current) => ({ ...current, [field]: list }));
+    setCats((current) =>
+      current.map((entry, i) =>
+        i === index ? { ...entry, files: { ...entry.files, [field]: list } } : entry,
+      ),
+    );
+  }
+
+  function addAnotherCat() {
+    setCats((current) => [...current, emptyCatEntry()]);
+    setActiveIndex(cats.length);
+  }
+
+  function removeCat(index) {
+    setCats((current) => current.filter((_, i) => i !== index));
+    setActiveIndex((current) => Math.max(0, current >= index ? current - 1 : current));
   }
 
   function handleClose() {
@@ -174,8 +169,8 @@ function AddCatDialog({ open, onClose, onCreated }) {
       return;
     }
 
-    setForm(initialForm);
-    setFiles({});
+    setCats([emptyCatEntry()]);
+    setActiveIndex(0);
     setError(null);
     setLoadError(null);
     setPartialWarning(null);
@@ -183,8 +178,13 @@ function AddCatDialog({ open, onClose, onCreated }) {
   }
 
   async function handleSubmit() {
-    if (!form.name.trim()) {
-      setError("Name is required.");
+    const missingNameIndex = cats.findIndex((entry) => !entry.form.name.trim());
+
+    if (missingNameIndex !== -1) {
+      setActiveIndex(missingNameIndex);
+      setError(
+        cats.length > 1 ? `Cat ${missingNameIndex + 1} needs a name.` : "Name is required.",
+      );
       return;
     }
 
@@ -193,24 +193,41 @@ function AddCatDialog({ open, onClose, onCreated }) {
     setPartialWarning(null);
 
     try {
-      const { failedUploads } = await createCat(form, files);
+      const results = [];
+
+      for (const entry of cats) {
+        const { id, failedUploads } = await createCat(entry.form, entry.files);
+        results.push({ id, name: entry.form.name, failedUploads });
+      }
+
+      if (results.length > 1) {
+        await linkBondedCats(results.map((result) => result.id));
+      }
+
       onCreated?.();
 
-      if (failedUploads.length > 0) {
-        // The cat was created - only some files failed. Keep the dialog
+      const failedResults = results.filter((result) => result.failedUploads.length > 0);
+
+      if (failedResults.length > 0) {
+        // The cats were created - only some files failed. Keep the dialog
         // open so the user actually sees this instead of it flashing by.
+        const details = failedResults
+          .map(
+            (result) =>
+              `"${result.name}": ${result.failedUploads.map((field) => FILE_FIELD_LABELS[field]).join(", ")}`,
+          )
+          .join("; ");
+
         setPartialWarning(
-          `Cat was added, but these files failed to upload: ${failedUploads
-            .map((field) => FILE_FIELD_LABELS[field])
-            .join(", ")}. You can add them later from the cat's Documents tab.`,
+          `${results.length > 1 ? "Cats were" : "Cat was"} added, but these files failed to upload - ${details}. You can add them later from each cat's Documents tab.`,
         );
         return;
       }
 
       handleClose();
     } catch (err) {
-      console.error("Failed to create cat:", err);
-      setError("Something went wrong while saving this cat. Please try again.");
+      console.error("Failed to create cat(s):", err);
+      setError("Something went wrong while saving. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -232,296 +249,80 @@ function AddCatDialog({ open, onClose, onCreated }) {
       <DialogContent dividers sx={{ "& > * + *": { mt: 3 } }}>
         {loadError && <Alert severity="warning">{loadError}</Alert>}
 
-        <SectionCard title="Core Identity">
-          <Grid container spacing={1.5}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                required
-                size="small"
-                label="Name"
-                value={form.name}
-                onChange={(event) => setField("name", event.target.value)}
+        {cats.length > 1 && (
+          <Alert severity="info">
+            Adding {cats.length} cats as a bonded group - each cat needs its own details, and
+            they'll be linked together as "Bonded With" once created.
+          </Alert>
+        )}
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Tabs
+            value={activeIndex}
+            onChange={(event, newValue) => setActiveIndex(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{ flex: 1, minHeight: 0 }}
+          >
+            {cats.map((entry, index) => (
+              <Tab
+                key={index}
+                sx={{ minHeight: 0 }}
+                label={
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <span>{entry.form.name || `Cat ${index + 1}`}</span>
+                    {cats.length > 1 && (
+                      <IconButton
+                        size="small"
+                        component="span"
+                        aria-label={`Remove Cat ${index + 1}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeCat(index);
+                        }}
+                      >
+                        <CloseIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    )}
+                  </Stack>
+                }
               />
-            </Grid>
+            ))}
+          </Tabs>
 
-            <Grid size={{ xs: 12, md: 6 }}>
-              <SelectField
-                label="Gender"
-                value={form.gender}
-                onChange={(value) => setField("gender", value)}
-                options={Object.values(CATS_STATUS_OPTIONS.GENDER)}
+          <Button
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={addAnotherCat}
+            disabled={saving || (maxBondedCats != null && cats.length >= maxBondedCats)}
+          >
+            Add Another Cat
+          </Button>
+        </Box>
+
+        {maxBondedCats != null && cats.length >= maxBondedCats && (
+          <Alert severity="info">
+            A bonded group can have at most {maxBondedCats} cats.
+          </Alert>
+        )}
+
+        {cats.map((entry, index) => (
+          <Box key={index} sx={{ display: index === activeIndex ? "block" : "none" }}>
+            <Stack spacing={3}>
+              <CatFormFields
+                form={entry.form}
+                setField={(field, value) => setField(index, field, value)}
+                files={entry.files}
+                setFile={(field, fileList, acceptPrefix) =>
+                  setFile(index, field, fileList, acceptPrefix)
+                }
+                breedOptions={breedOptions}
+                colourOptions={colourOptions}
+                rescuers={rescuers}
               />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                type="number"
-                label="Age"
-                value={form.age}
-                onChange={(event) => setField("age", event.target.value)}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Autocomplete
-                freeSolo
-                size="small"
-                options={breedOptions}
-                value={form.breed}
-                onInputChange={(event, value) => setField("breed", value)}
-                renderInput={(params) => <TextField {...params} label="Breed" />}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Autocomplete
-                freeSolo
-                size="small"
-                options={colourOptions}
-                value={form.colour}
-                onInputChange={(event, value) => setField("colour", value)}
-                renderInput={(params) => <TextField {...params} label="Colour" />}
-              />
-            </Grid>
-          </Grid>
-        </SectionCard>
-
-        <SectionCard title="Rescuer / Foster">
-          <Grid container spacing={1.5}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Autocomplete
-                size="small"
-                options={rescuers}
-                getOptionLabel={(option) => option.name ?? ""}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                onChange={(event, value) => setField("rescuerId", value?.id ?? "")}
-                renderInput={(params) => <TextField {...params} label="Linked Rescuer" />}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Foster Contact"
-                value={form.fosterContact}
-                onChange={(event) => setField("fosterContact", event.target.value)}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Foster Location"
-                value={form.fosterLocation}
-                onChange={(event) => setField("fosterLocation", event.target.value)}
-              />
-            </Grid>
-          </Grid>
-        </SectionCard>
-
-        <SectionCard title="Personality & Behaviour">
-          <Grid container spacing={1.5}>
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                size="small"
-                multiline
-                minRows={2}
-                label="Personality Summary"
-                value={form.personalitySummary}
-                onChange={(event) => setField("personalitySummary", event.target.value)}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <SelectField
-                label="Energy Level"
-                value={form.energyLevel}
-                onChange={(value) => setField("energyLevel", value)}
-                options={Object.values(CATS_STATUS_OPTIONS.ENERGY_LEVEL)}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <SelectField
-                label="Lap Cat"
-                value={form.lapCat}
-                onChange={(value) => setField("lapCat", value)}
-                options={YES_NO_SOMETIMES_UNKNOWN}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <SelectField
-                label="Indoor Only"
-                value={form.indoorOnly}
-                onChange={(value) => setField("indoorOnly", value)}
-                options={YES_NO}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <SelectField
-                label="Child Friendly"
-                value={form.childFriendly}
-                onChange={(value) => setField("childFriendly", value)}
-                options={YES_NO_SOMETIMES_UNKNOWN}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <SelectField
-                label="Cat Friendly"
-                value={form.catFriendly}
-                onChange={(value) => setField("catFriendly", value)}
-                options={YES_NO_SOMETIMES_UNKNOWN}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <SelectField
-                label="Dog Friendly"
-                value={form.dogFriendly}
-                onChange={(value) => setField("dogFriendly", value)}
-                options={YES_NO_SOMETIMES_UNKNOWN}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                size="small"
-                multiline
-                minRows={2}
-                label="Special Notes"
-                value={form.specialNotes}
-                onChange={(event) => setField("specialNotes", event.target.value)}
-              />
-            </Grid>
-          </Grid>
-        </SectionCard>
-
-        <SectionCard title="Medical">
-          <Grid container spacing={1.5}>
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                size="small"
-                multiline
-                minRows={2}
-                label="Medical Summary"
-                value={form.medicalSummary}
-                onChange={(event) => setField("medicalSummary", event.target.value)}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 3 }}>
-              <SelectField
-                label="Vaccinated"
-                value={form.vaccinated}
-                onChange={(value) => setField("vaccinated", value)}
-                options={YES_NO_PLANNED}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 3 }}>
-              <SelectField
-                label="Neutered"
-                value={form.neutered}
-                onChange={(value) => setField("neutered", value)}
-                options={YES_NO_PLANNED}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 3 }}>
-              <SelectField
-                label="FeLV/FIV Status"
-                value={form.felvFivStatus}
-                onChange={(value) => setField("felvFivStatus", value)}
-                options={Object.values(CATS_STATUS_OPTIONS.FELV_FIV_STATUS)}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 3 }}>
-              <SelectField
-                label="Medication Required"
-                value={form.medicationRequired}
-                onChange={(value) => setField("medicationRequired", value)}
-                options={YES_NO}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Microchip Number"
-                value={form.microchipNumber}
-                onChange={(event) => setField("microchipNumber", event.target.value)}
-              />
-            </Grid>
-          </Grid>
-        </SectionCard>
-
-        <SectionCard title="Media & Documents">
-          <Grid container spacing={1.5}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Button component="label" variant="outlined" size="small" fullWidth>
-                {files.photos?.length ? `${files.photos.length} photo(s) selected` : "Upload Photos"}
-                <input
-                  type="file"
-                  hidden
-                  multiple
-                  accept="image/*"
-                  onChange={(event) => setFile("photos", event.target.files, "image/")}
-                />
-              </Button>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Button component="label" variant="outlined" size="small" fullWidth>
-                {files.videos?.length ? `${files.videos.length} video(s) selected` : "Upload Videos"}
-                <input
-                  type="file"
-                  hidden
-                  multiple
-                  accept="video/*"
-                  onChange={(event) => setFile("videos", event.target.files, "video/")}
-                />
-              </Button>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Button component="label" variant="outlined" size="small" fullWidth>
-                {files.medicalDocuments?.length
-                  ? `${files.medicalDocuments.length} file(s) selected`
-                  : "Upload Medical Documents"}
-                <input
-                  type="file"
-                  hidden
-                  multiple
-                  onChange={(event) => setFile("medicalDocuments", event.target.files)}
-                />
-              </Button>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Button component="label" variant="outlined" size="small" fullWidth>
-                {files.passportFile?.length ? "Passport file selected" : "Upload Passport File"}
-                <input
-                  type="file"
-                  hidden
-                  onChange={(event) => setFile("passportFile", event.target.files)}
-                />
-              </Button>
-            </Grid>
-          </Grid>
-        </SectionCard>
+            </Stack>
+          </Box>
+        ))}
 
         {partialWarning && <Alert severity="warning">{partialWarning}</Alert>}
         {error && <Alert severity="error" sx={{ fontSize: "0.8125rem" }}>{error}</Alert>}
@@ -539,7 +340,7 @@ function AddCatDialog({ open, onClose, onCreated }) {
             </Button>
 
             <Button size="small" variant="contained" onClick={handleSubmit} disabled={saving}>
-              {saving ? "Saving..." : "Add Cat"}
+              {saving ? "Saving..." : cats.length > 1 ? `Add ${cats.length} Cats` : "Add Cat"}
             </Button>
           </>
         )}
