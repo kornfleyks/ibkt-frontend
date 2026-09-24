@@ -18,6 +18,8 @@ import EditIcon from '@mui/icons-material/EditOutlined';
 import VisibilityIcon from '@mui/icons-material/VisibilityOutlined';
 import CheckIcon from '@mui/icons-material/CheckOutlined';
 import CloseIcon from '@mui/icons-material/CloseOutlined';
+import PetsIcon from '@mui/icons-material/PetsOutlined';
+import { Link as RouterLink } from 'react-router-dom';
 
 import {
     updateTaskTitle,
@@ -29,6 +31,7 @@ import {
     updateTaskWaitingReason,
 } from '../../../../services/TasksService';
 import { TASKS_STATUS_OPTIONS } from '../../../../constants/statuses/tasksStatuses';
+import { isTaskOverdue } from '../../../../utils/taskStatus';
 
 const STATUS_OPTIONS = Object.values(TASKS_STATUS_OPTIONS.STATUS);
 const PRIORITY_OPTIONS = Object.values(TASKS_STATUS_OPTIONS.PRIORITY);
@@ -52,7 +55,9 @@ function getStatusColor(status) {
     }
 }
 
-function TaskCard({ task, titleOptions, users, onUpdate }) {
+// showCat / highlightOverdue are for lists spanning many cats (the Tasks
+// page); a cat's own Tasks tab leaves them off.
+function TaskCard({ task, titleOptions, users, onUpdate, showCat = false, highlightOverdue = false }) {
     // 'read' - the compact card; 'view' - the full form, read-only; 'edit' - the full form, editable.
     const [mode, setMode] = useState('read');
     const [toggling, setToggling] = useState(false);
@@ -70,6 +75,7 @@ function TaskCard({ task, titleOptions, users, onUpdate }) {
     const [waitingReason, setWaitingReason] = useState(task.waitingReason ?? '');
 
     const isCompleted = task.status === 'Completed';
+    const overdue = highlightOverdue && isTaskOverdue(task);
 
     function loadFieldsFromTask() {
         setTitle(task.title);
@@ -330,7 +336,7 @@ function TaskCard({ task, titleOptions, users, onUpdate }) {
             }}
         >
             <CardContent>
-                <Stack direction="row" spacing={2} alignItems="flex-start">
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
                     <Checkbox
                         checked={isCompleted}
                         onChange={handleToggle}
@@ -338,23 +344,26 @@ function TaskCard({ task, titleOptions, users, onUpdate }) {
                         color="success"
                     />
 
-                    <Box flex={1}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Stack
                             direction="row"
-                            justifyContent="space-between"
-                            alignItems="center"
                             spacing={2}
+                            sx={{ justifyContent: 'space-between', alignItems: 'center' }}
                         >
                             <Typography
-                                fontWeight={600}
                                 sx={{
+                                    fontWeight: 600,
                                     textDecoration: isCompleted ? 'line-through' : 'none'
                                 }}
                             >
                                 {task.title}
                             </Typography>
 
-                            <Stack direction="row" spacing={1} alignItems="center">
+                            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                                {overdue && (
+                                    <Chip label="Overdue" size="small" color="error" />
+                                )}
+
                                 <Chip
                                     label={task.priority}
                                     size="small"
@@ -389,6 +398,19 @@ function TaskCard({ task, titleOptions, users, onUpdate }) {
                             </Stack>
                         </Stack>
 
+                        {showCat && task.linkedCatId && (
+                            <Chip
+                                icon={<PetsIcon />}
+                                label={task.linkedCatName || 'Cat'}
+                                size="small"
+                                variant="outlined"
+                                component={RouterLink}
+                                to={`/cats/${task.linkedCatId}`}
+                                clickable
+                                sx={{ mt: 0.5, mb: 0.5 }}
+                            />
+                        )}
+
                         {task.description && (
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                                 Description: {task.description}
@@ -399,7 +421,11 @@ function TaskCard({ task, titleOptions, users, onUpdate }) {
                             Owner: {task.ownerName}
                         </Typography>
 
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                            variant="body2"
+                            color={overdue ? 'error' : 'text.secondary'}
+                            sx={{ fontWeight: overdue ? 600 : undefined }}
+                        >
                             Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}
                         </Typography>
 

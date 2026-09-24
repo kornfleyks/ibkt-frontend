@@ -1,10 +1,10 @@
 import { FormControlLabel, Switch } from '@mui/material';
 
 // Pairs with hooks/useMyCasesFilter - pass its `enabled` / `setEnabled`.
-function MyCasesToggle({ enabled, onChange }) {
+function MyCasesToggle({ enabled, onChange, label = 'My cases' }) {
     return (
         <FormControlLabel
-            label="My cases"
+            label={label}
             control={<Switch checked={enabled} onChange={(event) => onChange(event.target.checked)} />}
             sx={{ mr: 0 }}
         />

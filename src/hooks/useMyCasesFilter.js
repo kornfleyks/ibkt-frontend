@@ -21,11 +21,11 @@ function writeStored(key, value) {
   }
 }
 
-// A per-page "My cases" toggle, remembered per browser. `filter` narrows a
-// list of applications to the logged-in user's cases when the toggle is on;
+// A per-page "My cases" / "My tasks" toggle, remembered per browser. `filter`
+// narrows a list to items the logged-in user owns when the toggle is on;
 // the session user id is the same as their Users board item id, which is
-// what an application's caseOwnerId holds.
-function useMyCasesFilter(pageKey) {
+// what `ownerField` holds (caseOwnerId on applications, ownerId on tasks).
+function useMyCasesFilter(pageKey, ownerField = "caseOwnerId") {
   const { user } = useAuth();
   const [enabled, setEnabledState] = useState(() => readStored(pageKey));
 
@@ -34,12 +34,12 @@ function useMyCasesFilter(pageKey) {
     writeStored(pageKey, value);
   }
 
-  function filter(applications) {
+  function filter(items) {
     if (!enabled || !user) {
-      return applications;
+      return items;
     }
 
-    return applications.filter((application) => String(application.caseOwnerId) === String(user.id));
+    return items.filter((item) => String(item[ownerField]) === String(user.id));
   }
 
   return { enabled, setEnabled, filter };
