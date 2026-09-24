@@ -6,7 +6,7 @@ import Box from "@mui/material/Box";
 import { useLayout } from "../../context/LayoutContext";
 import useAuth from "../../hooks/useAuth";
 
-import { navigationItems } from "../../config/navigation";
+import { getAccessibleNavItems } from "../../utils/navigationAccess";
 
 import SidebarFooter from "../SidebarFooter/SidebarFooter";
 
@@ -23,19 +23,7 @@ function Sidebar() {
     }
   }
 
-  const visibleItems = navigationItems.filter((item) => {
-    if (!item.roles.includes(user?.role)) {
-      return false;
-    }
-
-    // A handful of items (e.g. App Settings) are further restricted to one
-    // specific account, on top of the role check above.
-    if (item.emails && !item.emails.includes(user?.email)) {
-      return false;
-    }
-
-    return true;
-  });
+  const visibleItems = getAccessibleNavItems(user);
 
   return (
     <div

@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
 import { useThemeMode } from "../../context/ThemeContext";
+import GlobalSearch from "./GlobalSearch";
 
 function Header() {
     const {
@@ -93,6 +94,10 @@ function Header() {
                     IBKT System
                 </Typography>
 
+            </Box>
+
+            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', px: 2, minWidth: 0 }}>
+                <GlobalSearch />
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
