@@ -1,9 +1,51 @@
 import { Grid } from "@mui/material";
 
 import InfoRow from "../../Common/InfoRow";
+import EditableInfoRow from "../../Common/EditableInfoRow";
 import SectionCard from "../../Common/SectionCard";
+import UserPicker from "../../Common/UserPicker";
+import useCanAssignCaseOwner from "../../../hooks/useCanAssignCaseOwner";
+import { assignCaseOwner, getAssignableUsers } from "../../../services/ActiveApplicationsService";
 
-function OverviewTab({ application }) {
+// Editable only for CASE_OWNER_ASSIGNER_ROLES; the server enforces the same
+// rule (and who may be picked), this only hides the pencil for others.
+function CaseOwnerRow({ application, onApplicationChange }) {
+  const canAssign = useCanAssignCaseOwner();
+  const displayValue = application.caseOwner || "Unassigned";
+
+  if (!canAssign) {
+    return <InfoRow label="Case Owner" value={displayValue} />;
+  }
+
+  return (
+    <EditableInfoRow
+      label="Case Owner"
+      displayValue={displayValue}
+      getEditValue={() =>
+        application.caseOwnerId ? { id: application.caseOwnerId, name: application.caseOwner } : null
+      }
+      renderEditor={(value, setValue, saving) => (
+        <UserPicker
+          label="Case Owner"
+          value={value}
+          onChange={setValue}
+          loadUsers={getAssignableUsers}
+          disabled={saving}
+        />
+      )}
+      onSave={async (value) => {
+        const caseOwner = await assignCaseOwner(application.id, value?.id ?? null);
+
+        onApplicationChange({
+          caseOwnerId: caseOwner?.id ?? null,
+          caseOwner: caseOwner?.name ?? "",
+        });
+      }}
+    />
+  );
+}
+
+function OverviewTab({ application, onApplicationChange }) {
   return (
     <Grid container spacing={3}>
       <Grid
@@ -36,7 +78,7 @@ function OverviewTab({ application }) {
 
           <InfoRow label="Priority" value={application.priority} />
 
-          <InfoRow label="Case Owner" value={application.caseOwner} />
+          <CaseOwnerRow application={application} onApplicationChange={onApplicationChange} />
 
           <InfoRow
             label="Assigned Volunteer"

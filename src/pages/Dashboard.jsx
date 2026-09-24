@@ -5,8 +5,8 @@ import PetsIcon from '@mui/icons-material/PetsOutlined';
 import AssignmentIcon from '@mui/icons-material/AssignmentOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircleOutlined';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoffOutlined';
-import WarningAmberIcon from '@mui/icons-material/WarningAmberOutlined';
 import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
+import AssignmentIndIcon from '@mui/icons-material/AssignmentIndOutlined';
 import DashboardPanel from '../components/DashboardPanel';
 import PageHeader from '../components/PageHeader';
 
@@ -23,17 +23,16 @@ import AddTaskDialog from '../components/Cats/Workspace/Tasks/AddTaskDialog';
 
 import { getCats } from '../services/CatsService';
 import { getActiveApplications } from '../services/ActiveApplicationsService';
+import { getMatchingStages, getMyCasesOpenStages } from '../services/AppSettingsService';
+import useAuth from '../hooks/useAuth';
 import { getTasks } from '../services/TasksService';
 import { getTravel } from '../services/TravelService';
 import { getPostAdoptionCases } from '../services/PostAdoptionService';
 
 import { CATS_STATUS_OPTIONS } from '../constants/statuses/catsStatuses';
-import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from '../constants/statuses/activeApplicationsStatuses';
 import { TASKS_STATUS_OPTIONS } from '../constants/statuses/tasksStatuses';
 import { TRAVEL_STATUS_OPTIONS } from '../constants/statuses/travelStatuses';
 import { POST_ADOPTION_STATUS_OPTIONS } from '../constants/statuses/postAdoptionStatuses';
-
-const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
 function todayDateString() {
     const now = new Date();
@@ -47,14 +46,16 @@ function Dashboard() {
 
     const [addCatOpen, setAddCatOpen] = useState(false);
     const [addTaskOpen, setAddTaskOpen] = useState(false);
+    const { user } = useAuth();
 
     const [stats, setStats] = useState({
         awaitingPassport: null,
         pendingMatching: null,
         tasksDueToday: null,
         travelPending: null,
-        postAdoptionConcerns: null,
         escalationsRequired: null,
+        myOpenCases: null,
+        myOpenCasesBreakdown: '',
     });
 
     useEffect(() => {
@@ -72,15 +73,38 @@ function Dashboard() {
             })
             .catch((err) => console.error('Failed to load cats for dashboard:', err));
 
-        getActiveApplications()
-            .then((applications) => {
+        // Pending Matching: same definition as the Matching page's "Needs
+        // Match" tab - an unmatched application in one of the MATCHING_STAGES.
+        // My Open Cases: applications owned by the logged-in user in one of
+        // the MY_CASES_OPEN_STAGES, broken down per stage in that setting's order.
+        Promise.all([getActiveApplications(), getMatchingStages(), getMyCasesOpenStages()])
+            .then(([applications, matchingStages, openStages]) => {
                 const pendingMatching = applications.filter(
                     (application) =>
-                        application.adoptionStage === ADOPTION_STAGE.APPROVED_APPLICATION &&
-                        !application.linkedCatId,
+                        matchingStages.includes(application.adoptionStage) &&
+                        application.linkedCatIds.length === 0,
                 ).length;
 
-                setStats((current) => ({ ...current, pendingMatching }));
+                const myOpenCases = applications.filter(
+                    (application) =>
+                        String(application.caseOwnerId) === String(user?.id) &&
+                        openStages.includes(application.adoptionStage),
+                );
+
+                const myOpenCasesBreakdown = openStages
+                    .map((stage) => ({
+                        stage,
+                        count: myOpenCases.filter((application) => application.adoptionStage === stage).length,
+                    }))
+                    .map(({ stage, count }) => `${count} ${stage.replace(/ Application$/, '')}`)
+                    .join(' · ');
+
+                setStats((current) => ({
+                    ...current,
+                    pendingMatching,
+                    myOpenCases: myOpenCases.length,
+                    myOpenCasesBreakdown,
+                }));
             })
             .catch((err) => console.error('Failed to load active applications for dashboard:', err));
 
@@ -113,15 +137,11 @@ function Dashboard() {
 
         getPostAdoptionCases()
             .then((cases) => {
-                const postAdoptionConcerns = cases.filter(
-                    (item) => item.status === POST_ADOPTION_STATUS_OPTIONS.POST_ADOPTION_STATUS.CONCERN,
-                ).length;
-
                 const escalationsRequired = cases.filter(
                     (item) => item.escalationRequired === POST_ADOPTION_STATUS_OPTIONS.ESCALATION_REQUIRED.URGENT,
                 ).length;
 
-                setStats((current) => ({ ...current, postAdoptionConcerns, escalationsRequired }));
+                setStats((current) => ({ ...current, escalationsRequired }));
             })
             .catch((err) => console.error('Failed to load post-adoption cases for dashboard:', err));
 
@@ -209,10 +229,11 @@ function Dashboard() {
             <Grid size={{xs:12, md:4}}>
 
                 <DashboardCard
-                    title="Post Adoption Concerns"
-                    value={stats.postAdoptionConcerns}
-                    loading={stats.postAdoptionConcerns === null}
-                    icon={<WarningAmberIcon />}
+                    title="My Open Cases"
+                    value={stats.myOpenCases}
+                    loading={stats.myOpenCases === null}
+                    caption={stats.myOpenCasesBreakdown}
+                    icon={<AssignmentIndIcon />}
                 />
 
             </Grid>

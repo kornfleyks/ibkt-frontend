@@ -1,4 +1,10 @@
-import { mondayRequest, changeMondayColumnValue } from "./MondayService";
+import {
+  mondayRequest,
+  changeMondayColumnValue,
+  getColumnSettings,
+  serverGet,
+  serverPost,
+} from "./MondayService";
 import { ACTIVE_APPLICATIONS } from "../constants/boards/activeApplications";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../constants/statuses/activeApplicationsStatuses";
 import { mapMondayActiveApplication } from "./mappers/ActiveApplicationMapper";
@@ -8,7 +14,6 @@ const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 // Fields an Admin can edit from the Adoptions detail view, and how to
 // shape each one for Monday's change_column_value mutation.
 export const ADOPTION_EDITABLE_FIELDS = {
-  caseOwner: { column: ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER, type: "text" },
   assignedVolunteer: {
     column: ACTIVE_APPLICATIONS.COLUMNS.ASSIGNED_VOLUNTEER,
     type: "text",
@@ -44,6 +49,8 @@ export const ADOPTION_EDITABLE_FIELDS = {
 };
 
 export async function getActiveApplications() {
+  // The BoardRelationValue fragment is required for Linked Cat - without it
+  // Monday returns no linked_items and every application looks unmatched.
   const query = `
         query ($boardId: ID!) {
             boards(ids: [$boardId]) {
@@ -56,6 +63,14 @@ export async function getActiveApplications() {
                             type
                             text
                             value
+
+                            ... on BoardRelationValue {
+                                display_value
+                                linked_items {
+                                    id
+                                    name
+                                }
+                            }
                         }
                     }
                 }
@@ -116,14 +131,40 @@ export async function getActiveApplication(id) {
   return mapMondayActiveApplication(item);
 }
 
-export async function matchCatToActiveApplication(applicationId, catId) {
+// Replaces the whole Linked Cat list - a bonded group is linked in one
+// write, and an empty list unlinks every cat.
+export async function setApplicationLinkedCats(applicationId, catIds) {
   return changeMondayColumnValue(
     ACTIVE_APPLICATIONS.BOARD_ID,
     applicationId,
     ACTIVE_APPLICATIONS.COLUMNS.LINKED_CAT,
     {
-      item_ids: [Number(catId)],
+      item_ids: catIds.map(Number),
     },
+  );
+}
+
+// Linked Cat is a Monday board setting ("allowMultipleItems"), not something
+// the item data reveals - a bonded group can only be linked when it's on.
+export async function linkedCatAllowsMultiple() {
+  const [column] = await getColumnSettings(ACTIVE_APPLICATIONS.BOARD_ID, [
+    ACTIVE_APPLICATIONS.COLUMNS.LINKED_CAT,
+  ]);
+
+  try {
+    return JSON.parse(column?.settings_str || "{}").allowMultipleItems !== false;
+  } catch {
+    return false;
+  }
+}
+
+// A falsy confidence clears the column (Monday treats `{}` as no label).
+export async function setApplicationMatchConfidence(applicationId, confidence) {
+  return changeMondayColumnValue(
+    ACTIVE_APPLICATIONS.BOARD_ID,
+    applicationId,
+    ACTIVE_APPLICATIONS.COLUMNS.MATCH_CONFIDENCE,
+    confidence ? { label: confidence } : {},
   );
 }
 
@@ -161,4 +202,19 @@ export async function updateAdoptionField(id, field, value) {
     config.column,
     payload,
   );
+}
+
+// Case Owner is written only through the server endpoint (it enforces the
+// CASE_OWNER_* settings); the generic Monday proxy refuses this column.
+export async function getAssignableUsers() {
+  const { users } = await serverGet("/api/users/assignable");
+
+  return users;
+}
+
+// userId === null clears the case owner. Resolves to { id, name } or null.
+export async function assignCaseOwner(applicationId, userId) {
+  const { caseOwner } = await serverPost(`/api/applications/${applicationId}/case-owner`, { userId });
+
+  return caseOwner;
 }

@@ -1,4 +1,6 @@
 import { APP_SETTINGS, SETTING_KEYS } from "../src/constants/boards/appSettings.js";
+import { SETTING_DEFINITIONS } from "../src/constants/settingDefinitions.js";
+import { resolveListSetting } from "../src/utils/listSetting.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
@@ -107,4 +109,13 @@ export async function getLoginMaxAttempts() {
 
 export async function getLoginLockoutMinutes() {
   return getNumericSetting(SETTING_KEYS.LOGIN_LOCKOUT_MINUTES, 15);
+}
+
+// Server-side twin of the frontend's getListSetting - same definitions and
+// parsing (both shared from src/), so a rule the UI shows is exactly the
+// rule the server enforces.
+export async function getListSetting(key) {
+  const settings = await getSettingsByKey();
+
+  return resolveListSetting(settings[key], SETTING_DEFINITIONS[key]);
 }

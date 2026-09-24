@@ -25,6 +25,7 @@ import {
   CATS_BOARD_ID,
 } from "./activityLog.js";
 import { getLoginMaxAttempts, getLoginLockoutMinutes } from "./appSettings.js";
+import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -388,6 +389,8 @@ app.post("/api/admin/users/:id/password", requireAuth, requireAdmin, async (req,
   }
 });
 
+registerCaseOwnerRoutes(app, { requireAuth });
+
 // The frontend never talks to Monday directly: it has no way to hold an API
 // token without shipping it in the public JS bundle. Every Monday GraphQL
 // call is proxied through here instead, so the token only ever lives on
@@ -407,6 +410,17 @@ app.post("/api/monday", requireAuth, async (req, res) => {
   // server-side check, not just a client-side Admin-only page.
   if (mutation && variables?.boardId === USERS_BOARD_ID && req.user.role !== "Admin") {
     return res.status(403).json({ error: "Only Admins can modify user accounts." });
+  }
+
+  // Case Owner assignment rules (who may assign, who may be picked) live in
+  // POST /api/applications/:id/case-owner. Any mutation mentioning the
+  // column - in the query text or the variables - is refused here, so
+  // those rules can't be skipped with a hand-written request.
+  if (
+    mutation &&
+    (query.includes(CASE_OWNER_COLUMN_ID) || JSON.stringify(variables ?? {}).includes(CASE_OWNER_COLUMN_ID))
+  ) {
+    return res.status(403).json({ error: "Case Owner can only be changed through the case owner endpoint." });
   }
 
   if (!mutation) {

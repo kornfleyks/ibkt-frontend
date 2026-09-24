@@ -20,4 +20,12 @@ export const SETTING_KEYS = {
   ACTIVITY_LOG_PAGE_SIZE: "ACTIVITY_LOG_PAGE_SIZE",
   LOGIN_MAX_ATTEMPTS: "LOGIN_MAX_ATTEMPTS",
   LOGIN_LOCKOUT_MINUTES: "LOGIN_LOCKOUT_MINUTES",
+  // Comma-separated Adoption Stage labels whose applications can be matched.
+  MATCHING_STAGES: "MATCHING_STAGES",
+  // Comma-separated Users roles that can be picked as a Case Owner.
+  CASE_OWNER_ROLES: "CASE_OWNER_ROLES",
+  // Comma-separated Users roles allowed to set/change a Case Owner.
+  CASE_OWNER_ASSIGNER_ROLES: "CASE_OWNER_ASSIGNER_ROLES",
+  // Comma-separated Adoption Stage labels counted as "open" for My cases.
+  MY_CASES_OPEN_STAGES: "MY_CASES_OPEN_STAGES",
 };

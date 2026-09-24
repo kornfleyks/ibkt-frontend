@@ -50,6 +50,29 @@ export async function serverPost(path, body) {
     return result;
 }
 
+// GET counterpart of serverPost, for read-only server endpoints.
+export async function serverGet(path) {
+    const token = getAuthToken();
+
+    const response = await fetch(`${SERVER_URL}${path}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (response.status === 401) {
+        handleUnauthorized();
+        throw new Error('Not authenticated.');
+    }
+
+    const result = await response.json();
+
+    if (!response.ok || result.error) {
+        console.error(result.error);
+        throw new Error(result.error || 'Request failed.');
+    }
+
+    return result;
+}
+
 export async function mondayRequest(query, variables = {}, { cacheTtlMs } = {}) {
     const token = getAuthToken();
 

@@ -3,11 +3,15 @@ import { getAdoptions } from "../services/ActiveApplicationsService";
 import { useLoading } from "../context/LoadingContext";
 import AdoptionCard from "../components/Adoptions/AdoptionCard";
 import Grid from "@mui/material/Grid";
+import Typography from "@mui/material/Typography";
 import PageHeader from "../components/PageHeader";
+import MyCasesToggle from "../components/Common/MyCasesToggle";
+import useMyCasesFilter from "../hooks/useMyCasesFilter";
 
 function Adoptions() {
   const [adoptions, setAdoptions] = useState([]);
   const { showLoading, hideLoading } = useLoading();
+  const myCases = useMyCasesFilter("adoptions");
 
   async function loadAdoptions() {
     showLoading("Loading adoptions...");
@@ -24,15 +28,22 @@ function Adoptions() {
     loadAdoptions();
   }, []);
 
+  const visibleAdoptions = myCases.filter(adoptions);
+
   return (
     <>
       <PageHeader
         title="Adoptions"
         subtitle="Approved applications"
+        actions={<MyCasesToggle enabled={myCases.enabled} onChange={myCases.setEnabled} />}
       />
 
+      {myCases.enabled && visibleAdoptions.length === 0 && (
+        <Typography color="text.secondary">No adoptions assigned to you.</Typography>
+      )}
+
       <Grid container spacing={3}>
-        {adoptions.map((adoption) => (
+        {visibleAdoptions.map((adoption) => (
           <Grid
             key={adoption.id}
             size={{

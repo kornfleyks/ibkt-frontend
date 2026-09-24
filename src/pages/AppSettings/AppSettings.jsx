@@ -15,13 +15,25 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    Chip,
+    Checkbox,
+    FormGroup,
+    FormControlLabel,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import CheckIcon from '@mui/icons-material/CheckOutlined';
 import CloseIcon from '@mui/icons-material/CloseOutlined';
 import AddIcon from '@mui/icons-material/AddOutlined';
 import PageHeader from '../../components/PageHeader';
-import { getSettings, updateSettingValue, createSetting } from '../../services/AppSettingsService';
+import {
+    getSettings,
+    saveSetting,
+    withDefinedSettings,
+    createSetting,
+    parseListSetting,
+    formatListSetting,
+    SETTING_DEFINITIONS,
+} from '../../services/AppSettingsService';
 
 // A generic "Label: value" editable row, unlike the shared EditableInfoRow,
 // keeps the exact same inline shape ("Name: [field]") in both display and
@@ -106,6 +118,137 @@ function SettingRow({ setting, onSave }) {
                     {setting.value}
                 </Box>
             </Box>
+
+            <IconButton
+                size="small"
+                onClick={startEditing}
+                aria-label={`Edit ${setting.name}`}
+                className="row-edit-button"
+                sx={{ opacity: 0, transition: 'opacity 0.15s' }}
+            >
+                <EditIcon fontSize="small" />
+            </IconButton>
+        </Box>
+    );
+}
+
+// Defined list settings (a comma-separated list chosen from a fixed set of
+// labels) are edited as checkboxes so a typo can't silently drop an entry.
+// Every other setting keeps the plain-text SettingRow.
+function getListOptions(key) {
+    return SETTING_DEFINITIONS[key]?.options ?? null;
+}
+
+function ListSettingRow({ setting, options, onSave }) {
+    const [editing, setEditing] = useState(false);
+    const [selected, setSelected] = useState([]);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
+
+    const current = parseListSetting(setting.value);
+
+    function startEditing() {
+        setSelected(current.filter((entry) => options.includes(entry)));
+        setError(null);
+        setEditing(true);
+    }
+
+    function toggle(option) {
+        setSelected((values) =>
+            values.includes(option) ? values.filter((value) => value !== option) : [...values, option],
+        );
+    }
+
+    async function handleSave() {
+        if (selected.length === 0) {
+            setError('Select at least one.');
+            return;
+        }
+
+        setSaving(true);
+        setError(null);
+
+        try {
+            // Saved in the options' own order so the stored value is stable.
+            await onSave(formatListSetting(options.filter((option) => selected.includes(option))));
+            setEditing(false);
+        } catch (err) {
+            console.error(`Failed to update ${setting.name}:`, err);
+            setError('Failed to save.');
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    if (editing) {
+        return (
+            <Box sx={{ py: 0.5 }}>
+                <Box component="span" sx={{ fontWeight: 600 }}>
+                    {setting.name}:
+                </Box>
+
+                <FormGroup row sx={{ mt: 0.5 }}>
+                    {options.map((option) => (
+                        <FormControlLabel
+                            key={option}
+                            label={option}
+                            disabled={saving}
+                            control={
+                                <Checkbox
+                                    size="small"
+                                    checked={selected.includes(option)}
+                                    onChange={() => toggle(option)}
+                                />
+                            }
+                        />
+                    ))}
+                </FormGroup>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <IconButton size="small" onClick={handleSave} disabled={saving} aria-label={`Save ${setting.name}`}>
+                        {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
+                    </IconButton>
+
+                    <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+
+                    {error && (
+                        <Typography variant="caption" color="error">
+                            {error}
+                        </Typography>
+                    )}
+                </Box>
+            </Box>
+        );
+    }
+
+    return (
+        <Box
+            sx={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 1,
+                py: 0.5,
+                '&:hover .row-edit-button, &:focus-within .row-edit-button': {
+                    opacity: 1,
+                },
+            }}
+        >
+            <Box component="span" sx={{ fontWeight: 600 }}>
+                {setting.name}:
+            </Box>
+
+            {current.map((entry) => (
+                <Chip
+                    key={entry}
+                    size="small"
+                    label={entry}
+                    color={options.includes(entry) ? 'default' : 'warning'}
+                    title={options.includes(entry) ? undefined : 'Unknown value - ignored by the app'}
+                />
+            ))}
 
             <IconButton
                 size="small"
@@ -264,7 +407,7 @@ function AppSettings() {
                 const data = await getSettings();
 
                 if (!cancelled) {
-                    setSettings(data);
+                    setSettings(withDefinedSettings(data));
                 }
             } catch (err) {
                 console.error('Failed to load settings:', err);
@@ -292,12 +435,24 @@ function AppSettings() {
         );
     }
 
+    // A placeholder setting (no board row yet) is created on save, so the
+    // list is re-fetched to pick up its real item id.
+    async function handleSave(setting, value) {
+        await saveSetting(setting, value);
+
+        if (setting.id) {
+            handleSettingUpdate(setting.id, { value });
+        } else {
+            await refreshSettings();
+        }
+    }
+
     // Reused after a new setting is created via AddSettingDialog - simpler
     // than the mount-time loader above since there's no unmount race to
     // guard against for a one-off, user-triggered refresh.
     async function refreshSettings() {
         try {
-            setSettings(await getSettings());
+            setSettings(withDefinedSettings(await getSettings()));
         } catch (err) {
             console.error('Failed to refresh settings:', err);
         }
@@ -339,14 +494,25 @@ function AppSettings() {
                                 <Typography color="text.secondary">No settings found.</Typography>
                             ) : (
                                 settings.map((setting) => (
-                                    <Stack key={setting.id} spacing={0.5}>
-                                        <SettingRow
-                                            setting={setting}
-                                            onSave={async (value) => {
-                                                await updateSettingValue(setting.id, value);
-                                                handleSettingUpdate(setting.id, { value });
-                                            }}
-                                        />
+                                    <Stack key={setting.id ?? setting.key} spacing={0.5}>
+                                        {getListOptions(setting.key) ? (
+                                            <ListSettingRow
+                                                setting={setting}
+                                                options={getListOptions(setting.key)}
+                                                onSave={(value) => handleSave(setting, value)}
+                                            />
+                                        ) : (
+                                            <SettingRow
+                                                setting={setting}
+                                                onSave={(value) => handleSave(setting, value)}
+                                            />
+                                        )}
+
+                                        {setting.isDefault && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                Using the default - saved to the board the first time you edit it.
+                                            </Typography>
+                                        )}
 
                                         {setting.description && (
                                             <Typography variant="body2" color="text.secondary">

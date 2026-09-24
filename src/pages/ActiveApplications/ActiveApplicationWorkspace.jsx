@@ -71,7 +71,10 @@ function ActiveApplicationWorkspace() {
         </Tabs>
       </Box>
       {activeApplicationWorkspaceTabs[tab].slug === "overview" && (
-        <OverviewTab application={application} />
+        <OverviewTab
+          application={application}
+          onApplicationChange={(updates) => setApplication((current) => ({ ...current, ...updates }))}
+        />
       )}
       {activeApplicationWorkspaceTabs[tab].slug === "activity" && (
         <ActivityTab boardId={ACTIVE_APPLICATIONS.BOARD_ID} itemId={application.id} />

@@ -9,7 +9,8 @@ function DashboardCard({
     value,
     icon,
     color = 'primary.main',
-    loading = false
+    loading = false,
+    caption = null
 }) {
 
     return (
@@ -86,6 +87,11 @@ function DashboardCard({
 
                 </Box>
 
+                {caption && !loading && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        {caption}
+                    </Typography>
+                )}
 
             </CardContent>
 

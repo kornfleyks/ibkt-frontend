@@ -13,7 +13,8 @@ export const ACTIVE_APPLICATIONS = {
     ADDRESS: "long_text_mm48pr65", // Address | long_text
     ADOPTION_STAGE: "color_mm4g93ck", // Adoption Stage | status
     ASSIGNED_VOLUNTEER: "text_mm48zfbv", // Assigned Volunteer | text
-    CASE_OWNER: "text_mm48cefa", // Case Owner | text
+    CASE_OWNER_LEGACY: "text_mm48cefa", // Case Owner (Legacy) | text - free-text names, superseded by CASE_OWNER
+    CASE_OWNER: "board_relation_mm7gn9en", // Case Owner | board_relation
     PRIORITY: "color_mm4g1c21", // Priority | status
     WHY_ADOPT: "long_text_mm481k90", // Why Adopt | long_text
     PERVIOUS_CAT_EXPERIENCE: "long_text_mm48x98m", // Pervious Cat Experience | long_text
@@ -66,5 +67,6 @@ export const ACTIVE_APPLICATIONS = {
     TRAVEL_MANAGEMENT: ["5098462214"],
     POST_ADOPTION_RECORD: [],
     LINKED_POST_ADOPTION_MANAGEMENT: ["5098487184"],
+    CASE_OWNER: ["5098492656"],
   },
 };

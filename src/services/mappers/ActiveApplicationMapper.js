@@ -5,6 +5,12 @@ export function mapMondayActiveApplication(item) {
     item.column_values.map((column) => [column.id, column]),
   );
 
+  const linkedCats =
+    columns[ACTIVE_APPLICATIONS.COLUMNS.LINKED_CAT]?.linked_items?.map((cat) => ({
+      id: cat.id,
+      name: cat.name,
+    })) ?? [];
+
   return {
     id: item.id,
     name: item.name,
@@ -19,7 +25,9 @@ export function mapMondayActiveApplication(item) {
     assignedVolunteer:
       columns[ACTIVE_APPLICATIONS.COLUMNS.ASSIGNED_VOLUNTEER]?.text ?? "",
 
-    caseOwner: columns[ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER]?.text ?? "",
+    // Case Owner is a relation to the Users board (single item).
+    caseOwnerId: columns[ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER]?.linked_items?.[0]?.id ?? null,
+    caseOwner: columns[ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER]?.linked_items?.[0]?.name ?? "",
 
     priority: columns[ACTIVE_APPLICATIONS.COLUMNS.PRIORITY]?.text ?? "",
 
@@ -54,11 +62,13 @@ export function mapMondayActiveApplication(item) {
 
     suggestedNextAction:
       columns[ACTIVE_APPLICATIONS.COLUMNS.SUGGESTED_NEXT_ACTION]?.text ?? "",
-    linkedCatId:
-      columns[ACTIVE_APPLICATIONS.COLUMNS.LINKED_CAT]?.linked_items?.[0]?.id ?? null,
-
-    linkedCatName:
-      columns[ACTIVE_APPLICATIONS.COLUMNS.LINKED_CAT]?.linked_items?.[0]?.name ?? "",
+    // Linked Cat holds a whole bonded group when a pair is matched.
+    // linkedCatId/linkedCatName stay for single-cat callers: the first id,
+    // and every name joined.
+    linkedCats,
+    linkedCatIds: linkedCats.map((cat) => cat.id),
+    linkedCatId: linkedCats[0]?.id ?? null,
+    linkedCatName: linkedCats.map((cat) => cat.name).join(", "),
 
     applicationId: columns[ACTIVE_APPLICATIONS.COLUMNS.APPLICATION_ID]?.text ?? "",
     creationDate: columns[ACTIVE_APPLICATIONS.COLUMNS.CREATION_DATE]?.text ?? "",

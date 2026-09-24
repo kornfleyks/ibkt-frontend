@@ -83,6 +83,19 @@ async function getAllAuthUsers() {
   return data.boards[0].items_page.items.map(mapUserItem);
 }
 
+// Safe-to-share view of every user (no email, hash or tokens) - for
+// features that pick or resolve users, e.g. Case Owner assignment.
+export async function getUserDirectory() {
+  const users = await getAllAuthUsers();
+
+  return users.map((user) => ({
+    id: user.id,
+    name: `${user.firstName} ${user.lastName}`.trim() || `User ${user.id}`,
+    role: user.role,
+    accountStatus: user.accountStatus,
+  }));
+}
+
 export async function findUserByEmail(email) {
   const users = await getAllAuthUsers();
   const normalized = email.trim().toLowerCase();

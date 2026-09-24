@@ -13,6 +13,9 @@ import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Typography from "@mui/material/Typography";
 import useTabParam from "../hooks/useTabParam";
+import useMyCasesFilter from "../hooks/useMyCasesFilter";
+import MyCasesToggle from "../components/Common/MyCasesToggle";
+import Stack from "@mui/material/Stack";
 
 const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
@@ -26,6 +29,7 @@ function ActiveApplications() {
   const [applications, setApplications] = useState([]);
   const [tab, setTab] = useTabParam(TABS);
   const { showLoading, hideLoading } = useLoading();
+  const myCases = useMyCasesFilter("activeApplications");
 
   async function loadActiveApplications() {
     showLoading("Loading active applications...");
@@ -42,7 +46,7 @@ function ActiveApplications() {
     loadActiveApplications();
   }, []);
 
-  const visibleApplications = applications.filter(
+  const visibleApplications = myCases.filter(applications).filter(
     (application) => application.adoptionStage === TABS[tab].stage,
   );
 
@@ -52,15 +56,19 @@ function ActiveApplications() {
         title="Active Applications"
         subtitle="Manage active applications"
         actions={
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            sx={{
-              minWidth: 140,
-            }}
-          >
-            Add Application
-          </Button>
+          <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+            <MyCasesToggle enabled={myCases.enabled} onChange={myCases.setEnabled} />
+
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              sx={{
+                minWidth: 140,
+              }}
+            >
+              Add Application
+            </Button>
+          </Stack>
         }
       />
 

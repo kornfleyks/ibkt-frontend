@@ -141,6 +141,9 @@ export async function getItemSnapshot(itemId, columnId) {
         name
         column_values(ids: $columnIds) {
           text
+          ... on BoardRelationValue {
+            display_value
+          }
         }
       }
     }
@@ -149,10 +152,12 @@ export async function getItemSnapshot(itemId, columnId) {
   try {
     const data = await mondayDirectRequest(query, { itemId: [itemId], columnIds: [columnId] });
     const item = data?.items?.[0];
+    const column = item?.column_values?.[0];
 
     return {
       itemName: item?.name ?? "",
-      columnText: item?.column_values?.[0]?.text ?? "",
+      // Relation columns report text as null; their names are on display_value.
+      columnText: column?.text || column?.display_value || "",
     };
   } catch (err) {
     console.error("Activity log: failed to read item snapshot.", err);

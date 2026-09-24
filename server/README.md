@@ -17,6 +17,29 @@ directly. It holds the Monday API token server-side and does two things:
   request a longer TTL for a specific query via `cacheTtlMs` in the request
   body (used for `getColumnSettings`, which rarely changes).
 
+## Case Owner (`caseOwner.js`)
+
+An application's Case Owner (a relation to the Users board) can only be
+changed through these endpoints - `/api/monday` refuses any mutation that
+mentions the column - so the rules below can't be bypassed:
+
+- `GET /api/users/assignable` - users that can be picked: Active accounts
+  whose role is in the `CASE_OWNER_ROLES` App Setting. Returns only
+  `id`, `name`, `role`. Callers must be allowed to assign (below).
+- `POST /api/applications/:id/case-owner` with `{ "userId": "<id>" | null }`
+  - caller's role must be in `CASE_OWNER_ASSIGNER_ROLES`; the user must be
+  assignable. Logged to the Activity Log.
+
+Both settings default (see `src/constants/settingDefinitions.js`) to all
+roles / Admin only when their App Settings row is missing.
+
+One-off migration of the old free-text column ("Case Owner (Legacy)"):
+
+```
+npm run migrate:case-owners            # dry run: report only
+npm run migrate:case-owners -- --apply # write the matched rows
+```
+
 ## Setup
 
 ```

@@ -13,20 +13,25 @@ function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEdit
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
 
     function startEditing() {
         setValue(getEditValue());
+        setError(null);
         setEditing(true);
     }
 
     async function handleSave() {
         setSaving(true);
+        setError(null);
 
         try {
             await onSave(value);
             setEditing(false);
-        } catch (error) {
-            console.error(`Failed to update ${label}:`, error);
+        } catch (err) {
+            console.error(`Failed to update ${label}:`, err);
+            // Server-side rule failures (e.g. 403) carry a readable message.
+            setError(err?.message || 'Failed to save.');
         } finally {
             setSaving(false);
         }
@@ -74,6 +79,12 @@ function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEdit
             <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
                 <CloseIcon fontSize="small" />
             </IconButton>
+
+            {error && (
+                <Typography variant="caption" color="error">
+                    {error}
+                </Typography>
+            )}
         </Stack>
     );
 }
