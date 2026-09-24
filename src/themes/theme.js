@@ -189,6 +189,43 @@ export function buildTheme(darkMode) {
 
             },
 
+            // primary.main (#1E293B) is the same colour as the dark-mode
+            // paper background, so checked radios/checkboxes vanish on cards
+            // and dialogs - same reason Button/Tab/inputs are overridden above.
+            MuiRadio: {
+
+                styleOverrides: {
+
+                    root: ({ theme, ownerState }) => ({
+                        ...(theme.palette.mode === 'dark' &&
+                            (ownerState.color === 'primary' || !ownerState.color) && {
+                            '&.Mui-checked': {
+                                color: theme.palette.text.primary
+                            }
+                        })
+                    })
+
+                }
+
+            },
+
+            MuiCheckbox: {
+
+                styleOverrides: {
+
+                    root: ({ theme, ownerState }) => ({
+                        ...(theme.palette.mode === 'dark' &&
+                            (ownerState.color === 'primary' || !ownerState.color) && {
+                            '&.Mui-checked, &.MuiCheckbox-indeterminate': {
+                                color: theme.palette.text.primary
+                            }
+                        })
+                    })
+
+                }
+
+            },
+
             MuiChip: {
 
                 styleOverrides: {
