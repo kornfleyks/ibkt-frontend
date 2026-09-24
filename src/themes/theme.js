@@ -226,6 +226,39 @@ export function buildTheme(darkMode) {
 
             },
 
+            // Same primary-vs-paper clash as Radio/Checkbox above: an "on"
+            // Switch's thumb and track are drawn in primary.main. In dark mode
+            // ON is the success green and OFF is a dim grey thumb on a faint
+            // track, so the two states can't be confused.
+            MuiSwitch: {
+
+                styleOverrides: {
+
+                    switchBase: ({ theme, ownerState }) => ({
+                        ...(theme.palette.mode === 'dark' &&
+                            (ownerState.color === 'primary' || !ownerState.color) && {
+                            color: theme.palette.grey[600],
+                            '&.Mui-checked': {
+                                color: theme.palette.success.main
+                            },
+                            '&.Mui-checked + .MuiSwitch-track': {
+                                backgroundColor: theme.palette.success.main,
+                                opacity: 0.5
+                            }
+                        })
+                    }),
+
+                    track: ({ theme }) => ({
+                        ...(theme.palette.mode === 'dark' && {
+                            backgroundColor: theme.palette.common.white,
+                            opacity: 0.12
+                        })
+                    })
+
+                }
+
+            },
+
             MuiChip: {
 
                 styleOverrides: {
