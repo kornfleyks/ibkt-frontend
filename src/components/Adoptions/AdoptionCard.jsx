@@ -11,6 +11,7 @@ import PersonIcon from "@mui/icons-material/PersonOutlined";
 import Avatar from "@mui/material/Avatar";
 import { useNavigate } from "react-router-dom";
 import { getAdoptionStageColor } from "../../utils/adoptionStageColor";
+import LinkedCatChips from "../Common/LinkedCatChips";
 
 function AdoptionCard({ adoption }) {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ function AdoptionCard({ adoption }) {
     <Card
       onClick={() => navigate(`/adoptions/${adoption.id}`)}
       sx={{
+        height: "100%",
         cursor: "pointer",
         transition: ".2s",
         "&:hover": {
@@ -33,8 +35,8 @@ function AdoptionCard({ adoption }) {
             <PersonIcon />
           </Avatar>
 
-          <Box flex={1}>
-            <Typography variant="h6" fontWeight={600}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
               {adoption.name}
             </Typography>
 
@@ -44,7 +46,7 @@ function AdoptionCard({ adoption }) {
               {adoption.country}
             </Typography>
 
-            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
+            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: "wrap", mt: 1 }}>
               {adoption.adoptionStage && (
                 <Chip
                   label={adoption.adoptionStage}
@@ -52,15 +54,24 @@ function AdoptionCard({ adoption }) {
                   color={getAdoptionStageColor(adoption.adoptionStage)}
                 />
               )}
-
-              {adoption.linkedCatName && (
-                <Chip label={adoption.linkedCatName} size="small" variant="outlined" />
-              )}
             </Stack>
 
             <Typography variant="body2" sx={{ mt: 1 }}>
               Case Owner: {adoption.caseOwner || "—"}
             </Typography>
+
+            {/* Not clickable: the whole card is already a link. Always
+                rendered, so cards with and without a cat share the layout. */}
+            <Box sx={{ mt: 1 }}>
+              <LinkedCatChips
+                cats={adoption.linkedCats}
+                emptyText={
+                  <Typography variant="body2" color="text.secondary">
+                    No cat linked
+                  </Typography>
+                }
+              />
+            </Box>
           </Box>
         </Stack>
       </CardContent>

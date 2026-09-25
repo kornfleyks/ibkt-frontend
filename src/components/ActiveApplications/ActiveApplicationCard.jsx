@@ -11,6 +11,7 @@ import PersonIcon from "@mui/icons-material/PersonOutlined";
 import Avatar from "@mui/material/Avatar";
 import { useNavigate } from "react-router-dom";
 import { getAdoptionStageColor } from "../../utils/adoptionStageColor";
+import LinkedCatChips from "../Common/LinkedCatChips";
 
 function ActiveApplicationCard({ application }) {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ function ActiveApplicationCard({ application }) {
     <Card
       onClick={() => navigate(`/active-applications/${application.id}`)}
       sx={{
+        height: "100%",
         cursor: "pointer",
         transition: ".2s",
         "&:hover": {
@@ -33,8 +35,8 @@ function ActiveApplicationCard({ application }) {
             <PersonIcon />
           </Avatar>
 
-          <Box flex={1}>
-            <Typography variant="h6" fontWeight={600}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
               {application.name}
             </Typography>
 
@@ -47,8 +49,8 @@ function ActiveApplicationCard({ application }) {
             <Stack
               direction="row"
               spacing={1}
-              flexWrap="wrap"
-              sx={{ mt: 1 }}
+              useFlexGap
+              sx={{ flexWrap: "wrap", mt: 1 }}
             >
               {application.adoptionStage && (
                 <Chip
@@ -70,6 +72,19 @@ function ActiveApplicationCard({ application }) {
             <Typography variant="body2" sx={{ mt: 1 }}>
               Case Owner: {application.caseOwner || "—"}
             </Typography>
+
+            {/* Not clickable: the whole card is already a link. Always
+                rendered, so cards with and without a cat share the layout. */}
+            <Box sx={{ mt: 1 }}>
+              <LinkedCatChips
+                cats={application.linkedCats}
+                emptyText={
+                  <Typography variant="body2" color="text.secondary">
+                    No cat linked
+                  </Typography>
+                }
+              />
+            </Box>
           </Box>
         </Stack>
       </CardContent>
