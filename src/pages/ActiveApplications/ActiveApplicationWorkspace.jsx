@@ -7,15 +7,13 @@ import { useLoading } from "../../context/LoadingContext";
 import { Box, Tabs, Tab } from "@mui/material";
 import { activeApplicationWorkspaceTabs } from "../../config/activeApplicationWorkspaceTabs";
 import DecisionActions from "../../components/ActiveApplications/DecisionActions";
-import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../constants/statuses/activeApplicationsStatuses";
+import { APPLICATION_STAGE_ACTIONS } from "../../config/applicationStageActions";
 import useTabParam from "../../hooks/useTabParam";
 import useAuth from "../../hooks/useAuth";
 import { canSeeApplication } from "../../utils/ownership";
 import NotAssignedNotice from "../../components/Common/NotAssignedNotice";
 import ActivityTab from "../../components/ActivityLog/ActivityTab";
 import { ACTIVE_APPLICATIONS } from "../../constants/boards/activeApplications";
-
-const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
 function ActiveApplicationWorkspace() {
   const { id } = useParams();
@@ -49,16 +47,20 @@ function ActiveApplicationWorkspace() {
     return <NotAssignedNotice backTo="/active-applications" backLabel="Back to applications" />;
   }
 
+  const stageActions = APPLICATION_STAGE_ACTIONS[application.adoptionStage];
+
   return (
     <>
       <PageHeader
         title={application.name}
         subtitle={application.adoptionStage}
         actions={
-          application.adoptionStage === ADOPTION_STAGE.ACTIVE_APPLICATION && (
+          stageActions && (
             <DecisionActions
               applicationId={application.id}
               applicationName={application.name}
+              actions={stageActions.actions}
+              disabledReason={stageActions.blockedReason(application)}
               onDecision={(newStage) =>
                 setApplication((current) => ({ ...current, adoptionStage: newStage }))
               }

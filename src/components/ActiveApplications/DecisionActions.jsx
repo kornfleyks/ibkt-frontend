@@ -7,71 +7,72 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  Tooltip,
 } from "@mui/material";
 
-import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
-import CancelIcon from "@mui/icons-material/CancelOutlined";
 import { updateAdoptionField } from "../../services/ActiveApplicationsService";
-import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../constants/statuses/activeApplicationsStatuses";
 
-const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
-
-function DecisionActions({ applicationId, applicationName, onDecision }) {
-  const [confirmStage, setConfirmStage] = useState(null);
+// Stage-transition buttons for an application. Each entry in `actions` is
+// { stage, label, color, icon, confirmTitle }: clicking asks for
+// confirmation, then writes `stage` to the application's Adoption Stage.
+// `disabledReason`: when set, every button is disabled and the reason shows
+// as a tooltip on hover (e.g. no cat linked yet).
+function DecisionActions({ applicationId, applicationName, actions, onDecision, disabledReason = null }) {
+  const [confirmAction, setConfirmAction] = useState(null);
   const [saving, setSaving] = useState(false);
 
   async function confirmDecision() {
     setSaving(true);
 
     try {
-      await updateAdoptionField(applicationId, "adoptionStage", confirmStage);
-      onDecision?.(confirmStage);
+      await updateAdoptionField(applicationId, "adoptionStage", confirmAction.stage);
+      onDecision?.(confirmAction.stage);
     } finally {
       setSaving(false);
-      setConfirmStage(null);
+      setConfirmAction(null);
     }
   }
 
   return (
     <>
       <Stack direction="row" spacing={1}>
-        <Button
-          variant="outlined"
-          color="success"
-          startIcon={<CheckCircleIcon />}
-          onClick={() => setConfirmStage(ADOPTION_STAGE.APPROVED_APPLICATION)}
-        >
-          Approve
-        </Button>
+        {/* Disabled buttons don't fire mouse events, so each sits in a span
+            for the tooltip to attach to. No tooltip when enabled. */}
+        {actions.map((action) => {
+          const Icon = action.icon;
 
-        <Button
-          variant="outlined"
-          color="error"
-          startIcon={<CancelIcon />}
-          onClick={() => setConfirmStage(ADOPTION_STAGE.REJECTED_APPLICATION)}
-        >
-          Reject
-        </Button>
+          return (
+            <Tooltip key={action.stage} title={disabledReason ?? ""} disableHoverListener={!disabledReason}>
+              <span>
+                <Button
+                  variant="outlined"
+                  color={action.color}
+                  startIcon={Icon ? <Icon /> : null}
+                  disabled={Boolean(disabledReason)}
+                  onClick={() => setConfirmAction(action)}
+                >
+                  {action.label}
+                </Button>
+              </span>
+            </Tooltip>
+          );
+        })}
       </Stack>
 
       <Dialog
-        open={Boolean(confirmStage)}
-        onClose={() => (!saving ? setConfirmStage(null) : null)}
+        open={Boolean(confirmAction)}
+        onClose={() => (!saving ? setConfirmAction(null) : null)}
       >
-        <DialogTitle>
-          {confirmStage === ADOPTION_STAGE.APPROVED_APPLICATION
-            ? "Approve this application?"
-            : "Reject this application?"}
-        </DialogTitle>
+        <DialogTitle>{confirmAction?.confirmTitle}</DialogTitle>
 
         <DialogContent>
           <DialogContentText>
-            {applicationName} will be marked as "{confirmStage}".
+            {applicationName} will be marked as "{confirmAction?.stage}".
           </DialogContentText>
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={() => setConfirmStage(null)} disabled={saving}>
+          <Button onClick={() => setConfirmAction(null)} disabled={saving}>
             Cancel
           </Button>
 
