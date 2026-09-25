@@ -1,3 +1,4 @@
+import { isValidElement } from 'react';
 import { Box, Typography } from '@mui/material';
 
 function InfoRow({
@@ -28,9 +29,14 @@ function InfoRow({
                 {label}
             </Typography>
 
-            <Typography>
-                {value ?? '—'}
-            </Typography>
+            {/* Elements (e.g. chips) can't sit inside Typography's <p>. */}
+            {isValidElement(value) ? (
+                <Box>{value}</Box>
+            ) : (
+                <Typography>
+                    {value ?? '—'}
+                </Typography>
+            )}
 
         </Box>
 

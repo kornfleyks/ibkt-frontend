@@ -3,6 +3,7 @@ import { Grid } from "@mui/material";
 import InfoRow from "../../Common/InfoRow";
 import EditableInfoRow from "../../Common/EditableInfoRow";
 import SectionCard from "../../Common/SectionCard";
+import LinkedCatChips from "../../Common/LinkedCatChips";
 import UserPicker from "../../Common/UserPicker";
 import useCanAssignCaseOwner from "../../../hooks/useCanAssignCaseOwner";
 import { assignCaseOwner, getAssignableUsers } from "../../../services/ActiveApplicationsService";
@@ -86,6 +87,11 @@ function OverviewTab({ application, onApplicationChange }) {
           />
 
           <InfoRow label="Case Health" value={application.caseHealth} />
+
+          <InfoRow
+            label={application.linkedCats.length > 1 ? "Linked Cats" : "Linked Cat"}
+            value={<LinkedCatChips cats={application.linkedCats} clickable emptyText="Not matched yet" />}
+          />
         </SectionCard>
       </Grid>
 
