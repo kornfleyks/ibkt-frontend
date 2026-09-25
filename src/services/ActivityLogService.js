@@ -12,6 +12,7 @@ const LIST_QUERY = `
           column_values {
             id
             text
+            value
           }
         }
       }

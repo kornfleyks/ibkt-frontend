@@ -53,7 +53,10 @@ export function withDefinedSettings(settings) {
       id: null,
       key,
       name: definition.name,
-      value: formatListSetting(definition.defaultList),
+      value:
+        definition.type === "number"
+          ? String(definition.defaultValue)
+          : formatListSetting(definition.defaultList),
       description: definition.description,
       isDefault: true,
     }));
@@ -140,4 +143,11 @@ export function getCaseOwnerAssignerRoles() {
 
 export function getMyCasesOpenStages() {
   return getListSetting(SETTING_KEYS.MY_CASES_OPEN_STAGES);
+}
+
+export function getUpcomingTasksDays() {
+  return getNumericSetting(
+    SETTING_KEYS.UPCOMING_TASKS_DAYS,
+    SETTING_DEFINITIONS[SETTING_KEYS.UPCOMING_TASKS_DAYS].defaultValue,
+  );
 }

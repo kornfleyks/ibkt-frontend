@@ -10,9 +10,6 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentIndOutlined';
 import DashboardPanel from '../components/DashboardPanel';
 import PageHeader from '../components/PageHeader';
 
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
 
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
@@ -23,7 +20,13 @@ import AddTaskDialog from '../components/Cats/Workspace/Tasks/AddTaskDialog';
 
 import { getCats } from '../services/CatsService';
 import { getActiveApplications } from '../services/ActiveApplicationsService';
-import { getMatchingStages, getMyCasesOpenStages } from '../services/AppSettingsService';
+import { getMatchingStages, getMyCasesOpenStages, getUpcomingTasksDays } from '../services/AppSettingsService';
+import { selectUpcomingTasks, todayDateString } from '../utils/taskStatus';
+import UpcomingTasksPanel from '../components/Dashboard/UpcomingTasksPanel';
+import RecentActivityPanel from '../components/Dashboard/RecentActivityPanel';
+import { getAllActivity } from '../services/ActivityLogService';
+import { selectRecentActivity } from '../utils/recentActivity';
+import { canAccessPath } from '../utils/navigationAccess';
 import useAuth from '../hooks/useAuth';
 import { getTasks } from '../services/TasksService';
 import { getTravel } from '../services/TravelService';
@@ -31,22 +34,23 @@ import { getPostAdoptionCases } from '../services/PostAdoptionService';
 
 import { CATS_STATUS_OPTIONS } from '../constants/statuses/catsStatuses';
 import { TASKS_STATUS_OPTIONS } from '../constants/statuses/tasksStatuses';
+import { ROLES } from '../constants/roles';
 import { TRAVEL_STATUS_OPTIONS } from '../constants/statuses/travelStatuses';
 import { POST_ADOPTION_STATUS_OPTIONS } from '../constants/statuses/postAdoptionStatuses';
 
-function todayDateString() {
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-
-    return `${now.getFullYear()}-${month}-${day}`;
-}
+const RECENT_ACTIVITY_LIMIT = 5;
 
 function Dashboard() {
 
     const [addCatOpen, setAddCatOpen] = useState(false);
     const [addTaskOpen, setAddTaskOpen] = useState(false);
     const { user } = useAuth();
+    // null while loading; see UpcomingTasksPanel.
+    const [upcomingTasks, setUpcomingTasks] = useState(null);
+    const [upcomingDays, setUpcomingDays] = useState(null);
+    const [upcomingError, setUpcomingError] = useState(false);
+    const [recentActivity, setRecentActivity] = useState(null);
+    const [recentActivityError, setRecentActivityError] = useState(false);
 
     const [stats, setStats] = useState({
         awaitingPassport: null,
@@ -57,6 +61,32 @@ function Dashboard() {
         myOpenCases: null,
         myOpenCasesBreakdown: '',
     });
+
+    // One tasks fetch feeds both the Tasks Due Today tile and the Upcoming
+    // Tasks panel. Also re-run after a task is created from this page, so
+    // both reflect it (the server drops its cache on every write).
+    function loadTasks() {
+        Promise.all([getTasks(), getUpcomingTasksDays()])
+            .then(([tasks, days]) => {
+                const today = todayDateString();
+
+                const count = tasks.filter(
+                    (task) =>
+                        task.dueDate === today &&
+                        task.status !== TASKS_STATUS_OPTIONS.STATUS.COMPLETED &&
+                        task.status !== TASKS_STATUS_OPTIONS.STATUS.CANCELLED,
+                ).length;
+
+                setStats((current) => ({ ...current, tasksDueToday: count }));
+                setUpcomingDays(days);
+                setUpcomingTasks(selectUpcomingTasks(tasks, user, days));
+                setUpcomingError(false);
+            })
+            .catch((err) => {
+                console.error('Failed to load tasks for dashboard:', err);
+                setUpcomingError(true);
+            });
+    }
 
     useEffect(() => {
 
@@ -108,20 +138,14 @@ function Dashboard() {
             })
             .catch((err) => console.error('Failed to load active applications for dashboard:', err));
 
-        getTasks()
-            .then((tasks) => {
-                const today = todayDateString();
+        loadTasks();
 
-                const count = tasks.filter(
-                    (task) =>
-                        task.dueDate === today &&
-                        task.status !== TASKS_STATUS_OPTIONS.STATUS.COMPLETED &&
-                        task.status !== TASKS_STATUS_OPTIONS.STATUS.CANCELLED,
-                ).length;
-
-                setStats((current) => ({ ...current, tasksDueToday: count }));
-            })
-            .catch((err) => console.error('Failed to load tasks for dashboard:', err));
+        getAllActivity()
+            .then((entries) => setRecentActivity(selectRecentActivity(entries, user, RECENT_ACTIVITY_LIMIT)))
+            .catch((err) => {
+                console.error('Failed to load recent activity for dashboard:', err);
+                setRecentActivityError(true);
+            });
 
         getTravel()
             .then((travel) => {
@@ -253,36 +277,11 @@ function Dashboard() {
                 size={{ xs:12, md:4 }}
             >
 
-                <DashboardPanel
-                    title="Recent Activity"
-                >
-
-                    <List>
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Luna passport uploaded"
-                            />
-                        </ListItem>
-
-
-                        <ListItem>
-                            <ListItemText
-                                primary="John approved"
-                            />
-                        </ListItem>
-
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Travel created"
-                            />
-                        </ListItem>
-
-
-                    </List>
-
-                </DashboardPanel>
+                <RecentActivityPanel
+                    entries={recentActivity}
+                    error={recentActivityError}
+                    canViewAll={canAccessPath('/activity', user)}
+                />
 
 
             </Grid>
@@ -293,36 +292,12 @@ function Dashboard() {
                 size={{ xs:12, md:4 }}
             >
 
-                <DashboardPanel
-                    title="Upcoming Tasks"
-                >
-
-                    <List>
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Review references"
-                            />
-                        </ListItem>
-
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Contact rescuer"
-                            />
-                        </ListItem>
-
-
-                        <ListItem>
-                            <ListItemText
-                                primary="Create travel"
-                            />
-                        </ListItem>
-
-
-                    </List>
-
-                </DashboardPanel>
+                <UpcomingTasksPanel
+                    tasks={upcomingTasks}
+                    days={upcomingDays}
+                    error={upcomingError}
+                    showOwner={user?.role === ROLES.ADMIN}
+                />
 
             </Grid>
 
@@ -391,6 +366,7 @@ function Dashboard() {
         <AddTaskDialog
             open={addTaskOpen}
             onClose={() => setAddTaskOpen(false)}
+            onCreated={loadTasks}
         />
 
     </>

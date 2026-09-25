@@ -10,9 +10,12 @@ const ROLES = USERS_STATUS_OPTIONS.ROLE;
 // their default until the row is created on first save) and the server
 // (which enforces some of them), so both agree on options and defaults.
 //
-// `options` is the fixed set of allowed labels - App Settings edits these
-// as checkboxes - and `defaultList` applies when the row is missing or
-// holds no valid entry.
+// Two kinds:
+// - list (default): `options` is the fixed set of allowed labels - App
+//   Settings edits these as checkboxes - and `defaultList` applies when the
+//   row is missing or holds no valid entry.
+// - `type: "number"`: a positive number edited as plain text, with
+//   `defaultValue` applying when the row is missing or invalid.
 export const SETTING_DEFINITIONS = {
   [SETTING_KEYS.MATCHING_STAGES]: {
     name: "Matching Stages",
@@ -37,5 +40,11 @@ export const SETTING_DEFINITIONS = {
     description: "Application stages counted as open on the Dashboard's My Open Cases tile.",
     options: Object.values(STAGES),
     defaultList: [STAGES.NEW_APPLICATION, STAGES.ACTIVE_APPLICATION],
+  },
+  [SETTING_KEYS.UPCOMING_TASKS_DAYS]: {
+    type: "number",
+    name: "Upcoming Tasks Days",
+    description: "How many days ahead the Dashboard's Upcoming Tasks panel looks. Overdue tasks are always included.",
+    defaultValue: 7,
   },
 };

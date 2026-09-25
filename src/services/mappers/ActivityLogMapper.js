@@ -1,3 +1,4 @@
+import { parseUtcDateTime } from "../../utils/mondayDateTime";
 import { ACTIVITY_LOG } from "../../constants/boards/activityLog";
 
 export function mapActivityLogEntry(item) {
@@ -10,6 +11,7 @@ export function mapActivityLogEntry(item) {
   return {
     id: item.id,
     timestamp: date,
+    occurredAt: parseUtcDateTime(columns[ACTIVITY_LOG.COLUMNS.TIMESTAMP]?.value),
     actorName: columns[ACTIVITY_LOG.COLUMNS.ACTOR_NAME]?.text || "",
     actorId: columns[ACTIVITY_LOG.COLUMNS.ACTOR_ID]?.text || "",
     board: columns[ACTIVITY_LOG.COLUMNS.BOARD]?.text || "",

@@ -28,4 +28,6 @@ export const SETTING_KEYS = {
   CASE_OWNER_ASSIGNER_ROLES: "CASE_OWNER_ASSIGNER_ROLES",
   // Comma-separated Adoption Stage labels counted as "open" for My cases.
   MY_CASES_OPEN_STAGES: "MY_CASES_OPEN_STAGES",
+  // Days ahead the Dashboard's Upcoming Tasks panel looks (overdue always shown).
+  UPCOMING_TASKS_DAYS: "UPCOMING_TASKS_DAYS",
 };
