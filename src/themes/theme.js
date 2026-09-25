@@ -70,6 +70,23 @@ export function buildTheme(darkMode) {
 
         components: {
 
+            // Scrollbars are hidden app-wide by design choice; areas still
+            // scroll with wheel, touchpad, touch and keyboard.
+            // scrollbar-width covers Firefox and current Chromium/Safari,
+            // ::-webkit-scrollbar older WebKit/Blink.
+            MuiCssBaseline: {
+
+                styleOverrides: {
+                    '*': {
+                        scrollbarWidth: 'none'
+                    },
+                    '*::-webkit-scrollbar': {
+                        display: 'none'
+                    }
+                }
+
+            },
+
             MuiDrawer: {
 
                 styleOverrides: {
