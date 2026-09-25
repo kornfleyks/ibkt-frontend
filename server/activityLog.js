@@ -6,9 +6,11 @@ import { TRAVEL } from "../src/constants/boards/travel.js";
 import { POST_ADOPTION } from "../src/constants/boards/postAdoption.js";
 import { TASKS } from "../src/constants/boards/tasks.js";
 import { ACTIVITY_LOG } from "../src/constants/boards/activityLog.js";
+import { mondayHeaders } from "./mondayApiVersion.js";
+import { mondayFetch } from "./mondayRateLimit.js";
+import { clearCache } from "./mondayCache.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
-const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
 
 // Every board that can appear as the *target* of a logged action, mapped to
 // a friendly name and its column registry - used to decode a raw board_id
@@ -111,12 +113,9 @@ function enqueueWrite(task) {
 // the public /api/monday proxy - logging must never route back through the
 // very handler it's attached to.
 async function mondayDirectRequest(query, variables = {}) {
-  const response = await fetch(MONDAY_API_URL, {
+  const response = await mondayFetch(MONDAY_API_URL, {
     method: "POST",
-    headers: {
-      Authorization: MONDAY_API_TOKEN,
-      "Content-Type": "application/json",
-    },
+    headers: mondayHeaders(),
     body: JSON.stringify({ query, variables }),
   });
 
@@ -257,6 +256,9 @@ export async function logActivity({
         createLabelsIfMissing: true,
       }),
     );
+
+    // So Activity Log reads show the new entry instead of a cached list.
+    clearCache([ACTIVITY_LOG.BOARD_ID]);
   } catch (err) {
     console.error("Activity log: failed to write log entry.", err);
   }

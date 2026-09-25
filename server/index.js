@@ -25,7 +25,9 @@ import {
   getItemName,
   CATS_BOARD_ID,
 } from "./activityLog.js";
-import { getLoginMaxAttempts, getLoginLockoutMinutes } from "./appSettings.js";
+import { getLoginMaxAttempts, getLoginLockoutMinutes, loadAppSettings, invalidateSettingsCache } from "./appSettings.js";
+import { APP_SETTINGS } from "../src/constants/boards/appSettings.js";
+import { registerMondayApiVersionRoutes, startMondayApiVersionChecks } from "./mondayApiVersionCheck.js";
 import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
 import { initAccountState, applyAccountChange, TRACKED_COLUMNS, NAME_COLUMNS } from "./accountState.js";
 import { registerUserAdminRoutes } from "./userAdmin.js";
@@ -33,6 +35,8 @@ import { registerWebhookRoutes } from "./webhooks.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
 import { registerCommunicationRoutes } from "./communications.js";
+import { mondayHeaders } from "./mondayApiVersion.js";
+import { mondayFetch } from "./mondayRateLimit.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -213,6 +217,19 @@ function logMutationActivity({ query, variables, result, req, priorSnapshot }) {
       });
     });
   }
+}
+
+// Monday refused because of its rate limit: pass on a readable message and
+// when to retry, instead of a generic failure. True when handled.
+function sendRateLimited(res, err) {
+  if (!err?.rateLimited) {
+    return false;
+  }
+
+  res.set("Retry-After", String(err.retryAfterSeconds));
+  res.status(429).json({ error: err.message, retryAfterSeconds: err.retryAfterSeconds });
+
+  return true;
 }
 
 const app = express();
@@ -406,6 +423,7 @@ registerWebhookRoutes(app);
 registerSessionEventRoutes(app, { requireAuth });
 registerNotificationRoutes(app, { requireAuth });
 registerCommunicationRoutes(app, { requireAuth });
+registerMondayApiVersionRoutes(app, { requireAuth, requireAdmin });
 
 // The frontend never talks to Monday directly: it has no way to hold an API
 // token without shipping it in the public JS bundle. Every Monday GraphQL
@@ -476,12 +494,9 @@ app.post("/api/monday", requireAuth, async (req, res) => {
       : null;
 
   try {
-    const response = await fetch(MONDAY_API_URL, {
+    const response = await mondayFetch(MONDAY_API_URL, {
       method: "POST",
-      headers: {
-        Authorization: MONDAY_API_TOKEN,
-        "Content-Type": "application/json",
-      },
+      headers: mondayHeaders(),
       body: JSON.stringify({ query, variables }),
     });
 
@@ -493,11 +508,16 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     }
 
     if (mutation) {
-      // A mutation can change data behind any cached read (e.g. matching a
-      // cat updates both the cats and active-applications boards), so the
-      // simplest correct move is to drop everything rather than track which
-      // reads it could have affected.
-      clearCache();
+      // Drops cached reads of the changed board and every board linked to it
+      // (e.g. matching a cat updates both cats and applications). A mutation
+      // that names no board (e.g. create_update) drops everything.
+      clearCache(variables?.boardId ? [variables.boardId] : undefined);
+
+      // App Settings changed through the app (e.g. a new Monday API version)
+      // apply on the next request instead of after the settings refresh.
+      if (String(variables?.boardId) === APP_SETTINGS.BOARD_ID) {
+        invalidateSettingsCache();
+      }
 
       // A role change made through the Users page applies to that user's
       // very next request (requireAuth reads the live account state).
@@ -546,6 +566,10 @@ app.post("/api/monday", requireAuth, async (req, res) => {
 
     res.json({ data: result.data });
   } catch (err) {
+    if (sendRateLimited(res, err)) {
+      return;
+    }
+
     console.error(err);
     res.status(500).json({ error: "Request to Monday failed." });
   }
@@ -593,9 +617,9 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
   );
 
   try {
-    const response = await fetch(`${MONDAY_API_URL}/file`, {
+    const response = await mondayFetch(`${MONDAY_API_URL}/file`, {
       method: "POST",
-      headers: { Authorization: MONDAY_API_TOKEN },
+      headers: mondayHeaders({ json: false }),
       body: formData,
     });
 
@@ -606,9 +630,9 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
       return res.status(502).json({ error: result.errors[0].message });
     }
 
-    // Same reasoning as the mutation branch above: a cached read of this
-    // item's file column is now stale.
-    clearCache();
+    // A cached read of this item's file column is now stale (uploads are
+    // Cats-only today - see below).
+    clearCache([CATS_BOARD_ID]);
 
     // Only CatsService.js calls this endpoint today - same hardcoded-board
     // reasoning as the create_update (Communications) case above.
@@ -634,6 +658,10 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
 
     res.json(result.data.add_file_to_column);
   } catch (err) {
+    if (sendRateLimited(res, err)) {
+      return;
+    }
+
     console.error(err);
     res.status(500).json({ error: "Upload to Monday failed." });
   }
@@ -641,5 +669,8 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
 
 app.listen(PORT, () => {
   console.log(`Upload proxy listening on http://localhost:${PORT}`);
-  initAccountState();
+  // Settings first: they carry the MONDAY_API_VERSION pin used by every
+  // later Monday request.
+  loadAppSettings().finally(initAccountState);
+  startMondayApiVersionChecks();
 });

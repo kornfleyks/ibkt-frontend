@@ -1,12 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import Grid from '@mui/material/Grid';
-import PetsIcon from '@mui/icons-material/PetsOutlined';
-import AssignmentIcon from '@mui/icons-material/AssignmentOutlined';
-import CheckCircleIcon from '@mui/icons-material/CheckCircleOutlined';
-import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoffOutlined';
-import ReportProblemIcon from '@mui/icons-material/ReportProblemOutlined';
-import AssignmentIndIcon from '@mui/icons-material/AssignmentIndOutlined';
+import { PetsIcon, AssignmentIcon, CheckCircleIcon, FlightTakeoffIcon, ReportProblemIcon, AssignmentIndIcon } from '../components/icons';
 import DashboardPanel from '../components/DashboardPanel';
 import PageHeader from '../components/PageHeader';
 
@@ -24,6 +19,7 @@ import { getMatchingStages, getMyCasesOpenStages, getUpcomingTasksDays } from '.
 import { selectUpcomingTasks, todayDateString } from '../utils/taskStatus';
 import UpcomingTasksPanel from '../components/Dashboard/UpcomingTasksPanel';
 import RecentActivityPanel from '../components/Dashboard/RecentActivityPanel';
+import MondayApiVersionBanner from '../components/Dashboard/MondayApiVersionBanner';
 import { getAllActivity } from '../services/ActivityLogService';
 import { selectRecentActivity } from '../utils/recentActivity';
 import { canAccessPath } from '../utils/navigationAccess';
@@ -179,6 +175,8 @@ function Dashboard() {
             title="Dashboard"
             subtitle="Overview of the IBKT system"
         />
+
+        <MondayApiVersionBanner />
 
 
         <Grid

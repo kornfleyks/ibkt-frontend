@@ -20,10 +20,7 @@ import {
     FormGroup,
     FormControlLabel,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import CheckIcon from '@mui/icons-material/CheckOutlined';
-import CloseIcon from '@mui/icons-material/CloseOutlined';
-import AddIcon from '@mui/icons-material/AddOutlined';
+import { EditIcon, CheckIcon, CloseIcon, AddIcon } from '../../components/icons';
 import PageHeader from '../../components/PageHeader';
 import {
     getSettings,
@@ -33,7 +30,66 @@ import {
     parseListSetting,
     formatListSetting,
     SETTING_DEFINITIONS,
+    SETTING_KEYS,
 } from '../../services/AppSettingsService';
+import {
+    getMondayApiVersionStatus,
+    describeMondayApiVersionStatus,
+} from '../../services/MondayApiVersionService';
+
+// Live status of the pinned Monday API version against Monday's own list.
+// Re-mounted (via `key`) after the setting is saved.
+function MondayApiVersionStatus() {
+    const [status, setStatus] = useState(null);
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+
+        getMondayApiVersionStatus()
+            .then((data) => !cancelled && setStatus(data))
+            .catch((err) => {
+                console.error('Failed to load Monday API version status:', err);
+
+                if (!cancelled) {
+                    setFailed(true);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    if (failed) {
+        return (
+            <Typography variant="caption" color="error">
+                Couldn't load the version status.
+            </Typography>
+        );
+    }
+
+    if (!status) {
+        return null;
+    }
+
+    const { severity, text } = describeMondayApiVersionStatus(status);
+    const checked = status.checkedAt ? ` Last checked ${new Date(status.checkedAt).toLocaleString()}.` : '';
+
+    return severity ? (
+        <Alert severity={severity} sx={{ py: 0 }}>
+            {text}
+            {checked}
+        </Alert>
+    ) : (
+        <Typography variant="caption" color="text.secondary">
+            {text}
+            {status.current && status.status !== 'up_to_date' ? ` Monday's current version is ${status.current}.` : ''}
+            {checked}
+            {status.checkError ? ` The last check failed (${status.checkError}).` : ''}
+        </Typography>
+    );
+}
 
 // A generic "Label: value" editable row, unlike the shared EditableInfoRow,
 // keeps the exact same inline shape ("Name: [field]") in both display and
@@ -60,7 +116,8 @@ function SettingRow({ setting, onSave }) {
             setEditing(false);
         } catch (err) {
             console.error(`Failed to update ${setting.name}:`, err);
-            setError('Failed to save.');
+            // Validation errors carry a message worth showing as-is.
+            setError(err?.validation ? err.message : 'Failed to save.');
         } finally {
             setSaving(false);
         }
@@ -68,7 +125,7 @@ function SettingRow({ setting, onSave }) {
 
     if (editing) {
         return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5, flexWrap: 'wrap' }}>
                 <Box component="span" sx={{ fontWeight: 600 }}>
                     {setting.name}:
                 </Box>
@@ -395,6 +452,8 @@ function AppSettings() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [addOpen, setAddOpen] = useState(false);
+    // Bumped after the Monday API version is saved, to re-read its status.
+    const [versionStatusKey, setVersionStatusKey] = useState(0);
 
     useEffect(() => {
         let cancelled = false;
@@ -437,13 +496,24 @@ function AppSettings() {
 
     // A placeholder setting (no board row yet) is created on save, so the
     // list is re-fetched to pick up its real item id.
-    async function handleSave(setting, value) {
+    async function handleSave(setting, rawValue) {
+        const value = typeof rawValue === 'string' ? rawValue.trim() : rawValue;
+        const validationError = SETTING_DEFINITIONS[setting.key]?.validate?.(value);
+
+        if (validationError) {
+            throw Object.assign(new Error(validationError), { validation: true });
+        }
+
         await saveSetting(setting, value);
 
         if (setting.id) {
             handleSettingUpdate(setting.id, { value });
         } else {
             await refreshSettings();
+        }
+
+        if (setting.key === SETTING_KEYS.MONDAY_API_VERSION) {
+            setVersionStatusKey((key) => key + 1);
         }
     }
 
@@ -506,6 +576,10 @@ function AppSettings() {
                                                 setting={setting}
                                                 onSave={(value) => handleSave(setting, value)}
                                             />
+                                        )}
+
+                                        {setting.key === SETTING_KEYS.MONDAY_API_VERSION && (
+                                            <MondayApiVersionStatus key={versionStatusKey} />
                                         )}
 
                                         {setting.isDefault && (

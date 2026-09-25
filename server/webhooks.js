@@ -45,7 +45,7 @@ export function registerWebhookRoutes(app) {
 
       applyAccountChange(event.pulseId, { [field]: text });
       // Cached Users-board reads (e.g. the Users page) are now stale too.
-      clearCache();
+      clearCache([USERS.BOARD_ID]);
     }
 
     // Always 200 so Monday doesn't retry events we deliberately ignore.

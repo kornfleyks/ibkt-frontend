@@ -8,9 +8,10 @@ import { applyAccountChange, getAccountState } from "./accountState.js";
 import { writeCaseOwner } from "./caseOwner.js";
 import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemName, resolveBoardName } from "./activityLog.js";
+import { mondayHeaders } from "./mondayApiVersion.js";
+import { mondayFetch } from "./mondayRateLimit.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
-const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
 
 const ITEM_ID_PATTERN = /^\d+$/;
 const { ACCOUNT_STATUS } = USERS_STATUS_OPTIONS;
@@ -25,13 +26,13 @@ const OPEN_TASK_STATUSES = [TASK_STATUS.NEW, TASK_STATUS.IN_PROGRESS, TASK_STATU
 // the Admin making the change so nothing is left without an owner.
 const HANDOVER_STATUSES = [ACCOUNT_STATUS.SUSPENDED, ACCOUNT_STATUS.ARCHIVED];
 
+// Boards a status change (and its hand-over) writes to.
+const HANDOVER_BOARDS = [USERS.BOARD_ID, ACTIVE_APPLICATIONS.BOARD_ID, TASKS.BOARD_ID];
+
 async function mondayDirectRequest(query, variables = {}) {
-  const response = await fetch(MONDAY_API_URL, {
+  const response = await mondayFetch(MONDAY_API_URL, {
     method: "POST",
-    headers: {
-      Authorization: MONDAY_API_TOKEN,
-      "Content-Type": "application/json",
-    },
+    headers: mondayHeaders(),
     body: JSON.stringify({ query, variables }),
   });
 
@@ -204,7 +205,7 @@ export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
         moved = handOver.moved;
 
         if (handOver.failed.length > 0) {
-          clearCache();
+          clearCache(HANDOVER_BOARDS);
           return res.status(502).json({
             error: `Couldn't reassign ${handOver.failed.join(", ")}. The status was not changed - try again.`,
             reassigned: moved,
@@ -217,7 +218,7 @@ export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
       // user is mentionable straight away rather than after their first login.
       await getAccountState(id);
       applyAccountChange(id, { accountStatus: status });
-      clearCache();
+      clearCache(HANDOVER_BOARDS);
 
       const handOverText = moved.cases || moved.tasks
         ? `; reassigned ${moved.cases} case(s) and ${moved.tasks} task(s) to ${actor.name}`

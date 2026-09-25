@@ -8,6 +8,8 @@
 // Run once per environment; running again creates duplicate webhooks.
 import "dotenv/config";
 import { USERS } from "../../src/constants/boards/users.js";
+import { mondayHeaders } from "../mondayApiVersion.js";
+import { mondayFetch } from "../mondayRateLimit.js";
 
 const baseUrl = process.argv[2]?.replace(/\/+$/, "");
 const secret = process.env.MONDAY_WEBHOOK_SECRET;
@@ -30,9 +32,9 @@ if (url.length > 255) {
 }
 
 async function createWebhook(columnId) {
-  const response = await fetch(process.env.MONDAY_API_URL, {
+  const response = await mondayFetch(process.env.MONDAY_API_URL, {
     method: "POST",
-    headers: { Authorization: process.env.MONDAY_API_TOKEN, "Content-Type": "application/json" },
+    headers: mondayHeaders(),
     body: JSON.stringify({
       query: `mutation ($boardId: ID!, $url: String!, $config: JSON) {
         create_webhook(board_id: $boardId, url: $url, event: change_specific_column_value, config: $config) { id }

@@ -5,9 +5,10 @@ import { getListSetting } from "./appSettings.js";
 import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemSnapshot, resolveBoardName } from "./activityLog.js";
 import { notifyAssignmentChange } from "./notifications.js";
+import { mondayHeaders } from "./mondayApiVersion.js";
+import { mondayFetch } from "./mondayRateLimit.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
-const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
 
 const ITEM_ID_PATTERN = /^\d+$/;
 const ACTIVE_ACCOUNT_STATUS = "Active";
@@ -17,12 +18,9 @@ const ACTIVE_ACCOUNT_STATUS = "Active";
 export const CASE_OWNER_COLUMN_ID = ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER;
 
 async function mondayDirectRequest(query, variables = {}) {
-  const response = await fetch(MONDAY_API_URL, {
+  const response = await mondayFetch(MONDAY_API_URL, {
     method: "POST",
-    headers: {
-      Authorization: MONDAY_API_TOKEN,
-      "Content-Type": "application/json",
-    },
+    headers: mondayHeaders(),
     body: JSON.stringify({ query, variables }),
   });
 
@@ -123,9 +121,8 @@ export function registerCaseOwnerRoutes(app, { requireAuth }) {
 
       await writeCaseOwner(id, owner?.id ?? null);
 
-      // Same reasoning as the /api/monday mutation branch: cached reads of
-      // this application are now stale.
-      clearCache();
+      // Cached reads of applications (and boards linked to them) are stale.
+      clearCache([ACTIVE_APPLICATIONS.BOARD_ID]);
 
       const actorName = `${req.user.firstName} ${req.user.lastName}`.trim();
       const itemName = priorSnapshot?.itemName || `item ${id}`;

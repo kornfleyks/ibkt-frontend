@@ -1,6 +1,7 @@
 import { SETTING_KEYS } from "./boards/appSettings.js";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "./statuses/activeApplicationsStatuses.js";
 import { USERS_STATUS_OPTIONS } from "./statuses/usersStatuses.js";
+import { DEFAULT_MONDAY_API_VERSION, isValidMondayApiVersion } from "./mondayApiVersion.js";
 
 const STAGES = ACTIVE_APPLICATIONS_STATUS_OPTIONS.ADOPTION_STAGE;
 const ROLES = USERS_STATUS_OPTIONS.ROLE;
@@ -16,6 +17,8 @@ const ROLES = USERS_STATUS_OPTIONS.ROLE;
 //   row is missing or holds no valid entry.
 // - `type: "number"`: a positive number edited as plain text, with
 //   `defaultValue` applying when the row is missing or invalid.
+// - `type: "text"`: free text with `defaultValue`; an optional
+//   `validate(value)` returns an error message, or null when valid.
 export const SETTING_DEFINITIONS = {
   [SETTING_KEYS.MATCHING_STAGES]: {
     name: "Matching Stages",
@@ -46,5 +49,14 @@ export const SETTING_DEFINITIONS = {
     name: "Upcoming Tasks Days",
     description: "How many days ahead the Dashboard's Upcoming Tasks panel looks. Overdue tasks are always included.",
     defaultValue: 7,
+  },
+  [SETTING_KEYS.MONDAY_API_VERSION]: {
+    type: "text",
+    name: "Monday API Version",
+    description:
+      "Monday API version every request is pinned to (YYYY-MM, quarterly: -01, -04, -07, -10). Admins are alerted when Monday moves this version to maintenance; update it after checking Monday's release notes.",
+    defaultValue: DEFAULT_MONDAY_API_VERSION,
+    validate: (value) =>
+      isValidMondayApiVersion(value) ? null : "Use a quarterly version like 2026-10 (months 01, 04, 07 or 10).",
   },
 };

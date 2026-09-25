@@ -13,10 +13,7 @@ import {
   Popover,
   Typography,
 } from "@mui/material";
-import NotificationsIcon from "@mui/icons-material/NotificationsOutlined";
-import TaskIcon from "@mui/icons-material/AssignmentOutlined";
-import CaseIcon from "@mui/icons-material/FolderSharedOutlined";
-import MentionIcon from "@mui/icons-material/AlternateEmailOutlined";
+import { NotificationsIcon, CheckListIcon as TaskIcon, FolderSharedIcon as CaseIcon, AlternateEmailIcon as MentionIcon, ReportProblemIcon as ApiVersionIcon } from "../icons";
 
 import useAuth from "../../hooks/useAuth";
 import useNotifications from "../../hooks/useNotifications";
@@ -32,6 +29,7 @@ const TYPE_ICONS = {
   [TYPE.CASE_ASSIGNED]: CaseIcon,
   [TYPE.CASE_UNASSIGNED]: CaseIcon,
   [TYPE.MENTION]: MentionIcon,
+  [TYPE.API_VERSION]: ApiVersionIcon,
 };
 
 const TASK_TYPES = [TYPE.TASK_ASSIGNED, TYPE.TASK_UNASSIGNED];

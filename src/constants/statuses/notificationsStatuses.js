@@ -6,6 +6,8 @@ export const NOTIFICATIONS_STATUS_OPTIONS = {
     CASE_ASSIGNED: "Case Assigned",
     CASE_UNASSIGNED: "Case Unassigned",
     MENTION: "Mention",
+    // Created on the board the first time one is sent (create_labels_if_missing).
+    API_VERSION: "API Version",
   },
   READ: {
     UNREAD: "Unread",

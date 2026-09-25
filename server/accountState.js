@@ -1,7 +1,8 @@
 import { USERS } from "../src/constants/boards/users.js";
+import { mondayHeaders } from "./mondayApiVersion.js";
+import { mondayFetch } from "./mondayRateLimit.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
-const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
 
 // In-memory view of every account's live Status and Role, so requireAuth
 // can reject suspended accounts and use the current role on every request
@@ -15,12 +16,9 @@ const accounts = new Map();
 let initialized = false;
 
 async function mondayDirectRequest(query, variables = {}) {
-  const response = await fetch(MONDAY_API_URL, {
+  const response = await mondayFetch(MONDAY_API_URL, {
     method: "POST",
-    headers: {
-      Authorization: MONDAY_API_TOKEN,
-      "Content-Type": "application/json",
-    },
+    headers: mondayHeaders(),
     body: JSON.stringify({ query, variables }),
   });
 
@@ -91,13 +89,27 @@ async function loadOne(userId) {
 
 // Retries in the background on failure - until it succeeds, getAccountState
 // falls back to per-user lookups, so auth keeps working.
+const MIN_RETRY_MS = 30_000;
+const MAX_RETRY_MS = 10 * 60_000;
+
+let retryMs = MIN_RETRY_MS;
+
+// Retries with backoff (30s, doubling to 10 min) - or, when Monday's rate
+// limit is the reason, right after Monday says the limit lifts.
 export async function initAccountState() {
   try {
     await loadAll();
+    retryMs = MIN_RETRY_MS;
     console.log(`Account state: loaded ${accounts.size} users.`);
   } catch (err) {
-    console.error("Account state: initial load failed, retrying in 30s.", err.message);
-    setTimeout(initAccountState, 30_000);
+    const waitMs = err.rateLimited ? err.retryAfterSeconds * 1000 + 5_000 : retryMs;
+
+    console.error(`Account state: initial load failed, retrying in ${Math.round(waitMs / 1000)}s.`, err.message);
+    setTimeout(initAccountState, waitMs).unref();
+
+    if (!err.rateLimited) {
+      retryMs = Math.min(retryMs * 2, MAX_RETRY_MS);
+    }
   }
 }
 

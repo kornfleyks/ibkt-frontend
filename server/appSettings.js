@@ -1,9 +1,10 @@
 import { APP_SETTINGS, SETTING_KEYS } from "../src/constants/boards/appSettings.js";
 import { SETTING_DEFINITIONS } from "../src/constants/settingDefinitions.js";
 import { resolveListSetting } from "../src/utils/listSetting.js";
+import { mondayHeaders, setPinnedMondayApiVersion } from "./mondayApiVersion.js";
+import { mondayFetch } from "./mondayRateLimit.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
-const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
 
 // Refreshed at most this often - frequently-checked settings (cache TTL,
 // rate-limit thresholds) would otherwise cost a live Monday call on every
@@ -17,12 +18,9 @@ let cachedAt = 0;
 // bypasses the public /api/monday proxy, which this module has no request
 // context to authenticate against anyway.
 async function mondayDirectRequest(query, variables = {}) {
-  const response = await fetch(MONDAY_API_URL, {
+  const response = await mondayFetch(MONDAY_API_URL, {
     method: "POST",
-    headers: {
-      Authorization: MONDAY_API_TOKEN,
-      "Content-Type": "application/json",
-    },
+    headers: mondayHeaders(),
     body: JSON.stringify({ query, variables }),
   });
 
@@ -78,12 +76,27 @@ async function getSettingsByKey() {
   try {
     cachedSettings = await loadSettings();
     cachedAt = Date.now();
+    // Every later Monday request uses the freshly loaded pin.
+    setPinnedMondayApiVersion(cachedSettings[SETTING_KEYS.MONDAY_API_VERSION]);
   } catch (err) {
     console.error("App Settings: failed to refresh from Monday.", err);
     cachedSettings = cachedSettings ?? {};
   }
 
   return cachedSettings;
+}
+
+// Forces the next read to come from Monday - called after App Settings are
+// changed through the app, so e.g. a new API version applies straight away.
+export function invalidateSettingsCache() {
+  cachedAt = 0;
+}
+
+// Loads the settings (or reuses the cached copy), which also refreshes the
+// MONDAY_API_VERSION pin. Called at startup so the pin is in place early -
+// that very first load uses the built-in default version.
+export async function loadAppSettings() {
+  await getSettingsByKey();
 }
 
 async function getNumericSetting(key, defaultValue) {

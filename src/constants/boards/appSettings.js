@@ -30,4 +30,6 @@ export const SETTING_KEYS = {
   MY_CASES_OPEN_STAGES: "MY_CASES_OPEN_STAGES",
   // Days ahead the Dashboard's Upcoming Tasks panel looks (overdue always shown).
   UPCOMING_TASKS_DAYS: "UPCOMING_TASKS_DAYS",
+  // Monday API version (YYYY-MM) every server request is pinned to.
+  MONDAY_API_VERSION: "MONDAY_API_VERSION",
 };

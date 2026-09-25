@@ -57,7 +57,8 @@ export function registerCommunicationRoutes(app, { requireAuth }) {
         { itemId, body },
       );
 
-      clearCache();
+      // The thread is read by item id (untagged), so this also clears it.
+      clearCache([boardId]);
       res.json({ update: data.create_update });
 
       const itemName = (await getItemName(itemId)) || `item ${itemId}`;

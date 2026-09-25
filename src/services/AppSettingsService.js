@@ -54,7 +54,7 @@ export function withDefinedSettings(settings) {
       key,
       name: definition.name,
       value:
-        definition.type === "number"
+        definition.type === "number" || definition.type === "text"
           ? String(definition.defaultValue)
           : formatListSetting(definition.defaultList),
       description: definition.description,

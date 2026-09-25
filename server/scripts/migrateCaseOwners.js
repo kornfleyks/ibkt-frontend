@@ -12,6 +12,8 @@ import "dotenv/config";
 import { ACTIVE_APPLICATIONS } from "../../src/constants/boards/activeApplications.js";
 import { getAssignableUsers, writeCaseOwner } from "../caseOwner.js";
 import { logActivity, resolveBoardName } from "../activityLog.js";
+import { mondayHeaders } from "../mondayApiVersion.js";
+import { mondayFetch } from "../mondayRateLimit.js";
 
 const APPLY = process.argv.includes("--apply");
 const { BOARD_ID, COLUMNS } = ACTIVE_APPLICATIONS;
@@ -41,12 +43,9 @@ async function getApplications() {
     }
   `;
 
-  const response = await fetch(process.env.MONDAY_API_URL, {
+  const response = await mondayFetch(process.env.MONDAY_API_URL, {
     method: "POST",
-    headers: {
-      Authorization: process.env.MONDAY_API_TOKEN,
-      "Content-Type": "application/json",
-    },
+    headers: mondayHeaders(),
     body: JSON.stringify({
       query,
       variables: { boardId: BOARD_ID, columnIds: [COLUMNS.CASE_OWNER_LEGACY, COLUMNS.CASE_OWNER] },

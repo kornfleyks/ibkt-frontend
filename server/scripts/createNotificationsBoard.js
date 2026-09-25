@@ -6,6 +6,8 @@
 //
 // Run once; running again creates a second board.
 import "dotenv/config";
+import { mondayHeaders } from "../mondayApiVersion.js";
+import { mondayFetch } from "../mondayRateLimit.js";
 
 const workspaceId = process.argv[2];
 
@@ -15,9 +17,9 @@ if (!workspaceId || !/^\d+$/.test(workspaceId)) {
 }
 
 async function monday(query, variables = {}) {
-  const response = await fetch(process.env.MONDAY_API_URL, {
+  const response = await mondayFetch(process.env.MONDAY_API_URL, {
     method: "POST",
-    headers: { Authorization: process.env.MONDAY_API_TOKEN, "Content-Type": "application/json" },
+    headers: mondayHeaders(),
     body: JSON.stringify({ query, variables }),
   });
 

@@ -112,8 +112,10 @@ export async function createNotification({ recipientId, type, message, actor, ta
 
     const data = await enqueueWrite(() =>
       mondayDirectRequest(
+        // create_labels_if_missing: a newer Type (e.g. "API Version") gets
+        // its label the first time it's used.
         `mutation ($boardId: ID!, $itemName: String!, $columnValues: JSON) {
-          create_item(board_id: $boardId, item_name: $itemName, column_values: $columnValues) { id }
+          create_item(board_id: $boardId, item_name: $itemName, column_values: $columnValues, create_labels_if_missing: true) { id }
         }`,
         {
           boardId: NOTIFICATIONS_BOARD_ID,
@@ -186,6 +188,26 @@ export function notifyMentions({ mentionIds, actor, target, link }) {
       link,
     });
   }
+}
+
+// Recipient ids that already have a notification about `targetItemId` -
+// lets one-off alerts (e.g. an API version reaching maintenance) be sent
+// once per person, even across server restarts.
+export async function getNotifiedRecipientIds(targetItemId) {
+  const data = await mondayDirectRequest(
+    `query ($boardId: ID!, $columnIds: [String!], $query: ItemsQuery) {
+      boards(ids: [$boardId]) {
+        items_page(limit: 500, query_params: $query) { items { column_values(ids: $columnIds) { text } } }
+      }
+    }`,
+    {
+      boardId: NOTIFICATIONS_BOARD_ID,
+      columnIds: [COLUMNS.RECIPIENT_ID],
+      query: { rules: [{ column_id: COLUMNS.TARGET_ITEM_ID, compare_value: [String(targetItemId)], operator: "any_of" }] },
+    },
+  );
+
+  return new Set(data.boards[0].items_page.items.map((item) => item.column_values[0]?.text).filter(Boolean));
 }
 
 function parseJson(value) {

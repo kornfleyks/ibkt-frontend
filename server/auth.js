@@ -3,9 +3,10 @@ import jwt from "jsonwebtoken";
 import { getSessionExpiryHours } from "./appSettings.js";
 import { getAccountState } from "./accountState.js";
 import { USERS } from "../src/constants/boards/users.js";
+import { mondayHeaders } from "./mondayApiVersion.js";
+import { mondayFetch as rateLimitedFetch } from "./mondayRateLimit.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
-const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
@@ -22,12 +23,9 @@ const USERS_COLUMNS = USERS.COLUMNS;
 // deliberately bypassing the generic /api/monday proxy - auth has to work
 // before a session token exists to authenticate that proxy call with.
 async function mondayFetch(query, variables = {}) {
-  const response = await fetch(MONDAY_API_URL, {
+  const response = await rateLimitedFetch(MONDAY_API_URL, {
     method: "POST",
-    headers: {
-      Authorization: MONDAY_API_TOKEN,
-      "Content-Type": "application/json",
-    },
+    headers: mondayHeaders(),
     body: JSON.stringify({ query, variables }),
   });
 

@@ -12,10 +12,19 @@ directly. It holds the Monday API token server-side and does two things:
 - Caches Monday query results in memory (`mondayCache.js`) for however long
   the `MONDAY_CACHE_TTL_SECONDS` App Settings row says (default 60s, read
   via `appSettings.js`), shared across every client hitting this server.
-  Mutations always bypass the cache and clear it afterwards, since a
-  mutation can change data behind more than one cached read. A caller can
-  request a longer TTL for a specific query via `cacheTtlMs` in the request
-  body (used for `getColumnSettings`, which rarely changes).
+  Mutations bypass the cache. Cached reads are tagged with the boards they
+  name, so a change clears only that board and the boards linked to it
+  (`boardRelations.js`, derived from each board's `RELATIONS`); reads with
+  no board (items/updates by id) and mutations that name no board clear
+  conservatively. A caller can request a longer TTL for a specific query
+  via `cacheTtlMs` in the request body (used for `getColumnSettings`,
+  which rarely changes).
+- Respects Monday's rate limit (`mondayRateLimit.js`): every Monday call goes
+  through `mondayFetch`. On a 429 it pauses all Monday calls until Monday's
+  `Retry-After`, failing fast meanwhile; `/api/monday` and `/api/upload`
+  answer 429 with a readable message ("Monday's API limit has been reached.
+  Try again in about 5 hours."). The startup user load retries with backoff
+  instead of every 30s.
 
 ## Case Owner (`caseOwner.js`)
 
@@ -106,6 +115,28 @@ with `{ "text": "..." }`, for boards listed in
 accounts (tokens `@[Name](userId)`, see `src/utils/mentions.js`) and
 notifies them. `GET /api/users/mentionable` lists the Active accounts
 (id, name, role) for the @ picker, from memory.
+
+## Monday API version (`mondayApiVersion.js`, `mondayApiVersionCheck.js`)
+
+Every Monday request the server makes carries an `API-Version` header, so
+Monday's quarterly releases never change behaviour unannounced. The version
+is the **Monday API Version** App Setting (`MONDAY_API_VERSION`, e.g.
+`2026-07`); until it loads, or if it's missing/invalid, the default in
+`src/constants/mondayApiVersion.js` applies. Saving it on App Settings
+applies it to the next request.
+
+Once at startup and then daily, the server asks Monday for its version list
+(one call) and compares the pinned version:
+
+- **update due** - pinned version is in maintenance (a newer one is current);
+- **deprecated** - urgent: Monday serves requests to it with another version.
+
+In either case every Active Admin gets one bell notification per version and
+status (read back from the Notifications board, so restarts don't resend it),
+the Dashboard shows a banner to Admins, and App Settings shows the status next
+to the setting. `GET /api/admin/monday-api-version` (Admin only) returns the
+status. To update: read Monday's release notes for the new version, test, then
+change the setting.
 
 ## Setup
 
