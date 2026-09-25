@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getSessionExpiryHours } from "./appSettings.js";
 import { getAccountState } from "./accountState.js";
+import { USERS } from "../src/constants/boards/users.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
@@ -11,17 +12,11 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET must be set in server/.env (see server/.env.example).");
 }
 
-export const USERS_BOARD_ID = "5098492656";
+// Shared with the frontend so a column recreated on Monday only needs its
+// id updated in one place.
+export const USERS_BOARD_ID = USERS.BOARD_ID;
 
-const USERS_COLUMNS = {
-  FIRST_NAME: "text_mm491wvr",
-  LAST_NAME: "text_mm49fhsq",
-  EMAIL: "email_mm4914e9",
-  PASSWORD_HASH: "text_mm4935hf",
-  ROLE: "color_mm496vat",
-  ACCOUNT_STATUS: "color_mm49rj18",
-  LAST_LOGIN: "date_mm49bcnd",
-};
+const USERS_COLUMNS = USERS.COLUMNS;
 
 // This module talks to Monday directly with the server's own API token,
 // deliberately bypassing the generic /api/monday proxy - auth has to work
