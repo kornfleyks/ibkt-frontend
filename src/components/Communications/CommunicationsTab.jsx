@@ -9,19 +9,17 @@ import {
 import MessageBubble from './MessageBubble';
 import MessageComposer from './MessageComposer';
 import {
-    getCatCommunications,
-    createCatCommunication,
-    formatCommunicationBody,
-} from '../../../../services/CommunicationsService';
-import useAuth from '../../../../hooks/useAuth';
+    getCommunications,
+    createCommunication,
+    getMentionableUsers,
+} from '../../services/CommunicationsService';
 
-
-
-function CommunicationsTab({ cat }) {
-
-    const { user } = useAuth();
+// The Communications thread of one item on any board listed in
+// constants/communicationBoards.js (Cats today).
+function CommunicationsTab({ boardId, itemId }) {
 
     const [messages, setMessages] = useState([]);
+    const [mentionableUsers, setMentionableUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState(null);
@@ -37,7 +35,7 @@ function CommunicationsTab({ cat }) {
 
             try {
 
-                const data = await getCatCommunications(cat.id);
+                const data = await getCommunications(itemId);
 
                 if (!cancelled) {
                     setMessages(data);
@@ -67,7 +65,14 @@ function CommunicationsTab({ cat }) {
             cancelled = true;
         };
 
-    }, [cat.id]);
+    }, [itemId]);
+
+    // Without the list you can still write, just not @mention anyone.
+    useEffect(() => {
+        getMentionableUsers()
+            .then(setMentionableUsers)
+            .catch((err) => console.error('Failed to load mentionable users:', err));
+    }, []);
 
     async function handleSend(text) {
 
@@ -76,15 +81,16 @@ function CommunicationsTab({ cat }) {
 
         try {
 
-            const body = formatCommunicationBody(user, text);
-            const newMessage = await createCatCommunication(cat.id, body);
+            const newMessage = await createCommunication(boardId, itemId, text);
 
             setMessages((current) => [...current, newMessage]);
+            return true;
 
         } catch (err) {
 
             console.error('Failed to send message:', err);
-            setError('Failed to send message.');
+            setError(err?.message || 'Failed to send message.');
+            return false;
 
         } finally {
 
@@ -97,7 +103,7 @@ function CommunicationsTab({ cat }) {
     if (loading) {
 
         return (
-            <Stack alignItems="center" sx={{ py: 4 }}>
+            <Stack sx={{ alignItems: 'center', py: 4 }}>
                 <CircularProgress size={28} sx={{ color: 'text.secondary' }} />
             </Stack>
         );
@@ -131,6 +137,8 @@ function CommunicationsTab({ cat }) {
                 onSend={handleSend}
 
                 disabled={sending}
+
+                mentionableUsers={mentionableUsers}
 
             />
 

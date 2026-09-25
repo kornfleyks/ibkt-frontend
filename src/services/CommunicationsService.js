@@ -1,16 +1,14 @@
-import { mondayRequest } from "./MondayService";
+import { mondayRequest, serverGet, serverPost } from "./MondayService";
 
+// A Communications thread is the Monday updates on one item (a cat today;
+// applications later - see constants/communicationBoards.js).
+//
 // The app talks to Monday through one shared service-account token, so
 // every update's real `creator` is always that same account - not whoever
-// is actually logged into the app. The only way to show the real author is
-// to embed it in the update body ourselves and parse it back out.
+// is actually logged into the app. The server embeds the real author in the
+// update body when posting (see server/communications.js) and it's parsed
+// back out here.
 const AUTHOR_PREFIX_PATTERN = /^\[(.+?) - (.+?)\]\s([\s\S]*)$/;
-
-export function formatCommunicationBody(user, text) {
-  const author = `${user.firstName} ${user.lastName}`.trim();
-
-  return `[${author} - ${user.role}] ${text}`;
-}
 
 function mapUpdate(update) {
   const match = AUTHOR_PREFIX_PATTERN.exec(update.text_body ?? "");
@@ -38,7 +36,7 @@ function mapUpdate(update) {
   };
 }
 
-export async function getCatCommunications(catId) {
+export async function getCommunications(itemId) {
   const query = `
     query ($itemId: [ID!]) {
       items(ids: $itemId) {
@@ -54,28 +52,24 @@ export async function getCatCommunications(catId) {
     }
   `;
 
-  const data = await mondayRequest(query, { itemId: [catId] });
+  const data = await mondayRequest(query, { itemId: [itemId] });
   const updates = data.items[0]?.updates ?? [];
 
   // Monday returns updates newest-first; a message thread reads oldest-first.
   return updates.slice().reverse().map(mapUpdate);
 }
 
-export async function createCatCommunication(catId, body) {
-  const query = `
-    mutation ($itemId: ID!, $body: String!) {
-      create_update(item_id: $itemId, body: $body) {
-        id
-        text_body
-        created_at
-        creator {
-          name
-        }
-      }
-    }
-  `;
+// `text` may contain @mention tokens (utils/mentions.js); the server keeps
+// only those of Active users and notifies them.
+export async function createCommunication(boardId, itemId, text) {
+  const { update } = await serverPost(`/api/communications/${boardId}/${itemId}`, { text });
 
-  const data = await mondayRequest(query, { itemId: catId, body });
+  return mapUpdate(update);
+}
 
-  return mapUpdate(data.create_update);
+// [{ id, name, role }] - Active accounts that can be @mentioned.
+export async function getMentionableUsers() {
+  const { users } = await serverGet("/api/users/mentionable");
+
+  return users;
 }

@@ -8,6 +8,9 @@ import {
     Box
 } from '@mui/material';
 
+import useAuth from '../../hooks/useAuth';
+import { splitMentions } from '../../utils/mentions';
+
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
 // String.split with a capturing group interleaves the matched groups
@@ -31,7 +34,36 @@ function linkifyText(text) {
 }
 
 
+// Mention tokens (utils/mentions.js) render as "@Name", stronger when it's
+// the signed-in user; the text around them is linkified as before.
+function renderMessage(text, currentUserId) {
+    return splitMentions(text).map((part, index) =>
+        part.type === 'mention' ? (
+            <Box
+                key={index}
+                component="span"
+                sx={{
+                    fontWeight: 600,
+                    color: 'info.main',
+                    ...(String(part.id) === String(currentUserId) && {
+                        bgcolor: 'action.selected',
+                        borderRadius: 0.5,
+                        px: 0.5,
+                    }),
+                }}
+            >
+                @{part.name}
+            </Box>
+        ) : (
+            <span key={index}>{linkifyText(part.value)}</span>
+        )
+    );
+}
+
+
 function MessageBubble({message}) {
+
+    const { user } = useAuth();
 
 
     return (
@@ -84,7 +116,7 @@ color="text.secondary"
 
 <Typography sx={{ whiteSpace: 'pre-wrap' }}>
 
-{linkifyText(message.message)}
+{renderMessage(message.message, user?.id)}
 
 </Typography>
 

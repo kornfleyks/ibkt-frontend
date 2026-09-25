@@ -1,5 +1,4 @@
 import { useLayout } from "../../context/LayoutContext";
-import NotificationsIcon from '@mui/icons-material/NotificationsOutlined';
 import MenuIcon from '@mui/icons-material/MenuOutlined';
 import { useState } from "react";
 import Avatar from "@mui/material/Avatar";
@@ -8,11 +7,6 @@ import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import Badge from "@mui/material/Badge";
-import Popover from "@mui/material/Popover";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemText from "@mui/material/ListItemText";
 import DarkModeIcon from "@mui/icons-material/DarkModeOutlined";
 import LightModeIcon from "@mui/icons-material/LightModeOutlined";
 import { useNavigate } from "react-router-dom";
@@ -20,6 +14,7 @@ import useAuth from "../../hooks/useAuth";
 
 import { useThemeMode } from "../../context/ThemeContext";
 import GlobalSearch from "./GlobalSearch";
+import NotificationBell from "./NotificationBell";
 
 function Header() {
     const {
@@ -36,23 +31,6 @@ function Header() {
     const { user, logout } = useAuth();
 
     const [anchorEl, setAnchorEl] = useState(null);
-    const [notificationsAnchor, setNotificationsAnchor] = useState(null);
-
-    const notificationsOpen = Boolean(notificationsAnchor);
-
-    const notifications = [
-        "Luna awaiting passport",
-        "John references overdue",
-        "Travel confirmed"
-    ];
-
-    function handleNotificationsClick(event) {
-        setNotificationsAnchor(event.currentTarget);
-    }
-
-    function handleNotificationsClose() {
-        setNotificationsAnchor(null);
-    }
 
     const profileMenuOpen = Boolean(anchorEl);
 
@@ -112,41 +90,7 @@ function Header() {
                     }
                 </IconButton>
 
-                <IconButton
-                    onClick={handleNotificationsClick}
-                    aria-label="Show notifications"
-                >
-                    <Badge badgeContent={notifications.length} color="error">
-                        <NotificationsIcon fontSize="small" />
-                    </Badge>
-                </IconButton>
-
-                <Popover
-                    open={notificationsOpen}
-                    anchorEl={notificationsAnchor}
-                    onClose={handleNotificationsClose}
-                    anchorOrigin={{
-                        vertical: 'bottom',
-                        horizontal: 'right'
-                    }}
-                >
-                    <List sx={{ width: 300 }}>
-
-                        {notifications.map((notification, index) => (
-
-                            <ListItem key={index}>
-
-                                <ListItemText
-                                    primary={notification}
-                                />
-
-                            </ListItem>
-
-                        ))}
-
-                    </List>
-
-                </Popover>
+                <NotificationBell />
 
                 <IconButton
                     onClick={handleProfileClick}

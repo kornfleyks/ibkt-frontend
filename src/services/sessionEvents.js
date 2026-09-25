@@ -2,6 +2,12 @@ import { readAuth } from './authStorage';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
+// Window events other parts of the app listen to, so they don't need their
+// own connection: a pushed notification (detail = the notification), and
+// the stream (re)connecting.
+export const NOTIFICATION_RECEIVED_EVENT = 'ibkt:notification-received';
+export const SESSION_CONNECTED_EVENT = 'ibkt:session-connected';
+
 const MIN_RETRY_MS = 1_000;
 const MAX_RETRY_MS = 30_000;
 
@@ -73,6 +79,10 @@ export function connectSessionEvents({ onAccount, onUnauthorized }) {
 
             retryMs = MIN_RETRY_MS;
 
+            // Anything pushed while disconnected was missed - listeners
+            // (e.g. notifications) reload their state on this.
+            window.dispatchEvent(new CustomEvent(SESSION_CONNECTED_EVENT));
+
             const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
             let buffer = '';
 
@@ -93,6 +103,8 @@ export function connectSessionEvents({ onAccount, onUnauthorized }) {
 
                     if (parsed?.event === 'account') {
                         onAccount(parsed.data);
+                    } else if (parsed?.event === 'notification') {
+                        window.dispatchEvent(new CustomEvent(NOTIFICATION_RECEIVED_EVENT, { detail: parsed.data }));
                     }
 
                     separator = buffer.indexOf('\n\n');
