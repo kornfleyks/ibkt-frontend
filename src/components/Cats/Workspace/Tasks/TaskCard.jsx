@@ -14,11 +14,7 @@ import {
     CircularProgress,
     Alert
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import VisibilityIcon from '@mui/icons-material/VisibilityOutlined';
-import CheckIcon from '@mui/icons-material/CheckOutlined';
-import CloseIcon from '@mui/icons-material/CloseOutlined';
-import PetsIcon from '@mui/icons-material/PetsOutlined';
+import { EditIcon, VisibilityIcon, CheckIcon, CloseIcon, PetsIcon } from '../../../icons';
 import { Link as RouterLink } from 'react-router-dom';
 
 import {

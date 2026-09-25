@@ -12,7 +12,7 @@ import {
   Autocomplete,
   Alert,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import { CloseIcon } from "../../../icons";
 
 import { createCatTask, getTaskTitleOptions } from "../../../../services/TasksService";
 import { getUsers } from "../../../../services/UsersService";

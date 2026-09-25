@@ -17,10 +17,7 @@ import {
     IconButton,
     CircularProgress,
 } from '@mui/material';
-import PetsIcon from '@mui/icons-material/PetsOutlined';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import CheckIcon from '@mui/icons-material/CheckOutlined';
-import CloseIcon from '@mui/icons-material/CloseOutlined';
+import { PetsIcon, EditIcon, CheckIcon, CloseIcon } from '../../components/icons';
 import PageHeader from '../../components/PageHeader';
 import { getCat, updateCatStatus } from '../../services/CatsService';
 import { useLoading } from '../../context/LoadingContext';

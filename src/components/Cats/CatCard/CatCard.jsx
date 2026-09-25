@@ -8,7 +8,7 @@ import {
   Box,
 } from "@mui/material";
 
-import PetsIcon from "@mui/icons-material/PetsOutlined";
+import { PetsIcon } from "../../icons";
 import { useNavigate } from "react-router-dom";
 
 function CatCard({ cat }) {

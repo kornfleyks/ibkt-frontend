@@ -1,6 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom';
 import { Stack, Typography, Avatar, Box, Chip, Link } from '@mui/material';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForwardOutlined';
+import { ArrowForwardIcon } from '../icons';
 import activityTypes, { DEFAULT_ACTIVITY_TYPE } from './activityTypes';
 
 // Board name -> route, for entries that can be jumped to directly. Only

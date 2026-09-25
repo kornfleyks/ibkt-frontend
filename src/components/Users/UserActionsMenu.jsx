@@ -5,8 +5,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import InfoIcon from '@mui/icons-material/InfoOutlined';
+import { MoreVertIcon, InfoIcon } from '../icons';
 import { USER_STATUS_ACTIONS } from './userStatusActions';
 
 // The Users table's per-row "⋮" menu: View details, then whichever status

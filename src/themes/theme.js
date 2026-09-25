@@ -1,6 +1,15 @@
 import { createTheme } from "@mui/material/styles";
+import { VIBE_TOKENS } from "./vibeTokens";
 
+// MUI theme styled after monday.com's Vibe design system: Vibe's colours
+// (light, and the navy dark theme), fonts (Figtree text, Poppins titles),
+// radii, shadows and component shapes. Only the look changes - every
+// component is still MUI, so behaviour and layout are untouched.
 export function buildTheme(darkMode) {
+
+    const t = darkMode ? VIBE_TOKENS.dark : VIBE_TOKENS.light;
+
+    const titleFont = { fontFamily: t.titleFontFamily, fontWeight: 500 };
 
     const theme = createTheme({
 
@@ -9,64 +18,85 @@ export function buildTheme(darkMode) {
             mode: darkMode ? 'dark' : 'light',
 
             primary: {
-                main: '#1E293B'
+                main: t.primary,
+                dark: t.primaryHover,
+                contrastText: t.textOnPrimary
             },
 
             secondary: {
-                main: '#334155'
+                main: t.secondaryText
             },
 
             success: {
-                main: '#22C55E'
+                main: t.positive
             },
 
             error: {
-                main: '#EF4444'
+                main: t.negative
             },
 
             warning: {
-                main: '#F97316'
+                main: t.warning,
+                dark: t.warningHover
             },
 
+            info: {
+                main: t.link
+            },
+
+            text: {
+                primary: t.primaryText,
+                secondary: t.secondaryText
+            },
+
+            divider: t.layoutBorder,
+
             background: {
+                default: t.greyBackground,
+                paper: darkMode ? t.secondaryBackground : t.primaryBackground
+            },
 
-                default: darkMode
-                    ? '#0F172A'
-                    : '#F8FAFC',
-
-                paper: darkMode
-                    ? '#1E293B'
-                    : '#FFFFFF'
-
+            action: {
+                hover: t.primaryBackgroundHover,
+                selected: t.primarySelected,
+                disabledBackground: t.disabledBackground
             }
 
         },
 
-
         shape: {
-
-            borderRadius: 14
-
+            borderRadius: t.radiusMedium
         },
 
         typography: {
 
-            fontFamily: '"Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif',
+            fontFamily: t.fontFamily,
 
-            h1: { fontSize: '2.5rem', fontWeight: 700, letterSpacing: '-0.02em' },
-            h2: { fontSize: '2rem', fontWeight: 700, letterSpacing: '-0.02em' },
-            h3: { fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.01em' },
-            h4: { fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.01em' },
-            h5: { fontSize: '1.125rem', fontWeight: 600 },
-            h6: { fontSize: '1rem', fontWeight: 600 },
+            // Vibe's title scale: h1 30, h2/h3 24, h4 18, h5 16.
+            h1: { ...titleFont, fontSize: '1.875rem', lineHeight: '42px' },
+            h2: { ...titleFont, fontSize: '1.5rem', lineHeight: '32px' },
+            h3: { ...titleFont, fontSize: '1.5rem', lineHeight: '32px' },
+            h4: { ...titleFont, fontSize: '1.125rem', lineHeight: '24px' },
+            h5: { ...titleFont, fontSize: '1rem', lineHeight: '22px' },
+            h6: { ...titleFont, fontSize: '1rem', lineHeight: '22px' },
             subtitle1: { fontWeight: 500 },
             subtitle2: { fontWeight: 500 },
-            body1: { fontSize: '0.9375rem' },
-            body2: { fontSize: '0.8125rem' },
-            button: { textTransform: 'none', fontWeight: 600 }
+            body1: { fontSize: '0.875rem', lineHeight: '20px' },
+            body2: { fontSize: '0.8125rem', lineHeight: '18px' },
+            caption: { fontSize: '0.75rem' },
+            button: { textTransform: 'none', fontWeight: 400, fontSize: '0.875rem' }
 
         },
 
+        shadows: [
+            'none',
+            t.shadowXs, t.shadowXs,
+            t.shadowSmall, t.shadowSmall, t.shadowSmall,
+            t.shadowMedium, t.shadowMedium, t.shadowMedium, t.shadowMedium, t.shadowMedium,
+            t.shadowMedium, t.shadowMedium, t.shadowMedium, t.shadowMedium, t.shadowMedium,
+            t.shadowLarge, t.shadowLarge, t.shadowLarge, t.shadowLarge, t.shadowLarge,
+            t.shadowLarge, t.shadowLarge, t.shadowLarge, t.shadowLarge
+        ],
 
         components: {
 
@@ -87,17 +117,17 @@ export function buildTheme(darkMode) {
 
             },
 
+            // The sidebar: Vibe's surface colour with a hairline border,
+            // like monday.com's left panel.
             MuiDrawer: {
 
                 styleOverrides: {
 
-                    paper: ({ theme }) => ({
-
-                        backgroundColor: theme.palette.mode === 'dark'
-                            ? theme.palette.background.default
-                            : theme.palette.primary.main
-
-                    })
+                    paper: {
+                        backgroundColor: t.primaryBackground,
+                        color: t.primaryText,
+                        borderRight: `1px solid ${t.layoutBorder}`
+                    }
 
                 }
 
@@ -105,46 +135,68 @@ export function buildTheme(darkMode) {
 
             MuiButton: {
 
+                defaultProps: {
+                    disableElevation: true
+                },
+
                 styleOverrides: {
 
-                    root: ({ theme, ownerState }) => ({
-                        borderRadius: 10,
+                    root: {
+                        borderRadius: t.radiusSmall,
+                        minHeight: 40,
+                        paddingInline: 16,
                         boxShadow: 'none',
-                        paddingInline: 18,
-                        ...(theme.palette.mode === 'dark' &&
-                            ownerState.variant === 'contained' &&
-                            (ownerState.color === 'primary' || !ownerState.color) && {
-                            backgroundColor: '#334155',
+                        '&:hover': { boxShadow: 'none' }
+                    },
+
+                    sizeSmall: {
+                        minHeight: 32,
+                        paddingInline: 8
+                    },
+
+                    sizeLarge: {
+                        minHeight: 48,
+                        paddingInline: 24,
+                        fontSize: '1rem'
+                    },
+
+                    // Vibe "secondary" buttons: border in the UI border colour.
+                    outlined: ({ ownerState }) => ({
+                        ...((ownerState.color === 'primary' || !ownerState.color) && {
+                            color: t.primaryText,
+                            borderColor: t.uiBorder,
                             '&:hover': {
-                                backgroundColor: '#3f4d63'
-                            }
-                        }),
-                        ...(theme.palette.mode === 'dark' &&
-                            ownerState.variant === 'outlined' &&
-                            (ownerState.color === 'primary' || !ownerState.color) && {
-                            color: theme.palette.text.primary,
-                            borderColor: 'rgba(255,255,255,0.23)',
-                            '&:hover': {
-                                borderColor: 'rgba(255,255,255,0.4)',
-                                backgroundColor: 'rgba(255,255,255,0.04)'
-                            }
-                        }),
-                        ...(theme.palette.mode === 'dark' &&
-                            ownerState.variant === 'text' &&
-                            (ownerState.color === 'primary' || !ownerState.color) && {
-                            color: theme.palette.text.primary,
-                            '&:hover': {
-                                backgroundColor: 'rgba(255,255,255,0.04)'
+                                borderColor: t.uiBorder,
+                                backgroundColor: t.primaryBackgroundHover
                             }
                         })
                     }),
-                    contained: ({ theme }) => ({
-                        '&:hover': {
-                            boxShadow: theme.palette.mode === 'dark'
-                                ? 'none'
-                                : '0 4px 12px rgba(30,41,59,0.15)'
-                        }
+
+                    // Vibe "tertiary" buttons: plain text, grey hover.
+                    text: ({ ownerState }) => ({
+                        ...((ownerState.color === 'primary' || !ownerState.color) && {
+                            color: t.primaryText,
+                            '&:hover': {
+                                backgroundColor: t.primaryBackgroundHover
+                            }
+                        })
                     })
+
+                }
+
+            },
+
+            MuiIconButton: {
+
+                styleOverrides: {
+
+                    root: {
+                        borderRadius: t.radiusSmall,
+                        color: t.icon,
+                        '&:hover': {
+                            backgroundColor: t.primaryBackgroundHover
+                        }
+                    }
 
                 }
 
@@ -154,13 +206,27 @@ export function buildTheme(darkMode) {
 
                 styleOverrides: {
 
-                    root: ({ theme }) => ({
-                        ...(theme.palette.mode === 'dark' && {
-                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                                borderColor: theme.palette.text.primary
-                            }
-                        })
-                    })
+                    root: {
+                        borderRadius: t.radiusSmall,
+                        backgroundColor: darkMode ? 'transparent' : t.primaryBackground,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: t.uiBorder
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: t.primaryText
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: t.primary,
+                            borderWidth: 1
+                        }
+                    },
+
+                    input: {
+                        '&::placeholder': {
+                            color: t.placeholder,
+                            opacity: 1
+                        }
+                    }
 
                 }
 
@@ -170,13 +236,12 @@ export function buildTheme(darkMode) {
 
                 styleOverrides: {
 
-                    root: ({ theme }) => ({
-                        ...(theme.palette.mode === 'dark' && {
-                            '&.Mui-focused': {
-                                color: theme.palette.text.primary
-                            }
-                        })
-                    })
+                    root: {
+                        color: t.secondaryText,
+                        '&.Mui-focused': {
+                            color: t.primary
+                        }
+                    }
 
                 }
 
@@ -186,13 +251,11 @@ export function buildTheme(darkMode) {
 
                 styleOverrides: {
 
-                    root: ({ theme }) => ({
-                        borderRadius: theme.shape.borderRadius,
-                        border: `1px solid ${theme.palette.divider}`,
-                        boxShadow: theme.palette.mode === 'dark'
-                            ? 'none'
-                            : '0 1px 2px rgba(15,23,42,0.04), 0 4px 16px rgba(15,23,42,0.04)'
-                    })
+                    root: {
+                        borderRadius: t.radiusMedium,
+                        border: `1px solid ${t.layoutBorder}`,
+                        boxShadow: 'none'
+                    }
 
                 }
 
@@ -202,26 +265,131 @@ export function buildTheme(darkMode) {
 
                 defaultProps: {
                     elevation: 0
+                },
+
+                styleOverrides: {
+                    root: {
+                        backgroundImage: 'none'
+                    }
                 }
 
             },
 
-            // primary.main (#1E293B) is the same colour as the dark-mode
-            // paper background, so checked radios/checkboxes vanish on cards
-            // and dialogs - same reason Button/Tab/inputs are overridden above.
+            // Floating surfaces (menus, popovers, autocomplete lists) get
+            // Vibe's medium shadow; dialogs the large one.
+            MuiPopover: {
+
+                styleOverrides: {
+                    paper: {
+                        borderRadius: t.radiusMedium,
+                        boxShadow: t.shadowMedium
+                    }
+                }
+
+            },
+
+            MuiMenu: {
+
+                styleOverrides: {
+                    paper: {
+                        borderRadius: t.radiusMedium,
+                        boxShadow: t.shadowMedium
+                    }
+                }
+
+            },
+
+            MuiAutocomplete: {
+
+                styleOverrides: {
+                    paper: {
+                        borderRadius: t.radiusMedium,
+                        boxShadow: t.shadowMedium
+                    }
+                }
+
+            },
+
+            MuiMenuItem: {
+
+                styleOverrides: {
+                    root: {
+                        borderRadius: t.radiusSmall,
+                        marginInline: 8,
+                        minHeight: 36,
+                        '&:hover': {
+                            backgroundColor: t.primaryBackgroundHover
+                        },
+                        '&.Mui-selected, &.Mui-selected:hover': {
+                            backgroundColor: t.primarySelected
+                        }
+                    }
+                }
+
+            },
+
+            MuiListItemButton: {
+
+                styleOverrides: {
+                    root: {
+                        '&:hover': {
+                            backgroundColor: t.primaryBackgroundHover
+                        },
+                        '&.Mui-selected, &.Mui-selected:hover': {
+                            backgroundColor: t.primarySelected
+                        }
+                    }
+                }
+
+            },
+
+            MuiDialog: {
+
+                styleOverrides: {
+                    paper: {
+                        borderRadius: t.radiusMedium,
+                        boxShadow: t.shadowLarge
+                    }
+                }
+
+            },
+
+            MuiDialogTitle: {
+
+                styleOverrides: {
+                    root: {
+                        ...titleFont,
+                        fontSize: '1.5rem',
+                        lineHeight: '32px'
+                    }
+                }
+
+            },
+
+            MuiTooltip: {
+
+                styleOverrides: {
+                    tooltip: {
+                        backgroundColor: t.invertedBackground,
+                        color: t.invertedText,
+                        borderRadius: t.radiusSmall,
+                        fontSize: '0.875rem',
+                        padding: '8px 16px',
+                        boxShadow: t.shadowMedium
+                    },
+                    arrow: {
+                        color: t.invertedBackground
+                    }
+                }
+
+            },
+
             MuiRadio: {
 
                 styleOverrides: {
-
-                    root: ({ theme, ownerState }) => ({
-                        ...(theme.palette.mode === 'dark' &&
-                            (ownerState.color === 'primary' || !ownerState.color) && {
-                            '&.Mui-checked': {
-                                color: theme.palette.text.primary
-                            }
-                        })
-                    })
-
+                    root: {
+                        color: t.uiBorder
+                    }
                 }
 
             },
@@ -229,48 +397,33 @@ export function buildTheme(darkMode) {
             MuiCheckbox: {
 
                 styleOverrides: {
-
-                    root: ({ theme, ownerState }) => ({
-                        ...(theme.palette.mode === 'dark' &&
-                            (ownerState.color === 'primary' || !ownerState.color) && {
-                            '&.Mui-checked, &.MuiCheckbox-indeterminate': {
-                                color: theme.palette.text.primary
-                            }
-                        })
-                    })
-
+                    root: {
+                        color: t.uiBorder
+                    }
                 }
 
             },
 
-            // Same primary-vs-paper clash as Radio/Checkbox above: an "on"
-            // Switch's thumb and track are drawn in primary.main. In dark mode
-            // ON is the success green and OFF is a dim grey thumb on a faint
-            // track, so the two states can't be confused.
+            // Vibe Toggle: blue when on, grey track when off.
             MuiSwitch: {
 
                 styleOverrides: {
 
-                    switchBase: ({ theme, ownerState }) => ({
-                        ...(theme.palette.mode === 'dark' &&
-                            (ownerState.color === 'primary' || !ownerState.color) && {
-                            color: theme.palette.grey[600],
-                            '&.Mui-checked': {
-                                color: theme.palette.success.main
-                            },
-                            '&.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: theme.palette.success.main,
-                                opacity: 0.5
-                            }
-                        })
-                    }),
+                    switchBase: {
+                        '&.Mui-checked + .MuiSwitch-track': {
+                            backgroundColor: t.primary,
+                            opacity: 1
+                        }
+                    },
 
-                    track: ({ theme }) => ({
-                        ...(theme.palette.mode === 'dark' && {
-                            backgroundColor: theme.palette.common.white,
-                            opacity: 0.12
-                        })
-                    })
+                    thumb: {
+                        boxShadow: 'none'
+                    },
+
+                    track: {
+                        backgroundColor: t.uiBorder,
+                        opacity: 1
+                    }
 
                 }
 
@@ -281,10 +434,81 @@ export function buildTheme(darkMode) {
                 styleOverrides: {
 
                     root: {
-                        borderRadius: 6,
-                        fontWeight: 600
+                        borderRadius: t.radiusSmall,
+                        fontWeight: 400
+                    },
+
+                    filled: ({ ownerState }) => ({
+                        ...((!ownerState.color || ownerState.color === 'default') && {
+                            backgroundColor: t.uiBackground,
+                            color: t.primaryText
+                        })
+                    }),
+
+                    outlined: ({ ownerState }) => ({
+                        ...((!ownerState.color || ownerState.color === 'default') && {
+                            borderColor: t.uiBorder
+                        })
+                    })
+
+                }
+
+            },
+
+            // Vibe AttentionBox: tinted background, primary text.
+            MuiAlert: {
+
+                styleOverrides: {
+
+                    root: {
+                        borderRadius: t.radiusMedium
+                    },
+
+                    standardInfo: {
+                        backgroundColor: t.primarySelected,
+                        color: t.primaryText,
+                        '& .MuiAlert-icon': { color: t.primary }
+                    },
+
+                    standardSuccess: {
+                        backgroundColor: t.positiveSelected,
+                        color: t.primaryText,
+                        '& .MuiAlert-icon': { color: t.positive }
+                    },
+
+                    standardError: {
+                        backgroundColor: t.negativeSelected,
+                        color: t.primaryText,
+                        '& .MuiAlert-icon': { color: t.negative }
+                    },
+
+                    standardWarning: {
+                        backgroundColor: t.warningSelected,
+                        color: t.primaryText,
+                        '& .MuiAlert-icon': { color: darkMode ? t.warning : t.warningHover }
                     }
 
+                }
+
+            },
+
+            MuiAvatar: {
+
+                styleOverrides: {
+                    colorDefault: {
+                        backgroundColor: t.uiBackground,
+                        color: t.primaryText
+                    }
+                }
+
+            },
+
+            MuiBadge: {
+
+                styleOverrides: {
+                    badge: {
+                        fontWeight: 500
+                    }
                 }
 
             },
@@ -297,25 +521,18 @@ export function buildTheme(darkMode) {
 
             },
 
-            MuiIconButton: {
-
-                styleOverrides: {
-
-                    root: ({ theme }) => ({
-                        borderRadius: 8,
-                        color: theme.palette.text.secondary
-                    })
-
-                }
-
-            },
-
+            // Vibe tabs: underline in the primary colour under the selected tab.
             MuiTabs: {
 
                 styleOverrides: {
 
+                    root: {
+                        borderBottom: `1px solid ${t.layoutBorder}`
+                    },
+
                     indicator: {
-                        display: 'none'
+                        backgroundColor: t.primary,
+                        height: 2
                     }
 
                 }
@@ -326,22 +543,68 @@ export function buildTheme(darkMode) {
 
                 styleOverrides: {
 
-                    root: ({ theme }) => ({
-                        borderRadius: 8,
-                        fontWeight: 500,
+                    root: {
+                        fontWeight: 400,
+                        fontSize: '0.875rem',
                         minHeight: 40,
-                        color: theme.palette.text.secondary,
+                        color: t.secondaryText,
+                        '&:hover': {
+                            color: t.primaryText
+                        },
                         '&.Mui-selected': {
-                            fontWeight: 700,
-                            color: theme.palette.mode === 'dark'
-                                ? theme.palette.common.white
-                                : theme.palette.primary.main,
-                            backgroundColor: theme.palette.mode === 'dark'
-                                ? 'rgba(255,255,255,0.08)'
-                                : 'rgba(30,41,59,0.08)'
+                            color: t.primary
                         }
-                    })
+                    }
 
+                }
+
+            },
+
+            MuiTableCell: {
+
+                styleOverrides: {
+
+                    root: {
+                        borderColor: t.layoutBorder
+                    },
+
+                    head: {
+                        color: t.secondaryText,
+                        fontWeight: 500
+                    }
+
+                }
+
+            },
+
+            MuiDivider: {
+
+                styleOverrides: {
+                    root: {
+                        borderColor: t.layoutBorder
+                    }
+                }
+
+            },
+
+            MuiLink: {
+
+                styleOverrides: {
+                    root: {
+                        color: t.link
+                    }
+                }
+
+            },
+
+            MuiBackdrop: {
+
+                styleOverrides: {
+                    root: ({ ownerState }) => ({
+                        ...(!ownerState.invisible && {
+                            backgroundColor: 'rgba(41, 47, 76, 0.7)'
+                        })
+                    })
                 }
 
             }

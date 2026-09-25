@@ -1,6 +1,5 @@
 import { Card, CardActionArea, CardContent, Typography, Stack, Box, Chip, Avatar } from "@mui/material";
-import PersonIcon from "@mui/icons-material/PersonOutlined";
-import PetsIcon from "@mui/icons-material/PetsOutlined";
+import { PersonIcon, PetsIcon } from "../icons";
 import { getAdoptionStageColor } from "../../utils/adoptionStageColor";
 
 // Unlike ActiveApplicationCard this doesn't navigate - clicking opens the

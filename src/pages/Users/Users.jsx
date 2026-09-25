@@ -22,10 +22,7 @@ import {
     Tabs,
     Tab,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import CheckIcon from '@mui/icons-material/CheckOutlined';
-import CloseIcon from '@mui/icons-material/CloseOutlined';
-import LockIcon from '@mui/icons-material/LockOutlined';
+import { EditIcon, CheckIcon, CloseIcon, LockIcon } from '../../components/icons';
 
 import PageHeader from '../../components/PageHeader';
 import {

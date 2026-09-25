@@ -1,6 +1,4 @@
-import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
-import CancelIcon from "@mui/icons-material/CancelOutlined";
-import PlayCircleIcon from "@mui/icons-material/PlayCircleOutlined";
+import { CheckCircleIcon, CancelIcon, PlayCircleIcon } from "../components/icons";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../constants/statuses/activeApplicationsStatuses";
 
 const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;

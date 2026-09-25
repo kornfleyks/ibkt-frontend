@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Box, IconButton, Stack, Typography, CircularProgress } from '@mui/material';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import CheckIcon from '@mui/icons-material/CheckOutlined';
-import CloseIcon from '@mui/icons-material/CloseOutlined';
+import { EditIcon, CheckIcon, CloseIcon } from '../../icons';
 import InfoRow from '../InfoRow';
 
 // Shared scaffold for a single editable "label: value" row - hover-to-reveal

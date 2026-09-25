@@ -1,5 +1,5 @@
 import { useLayout } from "../../context/LayoutContext";
-import MenuIcon from '@mui/icons-material/MenuOutlined';
+import { MenuIcon, DarkModeIcon, LightModeIcon } from '../icons';
 import { useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
@@ -7,8 +7,6 @@ import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import DarkModeIcon from "@mui/icons-material/DarkModeOutlined";
-import LightModeIcon from "@mui/icons-material/LightModeOutlined";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 

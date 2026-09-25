@@ -5,7 +5,7 @@ import Box from '@mui/material/Box';
 import InputAdornment from '@mui/material/InputAdornment';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import SearchIcon from '@mui/icons-material/SearchOutlined';
+import { SearchIcon } from '../icons';
 import useGlobalSearchIndex from '../../hooks/useGlobalSearchIndex';
 import { searchIndex } from '../../utils/globalSearch';
 

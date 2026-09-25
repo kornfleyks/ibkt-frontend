@@ -9,7 +9,7 @@ import {
     Typography
 } from '@mui/material';
 
-import AddIcon from '@mui/icons-material/AddOutlined';
+import { AddIcon } from '../components/icons';
 
 import PageHeader from '../components/PageHeader';
 

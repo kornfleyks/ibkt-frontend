@@ -9,9 +9,7 @@ import {
     Typography,
     CircularProgress,
 } from '@mui/material';
-import EditIcon from '@mui/icons-material/EditOutlined';
-import CheckIcon from '@mui/icons-material/CheckOutlined';
-import CloseIcon from '@mui/icons-material/CloseOutlined';
+import { EditIcon, CheckIcon, CloseIcon } from '../../../icons';
 import InfoRow from '../../../Common/InfoRow';
 import EditableInfoRow from '../../../Common/EditableInfoRow';
 import SectionCard from '../../../Common/SectionCard';

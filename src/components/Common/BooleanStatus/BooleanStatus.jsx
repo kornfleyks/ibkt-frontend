@@ -1,5 +1,4 @@
-import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
-import CancelIcon from "@mui/icons-material/CancelOutlined";
+import { CheckCircleIcon, CancelIcon } from "../../icons";
 
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";

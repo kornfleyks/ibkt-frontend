@@ -6,7 +6,7 @@ import ActiveApplicationCard from "../components/ActiveApplications/ActiveApplic
 import Grid from "@mui/material/Grid";
 import PageHeader from "../components/PageHeader";
 import Button from "@mui/material/Button";
-import AddIcon from "@mui/icons-material/AddOutlined";
+import { AddIcon } from "../components/icons";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Tabs from "@mui/material/Tabs";

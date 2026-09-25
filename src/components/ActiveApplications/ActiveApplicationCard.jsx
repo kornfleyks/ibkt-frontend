@@ -7,7 +7,7 @@ import {
   Chip,
 } from "@mui/material";
 
-import PersonIcon from "@mui/icons-material/PersonOutlined";
+import { PersonIcon } from "../icons";
 import Avatar from "@mui/material/Avatar";
 import { useNavigate } from "react-router-dom";
 import { getAdoptionStageColor } from "../../utils/adoptionStageColor";

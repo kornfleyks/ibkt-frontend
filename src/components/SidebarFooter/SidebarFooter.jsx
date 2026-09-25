@@ -1,8 +1,10 @@
+import { useTheme } from "@mui/material/styles";
 import { useLayout } from "../../context/LayoutContext";
 import useAuth from "../../hooks/useAuth";
 
 function SidebarFooter() {
 
+    const theme = useTheme();
     const { sidebarOpen } = useLayout();
     const { user } = useAuth();
 
@@ -16,7 +18,7 @@ function SidebarFooter() {
             style={{
                 marginTop: 'auto',
                 paddingTop: '20px',
-                borderTop: '1px solid rgba(255,255,255,0.1)',
+                borderTop: `1px solid ${theme.palette.divider}`,
                 textAlign: sidebarOpen ? 'left' : 'center'
             }}
         >

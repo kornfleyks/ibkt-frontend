@@ -12,8 +12,7 @@ import {
   Box,
   Stack,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
-import AddIcon from "@mui/icons-material/Add";
+import { CloseIcon, AddIcon } from "../../icons";
 
 import CatFormFields from "./CatFormFields";
 import {

@@ -1,13 +1,5 @@
-import DashboardIcon from "@mui/icons-material/DashboardOutlined";
-import PetsIcon from "@mui/icons-material/PetsOutlined";
+import { DashboardIcon, PetsIcon, AssignmentIcon, VolunteerActivismIcon, FavoriteIcon, CheckCircleIcon, GroupIcon, HistoryIcon, SettingsIcon } from "../components/icons";
 //import PersonIcon from "@mui/icons-material/PersonOutlined";
-import AssignmentIcon from "@mui/icons-material/AssignmentOutlined";
-import VolunteerActivismIcon from "@mui/icons-material/VolunteerActivismOutlined";
-import FavoriteIcon from "@mui/icons-material/FavoriteOutlined";
-import CheckCircleIcon from "@mui/icons-material/CheckCircleOutlined";
-import GroupIcon from "@mui/icons-material/GroupOutlined";
-import HistoryIcon from "@mui/icons-material/HistoryOutlined";
-import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 
 export const navigationItems = [
     {

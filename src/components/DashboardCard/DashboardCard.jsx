@@ -53,9 +53,7 @@ function DashboardCard({
                             alignItems: 'center',
                             justifyContent: 'center',
                             color,
-                            bgcolor: (theme) => theme.palette.mode === 'dark'
-                                ? 'rgba(255,255,255,0.06)'
-                                : 'rgba(30,41,59,0.06)'
+                            bgcolor: 'action.hover'
                         }}
                     >
                         {icon}
@@ -79,7 +77,7 @@ function DashboardCard({
                     ) : (
                         <Typography
                             variant="h3"
-                            fontWeight={700}
+                            sx={{ fontWeight: 600 }}
                         >
                             {value}
                         </Typography>

@@ -1,6 +1,6 @@
 import PageHeader from '../components/PageHeader';
 import Button from '@mui/material/Button';
-import AddIcon from '@mui/icons-material/AddOutlined';
+import { AddIcon } from '../components/icons';
 
 function Adopters() {
     return (

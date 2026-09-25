@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, Stack, CircularProgress, Alert, TextField, InputAdornment } from '@mui/material';
-import SearchIcon from '@mui/icons-material/SearchOutlined';
+import { SearchIcon } from '../../components/icons';
 import PageHeader from '../../components/PageHeader';
 import ActivityFeedList from '../../components/ActivityLog/ActivityFeedList';
 import { getAllActivity } from '../../services/ActivityLogService';

@@ -30,7 +30,6 @@ function AppLayout({ children }) {
                     '& .MuiDrawer-paper': {
                         width: sidebarOpen ? DRAWER_WIDTH : COLLAPSED_DRAWER_WIDTH,
                         boxSizing: 'border-box',
-                        color: 'common.white',
                         padding: '20px',
                         transition: 'width 0.3s ease',
                         overflowX: 'hidden'

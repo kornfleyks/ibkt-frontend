@@ -59,7 +59,7 @@ function Sidebar() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: "#3B82F6",
+              bgcolor: "primary.main",
             }}
           >
             <Typography
@@ -97,7 +97,11 @@ function Sidebar() {
                 textDecoration: "none",
                 padding: "10px",
                 borderRadius: theme.shape.borderRadius,
-                background: isActive ? "rgba(255,255,255,0.12)" : "transparent",
+                // Vibe selected state: selected fill, with primary-blue text
+                // in light mode (in dark, blue on the dark-blue fill is
+                // unreadable, so the text stays the normal colour).
+                background: isActive ? theme.palette.action.selected : "transparent",
+                ...(isActive && theme.palette.mode === "light" && { color: theme.palette.primary.main }),
                 display: "flex",
                 alignItems: "center",
                 gap: sidebarOpen ? "12px" : "0",

@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import OpenInNewIcon from "@mui/icons-material/OpenInNewOutlined";
+import { OpenInNewIcon } from "../icons";
 import BondedGroupOption from "./BondedGroupOption";
 import {
   matchApplicationToGroup,

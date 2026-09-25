@@ -1,5 +1,5 @@
 import { Card, CardActionArea, CardContent, Typography, Stack, Box, Chip, Radio } from "@mui/material";
-import LinkIcon from "@mui/icons-material/LinkOutlined";
+import { LinkIcon } from "../icons";
 
 // Traits worth comparing against the application's household / existing
 // pets text. Only "Yes"/"No" get a colour - "Sometimes"/"Unknown" stay

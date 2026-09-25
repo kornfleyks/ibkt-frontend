@@ -9,7 +9,7 @@ import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import AddIcon from '@mui/icons-material/AddOutlined';
+import { AddIcon } from '../components/icons';
 import PageHeader from '../components/PageHeader';
 import AddTaskDialog from '../components/Cats/Workspace/Tasks/AddTaskDialog';
 import TaskCard from '../components/Cats/Workspace/Tasks/TaskCard';

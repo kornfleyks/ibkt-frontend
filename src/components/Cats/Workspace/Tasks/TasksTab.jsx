@@ -9,7 +9,7 @@ import {
     CircularProgress
 } from '@mui/material';
 
-import AddIcon from '@mui/icons-material/AddOutlined';
+import { AddIcon } from '../../../icons';
 
 import TaskCard from './TaskCard';
 import AddTaskDialog from './AddTaskDialog';

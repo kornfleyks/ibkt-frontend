@@ -12,8 +12,7 @@ import {
   Divider,
 } from "@mui/material";
 
-import UploadIcon from "@mui/icons-material/UploadOutlined";
-import DeleteIcon from "@mui/icons-material/DeleteOutlined";
+import { UploadIcon, DeleteIcon } from "../../../icons";
 
 import SectionCard from "../../../Common/SectionCard";
 import InfoRow from "../../../Common/InfoRow";

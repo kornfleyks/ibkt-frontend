@@ -12,7 +12,7 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import CloseIcon from '@mui/icons-material/CloseOutlined';
+import { CloseIcon } from '../icons';
 import InfoRow from '../Common/InfoRow';
 import { getUserOpenWork } from '../../services/UsersService';
 import { formatRelativeTime } from '../../utils/relativeTime';

@@ -1,7 +1,7 @@
 import { Link as RouterLink } from 'react-router-dom';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
-import PetsIcon from '@mui/icons-material/PetsOutlined';
+import { PetsIcon } from '../../icons';
 
 // An application's linked cat(s) - one chip per cat (a bonded group is
 // several). `clickable` makes each chip open the cat's page; leave it off
