@@ -8,11 +8,15 @@ const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
 // Refreshed at most this often - frequently-checked settings (cache TTL,
 // rate-limit thresholds) would otherwise cost a live Monday call on every
-// request. Not itself configurable, to avoid infinite regress.
-const REFRESH_INTERVAL_MS = 60_000;
+// request. Settings saved through the app apply at once anyway
+// (invalidateSettingsCache), so this only delays edits made directly on
+// Monday. Not itself configurable, to avoid infinite regress.
+const REFRESH_INTERVAL_MS = 10 * 60_000;
 
 let cachedSettings = null;
 let cachedAt = 0;
+// A refresh already on its way to Monday - concurrent callers share it.
+let pendingLoad = null;
 
 // Same direct-to-Monday approach as activityLog.js's mondayDirectRequest -
 // bypasses the public /api/monday proxy, which this module has no request
@@ -73,15 +77,24 @@ async function getSettingsByKey() {
     return cachedSettings;
   }
 
-  try {
-    cachedSettings = await loadSettings();
-    cachedAt = Date.now();
-    // Every later Monday request uses the freshly loaded pin.
-    setPinnedMondayApiVersion(cachedSettings[SETTING_KEYS.MONDAY_API_VERSION]);
-  } catch (err) {
-    console.error("App Settings: failed to refresh from Monday.", err);
-    cachedSettings = cachedSettings ?? {};
-  }
+  pendingLoad ??= (async () => {
+    try {
+      cachedSettings = await loadSettings();
+      cachedAt = Date.now();
+      // Every later Monday request uses the freshly loaded pin.
+      setPinnedMondayApiVersion(cachedSettings[SETTING_KEYS.MONDAY_API_VERSION]);
+    } catch (err) {
+      console.error("App Settings: failed to refresh from Monday.", err.message);
+      cachedSettings = cachedSettings ?? {};
+      // Keep the last known (or default) values and try again in a minute,
+      // rather than on every request.
+      cachedAt = Date.now() - REFRESH_INTERVAL_MS + 60_000;
+    } finally {
+      pendingLoad = null;
+    }
+  })();
+
+  await pendingLoad;
 
   return cachedSettings;
 }

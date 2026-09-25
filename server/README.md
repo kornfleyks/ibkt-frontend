@@ -19,6 +19,20 @@ directly. It holds the Monday API token server-side and does two things:
   conservatively. A caller can request a longer TTL for a specific query
   via `cacheTtlMs` in the request body (used for `getColumnSettings`,
   which rarely changes).
+- Keeps Monday requests down (Monday's daily limit counts requests, not
+  their size), in `mondayReads.js`:
+  - the app groups the reads it makes within 10ms (typically a whole page
+    load) and sends them to `POST /api/monday/batch` (up to 25 reads);
+  - a read identical to one already on its way to Monday waits for that
+    answer instead of making its own call (across all users);
+  - the remaining reads of a batch are merged into ONE Monday request
+    (variables renamed, top-level fields aliased, answer split back). If
+    Monday rejects the merged request, each read is retried on its own.
+  - Activity Log entries are buffered and written together every 10s (one
+    request of aliased `create_item`s, up to 25 per request); a normal stop
+    (SIGTERM/SIGINT) flushes them first, a crash loses what's buffered.
+  - App Settings are re-read at most every 10 minutes (saves through the app
+    apply at once); simultaneous reloads share one call.
 - Respects Monday's rate limit (`mondayRateLimit.js`): every Monday call goes
   through `mondayFetch`. On a 429 it pauses all Monday calls until Monday's
   `Retry-After`, failing fast meanwhile; `/api/monday` and `/api/upload`

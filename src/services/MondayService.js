@@ -1,4 +1,5 @@
 import { readAuth, clearAuth, updateStoredRole, setSignOutReason, inactiveAccountReason } from './authStorage';
+import { syncMondayUsageFromResponse } from './mondayUsage';
 
 // All Monday requests go through our own server, which holds the API
 // token. The browser never sees it (see /server/index.js).
@@ -9,13 +10,16 @@ function getAuthToken() {
 }
 
 // requireAuth sends the account's live role on every response, so a role
-// change made by an Admin reaches this browser on its next request.
+// change made by an Admin reaches this browser on its next request. Admins
+// also get today's Monday call count (development usage counter).
 function syncRoleFromResponse(response) {
     const role = response.headers.get('X-User-Role');
 
     if (role) {
         updateStoredRole(role);
     }
+
+    syncMondayUsageFromResponse(response);
 }
 
 // This is a plain module, not a component, so it can't read AuthContext -
@@ -98,7 +102,101 @@ export async function serverGet(path) {
     return result;
 }
 
+// Reads made within BATCH_WINDOW_MS of each other (typically everything a
+// page loads at once) travel to the server as one batch, which sends them
+// to Monday as one request - Monday's daily limit counts requests, so this
+// is what keeps a page load cheap. Mutations always go on their own, at once.
+const BATCH_WINDOW_MS = 10;
+const MAX_BATCH_READS = 25;
+
+let pendingReads = [];
+let flushTimer = null;
+
+function isMutationQuery(query) {
+    return /^\s*mutation\b/i.test(query);
+}
+
 export async function mondayRequest(query, variables = {}, { cacheTtlMs } = {}) {
+    if (isMutationQuery(query)) {
+        return sendMondayRequest(query, variables, cacheTtlMs);
+    }
+
+    return new Promise((resolve, reject) => {
+        pendingReads.push({ query, variables, cacheTtlMs, resolve, reject });
+
+        if (pendingReads.length >= MAX_BATCH_READS) {
+            flushReads();
+        } else if (!flushTimer) {
+            flushTimer = setTimeout(flushReads, BATCH_WINDOW_MS);
+        }
+    });
+}
+
+async function flushReads() {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+
+    const batch = pendingReads;
+    pendingReads = [];
+
+    if (batch.length === 0) {
+        return;
+    }
+
+    if (batch.length === 1) {
+        const [read] = batch;
+        sendMondayRequest(read.query, read.variables, read.cacheTtlMs).then(read.resolve, read.reject);
+        return;
+    }
+
+    try {
+        const results = await sendReadBatch(batch);
+
+        results.forEach((result, index) => {
+            if (result.error) {
+                console.error(result.error);
+                batch[index].reject(new Error(result.error));
+            } else {
+                batch[index].resolve(result.data);
+            }
+        });
+    } catch (err) {
+        batch.forEach((read) => read.reject(err));
+    }
+}
+
+async function sendReadBatch(batch) {
+    const token = getAuthToken();
+
+    const response = await fetch(`${SERVER_URL}/api/monday/batch`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+            requests: batch.map(({ query, variables, cacheTtlMs }) => ({ query, variables, cacheTtlMs })),
+        }),
+    });
+
+    syncRoleFromResponse(response);
+
+    if (response.status === 401) {
+        await handleUnauthorized(response);
+        throw new Error('Not authenticated.');
+    }
+
+    const result = await response.json();
+
+    if (!response.ok || result.error) {
+        console.error(result.error);
+        throw new Error(result.error || 'Monday request failed.');
+    }
+
+    return result.results;
+}
+
+async function sendMondayRequest(query, variables, cacheTtlMs) {
     const token = getAuthToken();
 
     const response = await fetch(`${SERVER_URL}/api/monday`, {

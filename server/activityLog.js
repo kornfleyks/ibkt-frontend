@@ -190,10 +190,9 @@ export async function getItemName(itemId) {
   }
 }
 
-// Writes one row to the Activity Log board. Never throws - a logging
-// failure must never surface as a failure of the real action it's
-// recording, so every error is swallowed here (and console.error'd) rather
-// than propagated to the caller.
+// Adds one row to the Activity Log board (written with the next batch, see
+// flushActivityLog). Never throws - a logging failure must never surface as
+// a failure of the real action it's recording.
 export async function logActivity({
   actorId = "",
   actorName = "",
@@ -230,36 +229,97 @@ export async function logActivity({
       [ACTIVITY_LOG.COLUMNS.RAW_DETAILS]: { text: JSON.stringify(raw).slice(0, 2000) },
     };
 
-    const mutation = `
-      mutation (
-        $boardId: ID!,
-        $itemName: String!,
-        $columnValues: JSON,
-        $createLabelsIfMissing: Boolean
-      ) {
-        create_item(
-          board_id: $boardId,
-          item_name: $itemName,
-          column_values: $columnValues,
-          create_labels_if_missing: $createLabelsIfMissing
-        ) {
-          id
-        }
-      }
-    `;
-
-    await enqueueWrite(() =>
-      mondayDirectRequest(mutation, {
-        boardId: ACTIVITY_LOG.BOARD_ID,
-        itemName: (description || `${actionType} on ${boardName}`).slice(0, 255),
-        columnValues: JSON.stringify(columnValues),
-        createLabelsIfMissing: true,
-      }),
-    );
-
-    // So Activity Log reads show the new entry instead of a cached list.
-    clearCache([ACTIVITY_LOG.BOARD_ID]);
+    bufferLogEntry({
+      itemName: (description || `${actionType} on ${boardName}`).slice(0, 255),
+      columnValues: JSON.stringify(columnValues),
+    });
   } catch (err) {
-    console.error("Activity log: failed to write log entry.", err);
+    console.error("Activity log: failed to prepare log entry.", err);
   }
+}
+
+// Log entries are held for up to LOG_FLUSH_MS and written together: one
+// Monday request creates every buffered row (aliased create_item fields,
+// which GraphQL runs one after another), instead of one request per
+// action. Flushes still go through writeQueue, so they never overlap.
+// Trade-off agreed with the user: entries still buffered when the server
+// crashes are lost (a normal shutdown flushes them first).
+const LOG_FLUSH_MS = 10_000;
+const MAX_ENTRIES_PER_WRITE = 25;
+const MAX_BUFFERED_ENTRIES = 500;
+
+let logBuffer = [];
+let flushTimer = null;
+
+function bufferLogEntry(entry) {
+  logBuffer.push(entry);
+
+  if (logBuffer.length > MAX_BUFFERED_ENTRIES) {
+    logBuffer.shift();
+    console.error("Activity log: buffer full, dropped the oldest entry.");
+  }
+
+  if (!flushTimer) {
+    flushTimer = setTimeout(() => flushActivityLog(), LOG_FLUSH_MS);
+    flushTimer.unref();
+  }
+}
+
+async function writeEntries(entries) {
+  const mutation = `mutation ($boardId: ID!, ${entries
+    .map((_, index) => `$name${index}: String!, $values${index}: JSON`)
+    .join(", ")}) {
+    ${entries
+      .map(
+        (_, index) =>
+          `e${index}: create_item(board_id: $boardId, item_name: $name${index}, column_values: $values${index}, create_labels_if_missing: true) { id }`,
+      )
+      .join("\n    ")}
+  }`;
+
+  const variables = { boardId: ACTIVITY_LOG.BOARD_ID };
+
+  entries.forEach((entry, index) => {
+    variables[`name${index}`] = entry.itemName;
+    variables[`values${index}`] = entry.columnValues;
+  });
+
+  await mondayDirectRequest(mutation, variables);
+}
+
+// Writes everything buffered. Never throws. Entries that failed because of
+// Monday's rate limit go back in the buffer and are retried once it lifts.
+export function flushActivityLog() {
+  clearTimeout(flushTimer);
+  flushTimer = null;
+
+  const entries = logBuffer;
+  logBuffer = [];
+
+  if (entries.length === 0) {
+    return writeQueue;
+  }
+
+  return enqueueWrite(async () => {
+    for (let start = 0; start < entries.length; start += MAX_ENTRIES_PER_WRITE) {
+      const chunk = entries.slice(start, start + MAX_ENTRIES_PER_WRITE);
+
+      try {
+        await writeEntries(chunk);
+      } catch (err) {
+        if (err.rateLimited) {
+          logBuffer = [...entries.slice(start), ...logBuffer].slice(-MAX_BUFFERED_ENTRIES);
+          flushTimer = setTimeout(() => flushActivityLog(), err.retryAfterSeconds * 1000 + 5_000);
+          flushTimer.unref();
+          console.error(`Activity log: Monday rate limit, retrying ${logBuffer.length} entries later.`);
+          break;
+        }
+
+        console.error(`Activity log: failed to write ${chunk.length} entries.`, err.message);
+      }
+    }
+
+    // So Activity Log reads show the new entries instead of a cached list.
+    clearCache([ACTIVITY_LOG.BOARD_ID]);
+  });
 }

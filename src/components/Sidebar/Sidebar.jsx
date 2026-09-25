@@ -9,6 +9,8 @@ import useAuth from "../../hooks/useAuth";
 import { getAccessibleNavItems } from "../../utils/navigationAccess";
 
 import SidebarFooter from "../SidebarFooter/SidebarFooter";
+import MondayUsageCounter from "./MondayUsageCounter";
+import { ROLES } from "../../constants/roles";
 
 function Sidebar() {
   const theme = useTheme();
@@ -24,6 +26,8 @@ function Sidebar() {
   }
 
   const visibleItems = getAccessibleNavItems(user);
+  // Development-only Monday API call counter, for Admins.
+  const showMondayUsage = import.meta.env.APP_ENV === "development" && user?.role === ROLES.ADMIN;
 
   return (
     <div
@@ -114,6 +118,7 @@ function Sidebar() {
           );
         })}
       </nav>
+      {showMondayUsage && <MondayUsageCounter collapsed={!sidebarOpen} />}
       <SidebarFooter />
     </div>
   );

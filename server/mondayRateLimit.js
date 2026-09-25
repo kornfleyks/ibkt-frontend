@@ -1,3 +1,5 @@
+import { recordMondayCall } from "./mondayUsage.js";
+
 // Every server request to Monday goes through mondayFetch. When Monday
 // answers 429 (daily call limit, per-minute limit, ...), it says how long
 // to wait (Retry-After). Until then every Monday call fails straight away
@@ -53,6 +55,10 @@ export async function mondayFetch(url, init) {
 
     throw new MondayRateLimitError(seconds);
   }
+
+  // Answered (successfully or with GraphQL errors) - uses one call of
+  // today's allowance.
+  recordMondayCall();
 
   return response;
 }

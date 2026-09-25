@@ -3,7 +3,8 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 
-import { isMutation, getCached, setCached, clearCache } from "./mondayCache.js";
+import { isMutation, clearCache } from "./mondayCache.js";
+import { readOne, readMany } from "./mondayReads.js";
 import {
   USERS_BOARD_ID,
   findUserByEmail,
@@ -23,6 +24,7 @@ import {
   describeColumnValue,
   getItemSnapshot,
   getItemName,
+  flushActivityLog,
   CATS_BOARD_ID,
 } from "./activityLog.js";
 import { getLoginMaxAttempts, getLoginLockoutMinutes, loadAppSettings, invalidateSettingsCache } from "./appSettings.js";
@@ -36,7 +38,9 @@ import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
 import { registerCommunicationRoutes } from "./communications.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
-import { mondayFetch } from "./mondayRateLimit.js";
+import { mondayFetch, mondayRetryAfterSeconds } from "./mondayRateLimit.js";
+import { getMondayUsage } from "./mondayUsage.js";
+import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER } from "../src/constants/mondayApiUsage.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -235,8 +239,33 @@ function sendRateLimited(res, err) {
 const app = express();
 
 // X-User-Role is set by requireAuth so the app can pick up a role change live.
-app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role"] }));
+app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role", MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER] }));
 app.use(express.json());
+
+// Admins get today's Monday call count on every JSON response (for the
+// development usage counter in the sidebar). Read at send time, so it
+// includes the calls this request just made; req.user is set by
+// requireAuth before the handler responds.
+app.use((req, res, next) => {
+  const json = res.json.bind(res);
+
+  res.json = (body) => {
+    if (req.user?.role === "Admin") {
+      const { count, limit } = getMondayUsage();
+      const blockedFor = mondayRetryAfterSeconds();
+
+      res.set(MONDAY_USAGE_HEADER, `${count}/${limit}`);
+
+      if (blockedFor > 0) {
+        res.set(MONDAY_BLOCKED_HEADER, String(blockedFor));
+      }
+    }
+
+    return json(body);
+  };
+
+  next();
+});
 
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
@@ -476,11 +505,18 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "Account status can only be changed through the user status endpoint." });
   }
 
+  // Reads: cache, then joining an identical read already in flight, then
+  // Monday (see mondayReads.js).
   if (!mutation) {
-    const cached = getCached(query, variables);
+    try {
+      return res.json({ data: await readOne({ query, variables, cacheTtlMs }) });
+    } catch (err) {
+      if (sendRateLimited(res, err)) {
+        return;
+      }
 
-    if (cached !== undefined) {
-      return res.json({ data: cached });
+      console.error(err);
+      return res.status(err.status ?? 500).json({ error: err.status ? err.message : "Request to Monday failed." });
     }
   }
 
@@ -560,11 +596,61 @@ app.post("/api/monday", requireAuth, async (req, res) => {
           priorSnapshot,
         });
       }
-    } else {
-      await setCached(query, variables, result.data, cacheTtlMs);
     }
 
     res.json({ data: result.data });
+  } catch (err) {
+    if (sendRateLimited(res, err)) {
+      return;
+    }
+
+    console.error(err);
+    res.status(500).json({ error: "Request to Monday failed." });
+  }
+});
+
+const MAX_BATCH_READS = 25;
+
+// Several reads in one call - the app groups the reads it makes together
+// (e.g. everything a page loads) so they reach Monday as one request.
+// Body: { requests: [{ query, variables, cacheTtlMs }] }, reads only.
+// Responds { results: [{ data } | { error, status }] } in the same order.
+app.post("/api/monday/batch", requireAuth, async (req, res) => {
+  const requests = req.body?.requests;
+
+  if (!Array.isArray(requests) || requests.length === 0 || requests.length > MAX_BATCH_READS) {
+    return res.status(400).json({ error: `requests must be an array of 1-${MAX_BATCH_READS} reads.` });
+  }
+
+  const results = new Array(requests.length);
+  const reads = [];
+
+  requests.forEach((request, index) => {
+    const { query, variables, cacheTtlMs } = request ?? {};
+
+    if (typeof query !== "string" || !query) {
+      results[index] = { error: "query is required.", status: 400 };
+    } else if (isMutation(query)) {
+      results[index] = { error: "Only reads can be batched.", status: 400 };
+    } else if (query.includes(NOTIFICATIONS_BOARD_ID) || JSON.stringify(variables ?? {}).includes(NOTIFICATIONS_BOARD_ID)) {
+      results[index] = { error: "Notifications are only available through /api/notifications.", status: 403 };
+    } else {
+      reads.push({ index, request: { query, variables, cacheTtlMs } });
+    }
+  });
+
+  try {
+    const fetched = await readMany(reads.map((read) => read.request));
+
+    reads.forEach((read, position) => {
+      const result = fetched[position];
+
+      results[read.index] = result.error
+        ? { error: result.error.status ? result.error.message : "Request to Monday failed.", status: result.error.status ?? 500 }
+        : { data: result.data };
+    });
+
+    res.json({ results });
   } catch (err) {
     if (sendRateLimited(res, err)) {
       return;
@@ -674,3 +760,15 @@ app.listen(PORT, () => {
   loadAppSettings().finally(initAccountState);
   startMondayApiVersionChecks();
 });
+
+// A normal stop (Render redeploy/sleep, Ctrl+C, node --watch restart)
+// writes the activity-log entries still waiting in the buffer first.
+for (const signal of ["SIGTERM", "SIGINT"]) {
+  process.once(signal, async () => {
+    try {
+      await flushActivityLog();
+    } finally {
+      process.exit(0);
+    }
+  });
+}

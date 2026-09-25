@@ -18,7 +18,7 @@ export function isMutation(query) {
   return /^\s*mutation\b/i.test(query);
 }
 
-function cacheKey(query, variables) {
+export function cacheKey(query, variables) {
   return JSON.stringify({ query, variables });
 }
 
