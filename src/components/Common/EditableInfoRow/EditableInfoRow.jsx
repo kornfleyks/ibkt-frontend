@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IconButton, Stack, Typography, CircularProgress } from '@mui/material';
+import { Box, IconButton, Stack, Typography, CircularProgress } from '@mui/material';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import CheckIcon from '@mui/icons-material/CheckOutlined';
 import CloseIcon from '@mui/icons-material/CloseOutlined';
@@ -41,9 +41,9 @@ function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEdit
         return (
             <Stack
                 direction="row"
-                alignItems="center"
                 spacing={1.5}
                 sx={{
+                    alignItems: 'center',
                     '&:hover .row-edit-button, &:focus-within .row-edit-button': {
                         opacity: 1,
                     },
@@ -64,28 +64,35 @@ function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEdit
         );
     }
 
+    // On narrow screens the label wraps onto its own line; the editor and
+    // its Save/Cancel buttons always stay together, with the editor
+    // shrinking so the buttons never get pushed out of view.
     return (
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ py: 0.5 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, py: 0.5 }}>
             <Typography sx={{ minWidth: 120, flexShrink: 0, fontWeight: 600, color: 'text.secondary' }}>
                 {label}
             </Typography>
 
-            {renderEditor(value, setValue, saving)}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: '1 1 240px', minWidth: 0 }}>
+                <Box sx={{ display: 'flex', flex: 1, minWidth: 0 }}>
+                    {renderEditor(value, setValue, saving)}
+                </Box>
 
-            <IconButton size="small" onClick={handleSave} disabled={saving} aria-label={`Save ${label}`}>
-                {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
-            </IconButton>
+                <IconButton size="small" onClick={handleSave} disabled={saving} aria-label={`Save ${label}`} sx={{ flexShrink: 0 }}>
+                    {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
+                </IconButton>
 
-            <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
-                <CloseIcon fontSize="small" />
-            </IconButton>
+                <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel" sx={{ flexShrink: 0 }}>
+                    <CloseIcon fontSize="small" />
+                </IconButton>
+            </Box>
 
             {error && (
-                <Typography variant="caption" color="error">
+                <Typography variant="caption" color="error" sx={{ flexBasis: '100%' }}>
                     {error}
                 </Typography>
             )}
-        </Stack>
+        </Box>
     );
 }
 

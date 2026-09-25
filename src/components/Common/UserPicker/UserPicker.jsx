@@ -44,7 +44,7 @@ function UserPicker({ value, onChange, loadUsers, disabled = false, label = 'Use
     return (
         <Autocomplete
             size="small"
-            sx={{ minWidth: 240, flex: 1, maxWidth: 360 }}
+            sx={{ minWidth: 0, flex: 1, maxWidth: 360 }}
             options={options}
             value={value}
             loading={loading}
