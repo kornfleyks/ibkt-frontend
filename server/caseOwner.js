@@ -4,6 +4,7 @@ import { getUserDirectory } from "./auth.js";
 import { getListSetting } from "./appSettings.js";
 import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemSnapshot, resolveBoardName } from "./activityLog.js";
+import { notifyAssignmentChange } from "./notifications.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
@@ -144,6 +145,15 @@ export function registerCaseOwnerRoutes(app, { requireAuth }) {
         oldValue,
         newValue,
         raw: { applicationId: id, userId: owner?.id ?? null },
+      });
+
+      notifyAssignmentChange({
+        kind: "case",
+        previousIds: priorSnapshot?.linkedIds ?? [],
+        nextIds: owner ? [owner.id] : [],
+        actor: { id: req.user.sub, name: actorName },
+        target: { boardId: ACTIVE_APPLICATIONS.BOARD_ID, itemId: id, name: itemName },
+        link: `/active-applications/${id}`,
       });
 
       res.json({ caseOwner: owner ? { id: owner.id, name: owner.name } : null });

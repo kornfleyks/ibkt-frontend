@@ -27,10 +27,12 @@ import {
 } from "./activityLog.js";
 import { getLoginMaxAttempts, getLoginLockoutMinutes } from "./appSettings.js";
 import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
-import { initAccountState, applyAccountChange, TRACKED_COLUMNS } from "./accountState.js";
+import { initAccountState, applyAccountChange, TRACKED_COLUMNS, NAME_COLUMNS } from "./accountState.js";
 import { registerUserAdminRoutes } from "./userAdmin.js";
 import { registerWebhookRoutes } from "./webhooks.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
+import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
+import { registerCommunicationRoutes } from "./communications.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -402,6 +404,8 @@ registerCaseOwnerRoutes(app, { requireAuth });
 registerUserAdminRoutes(app, { requireAuth, requireAdmin });
 registerWebhookRoutes(app);
 registerSessionEventRoutes(app, { requireAuth });
+registerNotificationRoutes(app, { requireAuth });
+registerCommunicationRoutes(app, { requireAuth });
 
 // The frontend never talks to Monday directly: it has no way to hold an API
 // token without shipping it in the public JS bundle. Every Monday GraphQL
@@ -415,6 +419,13 @@ app.post("/api/monday", requireAuth, async (req, res) => {
   }
 
   const mutation = isMutation(query);
+
+  // Notifications are personal - they're only served, per user, by
+  // /api/notifications. Best-effort like the other board guards: it catches
+  // any request naming the board, not a read of a notification item by id.
+  if (query.includes(NOTIFICATIONS_BOARD_ID) || JSON.stringify(variables ?? {}).includes(NOTIFICATIONS_BOARD_ID)) {
+    return res.status(403).json({ error: "Notifications are only available through /api/notifications." });
+  }
 
   // The generic proxy above stays board-agnostic like the rest of this
   // app's architecture, but a mutation against the Users board can change
@@ -502,7 +513,33 @@ app.post("/api/monday", requireAuth, async (req, res) => {
         }
       }
 
+      // A rename through the Users page keeps the in-memory name (used for
+      // @mentions and notification recipients) current.
+      if (isChangeColumnValue && variables?.boardId === USERS_BOARD_ID && NAME_COLUMNS[variables?.columnId]) {
+        try {
+          applyAccountChange(variables.itemId, { [NAME_COLUMNS[variables.columnId]]: JSON.parse(variables.value) ?? "" });
+        } catch {
+          // Unparseable value - the state is re-read at the next restart.
+        }
+      }
+
       logMutationActivity({ query, variables, result, req, priorSnapshot });
+
+      const mutationKind = MUTATION_KIND_PATTERNS.createItem.test(query)
+        ? "createItem"
+        : isChangeColumnValue
+          ? "changeColumnValue"
+          : null;
+
+      if (mutationKind) {
+        notifyFromTaskMutation({
+          kind: mutationKind,
+          variables,
+          result,
+          actor: { id: req.user.sub, name: `${req.user.firstName} ${req.user.lastName}`.trim() },
+          priorSnapshot,
+        });
+      }
     } else {
       await setCached(query, variables, result.data, cacheTtlMs);
     }

@@ -143,6 +143,7 @@ export async function getItemSnapshot(itemId, columnId) {
           text
           ... on BoardRelationValue {
             display_value
+            linked_item_ids
           }
         }
       }
@@ -158,10 +159,13 @@ export async function getItemSnapshot(itemId, columnId) {
       itemName: item?.name ?? "",
       // Relation columns report text as null; their names are on display_value.
       columnText: column?.text || column?.display_value || "",
+      // Relation columns only: who/what was linked before the change (used
+      // to notify someone a task or case was taken off them).
+      linkedIds: (column?.linked_item_ids ?? []).map(String),
     };
   } catch (err) {
     console.error("Activity log: failed to read item snapshot.", err);
-    return { itemName: "", columnText: "" };
+    return { itemName: "", columnText: "", linkedIds: [] };
   }
 }
 

@@ -4,7 +4,8 @@ import { getAccountState, onAccountChange } from "./accountState.js";
 // account state (role / status) the moment it changes, so a role change or
 // suspension shows up without the person doing anything. Changes come from
 // accountState.js (this server's own writes and Monday webhooks) - no
-// Monday requests are made here.
+// Monday requests are made here. Other modules push their own events
+// (e.g. notifications.js) through pushToUser.
 
 const HEARTBEAT_MS = 25_000;
 
@@ -35,6 +36,14 @@ onAccountChange((userId, next) => {
     }
   }
 });
+
+// Sends `event` to every open tab of `userId` (e.g. a new notification).
+// A user with no open tab simply gets nothing - they load it next visit.
+export function pushToUser(userId, event, data) {
+  for (const res of streams.get(String(userId)) ?? []) {
+    send(res, event, data);
+  }
+}
 
 export function registerSessionEventRoutes(app, { requireAuth }) {
   // requireAuth already rejects non-Active accounts, so a suspended user

@@ -75,6 +75,38 @@ npm run register:users-webhooks -- https://your-public-server.example.com
 
 Until then, edits made directly on Monday are picked up at the next restart.
 
+## Notifications (`notifications.js`) and Communications (`communications.js`)
+
+In-app notifications are rows on the Monday **Notifications** board
+(`src/constants/boards/notifications.js`, created once with
+`node scripts/createNotificationsBoard.js <workspaceId>`). They are created
+here when, through this server:
+
+- a task is created with an owner, or its Owner changes (detected on the
+  `/api/monday` proxy): the new owner gets "assigned", the old one "taken off";
+- a Case Owner changes (`POST /api/applications/:id/case-owner`), same rule;
+- someone is @mentioned in a Communications post.
+
+Nobody is notified about their own action, and only Active accounts are.
+Each new notification is pushed to the recipient's open tabs over
+`/api/session/events` (event `notification`). Changes made directly on
+Monday don't notify.
+
+- `GET /api/notifications` - your latest 30 (newest first) and unread count.
+- `POST /api/notifications/:id/read` - mark one of yours read.
+- `POST /api/notifications/read-all` - mark all of yours read.
+
+`/api/monday` refuses any request naming the Notifications board, so people
+only see their own (best-effort, like the other board guards).
+
+Communications posts go through `POST /api/communications/:boardId/:itemId`
+with `{ "text": "..." }`, for boards listed in
+`src/constants/communicationBoards.js` (Cats today). The server adds the
+"[Author - Role]" prefix from the session, keeps only mentions of Active
+accounts (tokens `@[Name](userId)`, see `src/utils/mentions.js`) and
+notifies them. `GET /api/users/mentionable` lists the Active accounts
+(id, name, role) for the @ picker, from memory.
+
 ## Setup
 
 ```

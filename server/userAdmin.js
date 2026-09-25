@@ -4,7 +4,7 @@ import { TASKS } from "../src/constants/boards/tasks.js";
 import { USERS_STATUS_OPTIONS } from "../src/constants/statuses/usersStatuses.js";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../src/constants/statuses/activeApplicationsStatuses.js";
 import { TASKS_STATUS_OPTIONS } from "../src/constants/statuses/tasksStatuses.js";
-import { applyAccountChange } from "./accountState.js";
+import { applyAccountChange, getAccountState } from "./accountState.js";
 import { writeCaseOwner } from "./caseOwner.js";
 import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemName, resolveBoardName } from "./activityLog.js";
@@ -213,6 +213,9 @@ export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
       }
 
       await changeColumnValue(USERS.BOARD_ID, id, USERS.COLUMNS.ACCOUNT_STATUS, { label: status });
+      // Loads an account registered since startup, so e.g. a just-approved
+      // user is mentionable straight away rather than after their first login.
+      await getAccountState(id);
       applyAccountChange(id, { accountStatus: status });
       clearCache();
 

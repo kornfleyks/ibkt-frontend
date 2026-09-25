@@ -39,10 +39,17 @@ function toState(item) {
   return {
     role: columns[USERS.COLUMNS.ROLE]?.text ?? "",
     accountStatus: columns[USERS.COLUMNS.ACCOUNT_STATUS]?.text ?? "",
+    firstName: columns[USERS.COLUMNS.FIRST_NAME]?.text ?? "",
+    lastName: columns[USERS.COLUMNS.LAST_NAME]?.text ?? "",
   };
 }
 
-const COLUMN_IDS = [USERS.COLUMNS.ROLE, USERS.COLUMNS.ACCOUNT_STATUS];
+const COLUMN_IDS = [
+  USERS.COLUMNS.ROLE,
+  USERS.COLUMNS.ACCOUNT_STATUS,
+  USERS.COLUMNS.FIRST_NAME,
+  USERS.COLUMNS.LAST_NAME,
+];
 
 async function loadAll() {
   const data = await mondayDirectRequest(
@@ -94,7 +101,7 @@ export async function initAccountState() {
   }
 }
 
-// { role, accountStatus } or null if the user doesn't exist. Unknown ids
+// { role, accountStatus, firstName, lastName } or null if the user doesn't exist. Unknown ids
 // (e.g. an account created after startup) cost one Monday read, once.
 export async function getAccountState(userId) {
   const key = String(userId);
@@ -143,6 +150,27 @@ export function applyAccountChange(userId, changes) {
     }
   }
 }
+
+export function displayNameOf(state, userId) {
+  return `${state?.firstName ?? ""} ${state?.lastName ?? ""}`.trim() || `User ${userId}`;
+}
+
+// [{ id, name, role }] for every Active account, from memory - no Monday
+// read. Feeds the @mention picker and notification recipient checks.
+export function listActiveAccounts() {
+  return [...accounts.entries()]
+    .filter(([, state]) => state.accountStatus === "Active")
+    .map(([id, state]) => ({ id, name: displayNameOf(state, id), role: state.role }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// First/Last Name column id -> state field, so a rename made through the
+// app keeps the in-memory name current (name edits made directly on
+// Monday are picked up at the next restart).
+export const NAME_COLUMNS = {
+  [USERS.COLUMNS.FIRST_NAME]: "firstName",
+  [USERS.COLUMNS.LAST_NAME]: "lastName",
+};
 
 // Status/Role column id -> state field, for decoding writes and webhooks.
 export const TRACKED_COLUMNS = {
