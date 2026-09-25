@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
 import {
@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 
 import useAuth from '../../hooks/useAuth';
+import { readSignOutReason, clearSignOutReason } from '../../services/authStorage';
 
 
 function Login() {
@@ -24,6 +25,12 @@ function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const [loggingIn, setLoggingIn] = useState(false);
+    // Why the previous session ended (e.g. account suspended), shown once.
+    const [signOutReason] = useState(readSignOutReason);
+
+    useEffect(() => {
+        clearSignOutReason();
+    }, []);
 
 
     async function handleLogin() {
@@ -155,6 +162,12 @@ function Login() {
                         sx={{ mb:3 }}
 
                     />
+
+                    {signOutReason && !error && (
+                        <Alert severity="warning" sx={{ mb: 3 }}>
+                            {signOutReason}
+                        </Alert>
+                    )}
 
                     {error && (
                         <Alert severity="error" sx={{ mb: 3 }}>

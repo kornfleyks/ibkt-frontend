@@ -30,6 +30,7 @@ import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
 import { initAccountState, applyAccountChange, TRACKED_COLUMNS } from "./accountState.js";
 import { registerUserAdminRoutes } from "./userAdmin.js";
 import { registerWebhookRoutes } from "./webhooks.js";
+import { registerSessionEventRoutes } from "./sessionEvents.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -400,6 +401,7 @@ app.post("/api/admin/users/:id/password", requireAuth, requireAdmin, async (req,
 registerCaseOwnerRoutes(app, { requireAuth });
 registerUserAdminRoutes(app, { requireAuth, requireAdmin });
 registerWebhookRoutes(app);
+registerSessionEventRoutes(app, { requireAuth });
 
 // The frontend never talks to Monday directly: it has no way to hold an API
 // token without shipping it in the public JS bundle. Every Monday GraphQL

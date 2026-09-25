@@ -1,4 +1,4 @@
-import { readAuth, clearAuth, updateStoredRole } from './authStorage';
+import { readAuth, clearAuth, updateStoredRole, setSignOutReason, inactiveAccountReason } from './authStorage';
 
 // All Monday requests go through our own server, which holds the API
 // token. The browser never sees it (see /server/index.js).
@@ -20,8 +20,19 @@ function syncRoleFromResponse(response) {
 
 // This is a plain module, not a component, so it can't read AuthContext -
 // on an expired/invalid session it just clears storage and hard-redirects,
-// same end state a logout would produce.
-function handleUnauthorized() {
+// same end state a logout would produce. A suspended/archived account
+// (code ACCOUNT_INACTIVE) leaves a reason for the login page to show.
+async function handleUnauthorized(response) {
+    try {
+        const body = await response.clone().json();
+
+        if (body?.code === 'ACCOUNT_INACTIVE') {
+            setSignOutReason(inactiveAccountReason());
+        }
+    } catch {
+        // Not JSON - a plain expired session, nothing to explain.
+    }
+
     clearAuth();
 
     const loginUrl = `${import.meta.env.BASE_URL}login`.replace(/\/+/g, '/');
@@ -48,7 +59,7 @@ export async function serverPost(path, body) {
     syncRoleFromResponse(response);
 
     if (response.status === 401) {
-        handleUnauthorized();
+        await handleUnauthorized(response);
         throw new Error('Not authenticated.');
     }
 
@@ -73,7 +84,7 @@ export async function serverGet(path) {
     syncRoleFromResponse(response);
 
     if (response.status === 401) {
-        handleUnauthorized();
+        await handleUnauthorized(response);
         throw new Error('Not authenticated.');
     }
 
@@ -106,7 +117,7 @@ export async function mondayRequest(query, variables = {}, { cacheTtlMs } = {}) 
     syncRoleFromResponse(response);
 
     if (response.status === 401) {
-        handleUnauthorized();
+        await handleUnauthorized(response);
         throw new Error('Not authenticated.');
     }
 
@@ -235,7 +246,7 @@ export async function uploadMondayFile(itemId, columnId, file) {
   syncRoleFromResponse(response);
 
   if (response.status === 401) {
-    handleUnauthorized();
+    await handleUnauthorized(response);
     throw new Error("Not authenticated.");
   }
 

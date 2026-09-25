@@ -60,6 +60,12 @@ Admin endpoints (`userAdmin.js`):
   activity-logged); you can't change your own status. `/api/monday` refuses
   direct writes to Account Status so this can't be skipped.
 
+Signed-in tabs hold `GET /api/session/events` open (server-sent events,
+auth in the header). Every change applied to the account state is pushed
+to that user's tabs straight away (`sessionEvents.js`), so a role change or
+suspension takes effect without them clicking anything; a heartbeat every
+25s keeps proxies from closing the stream, and the app reconnects on drops.
+
 Webhooks need a **public** URL (Monday can't reach localhost). Once deployed,
 set `MONDAY_WEBHOOK_SECRET` and run once:
 

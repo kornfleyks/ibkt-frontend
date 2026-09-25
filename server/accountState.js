@@ -110,14 +110,37 @@ export function isAccountStateReady() {
   return initialized;
 }
 
+const changeListeners = new Set();
+
+// listener(userId, nextState, previousState) - called only when a tracked
+// field actually changed. Returns an unsubscribe function.
+export function onAccountChange(listener) {
+  changeListeners.add(listener);
+
+  return () => changeListeners.delete(listener);
+}
+
 // Merge a known change (from this server's own write, a proxied mutation,
 // or a webhook). Unknown users are ignored - they'll be read on first use.
 export function applyAccountChange(userId, changes) {
   const key = String(userId);
   const current = accounts.get(key);
 
-  if (current) {
-    accounts.set(key, { ...current, ...changes });
+  if (!current) {
+    return;
+  }
+
+  const next = { ...current, ...changes };
+  accounts.set(key, next);
+
+  if (next.role !== current.role || next.accountStatus !== current.accountStatus) {
+    for (const listener of changeListeners) {
+      try {
+        listener(key, next, current);
+      } catch (err) {
+        console.error("Account state listener failed:", err);
+      }
+    }
   }
 }
 
