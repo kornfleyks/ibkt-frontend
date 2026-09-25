@@ -26,7 +26,6 @@ import EditIcon from '@mui/icons-material/EditOutlined';
 import CheckIcon from '@mui/icons-material/CheckOutlined';
 import CloseIcon from '@mui/icons-material/CloseOutlined';
 import LockIcon from '@mui/icons-material/LockOutlined';
-import InfoIcon from '@mui/icons-material/InfoOutlined';
 
 import PageHeader from '../../components/PageHeader';
 import {
@@ -40,9 +39,11 @@ import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
 import UserStatusDialog from '../../components/Users/UserStatusDialog';
 import RoleChangeDialog from '../../components/Users/RoleChangeDialog';
 import UserDetailDrawer from '../../components/Users/UserDetailDrawer';
+import UserActionsMenu from '../../components/Users/UserActionsMenu';
 import { ACTIONS_BY_STATUS, HANDOVER_STATUSES, USER_STATUS_ACTIONS } from '../../components/Users/userStatusActions';
 import { formatRelativeTime } from '../../utils/relativeTime';
 import useAuth from '../../hooks/useAuth';
+import { visibleScrollbarSx } from '../../utils/scrollbarSx';
 
 const ROLE_OPTIONS = Object.values(USERS_STATUS_OPTIONS.ROLE);
 
@@ -412,27 +413,12 @@ function UserRow({ user, isSelf, onRequestRole, onRequestAction, onOpenDetails, 
             </TableCell>
 
             <TableCell>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    {actions.map((action) => {
-                        const config = USER_STATUS_ACTIONS[action];
-
-                        return (
-                            <Button
-                                key={action}
-                                size="small"
-                                variant={config.color === 'success' ? 'contained' : 'outlined'}
-                                color={config.color}
-                                onClick={() => onRequestAction(user, action)}
-                            >
-                                {config.label}
-                            </Button>
-                        );
-                    })}
-
-                    <IconButton size="small" onClick={() => onOpenDetails(user)} aria-label={`Details for ${user.email}`}>
-                        <InfoIcon fontSize="small" />
-                    </IconButton>
-                </Stack>
+                <UserActionsMenu
+                    user={user}
+                    actions={actions}
+                    onRequestAction={onRequestAction}
+                    onOpenDetails={onOpenDetails}
+                />
             </TableCell>
         </TableRow>
     );
@@ -533,9 +519,9 @@ function Users() {
         ]),
     );
 
-    // Tab from ?tab=, else Pending when anyone is waiting for approval, else Active.
+    // Tab from ?tab=, else All.
     const requestedTab = tabIndex(searchParams.get('tab'));
-    const tab = requestedTab !== -1 ? requestedTab : tabIndex(counts.pending > 0 ? 'pending' : 'active');
+    const tab = requestedTab !== -1 ? requestedTab : tabIndex('all');
 
     function setTab(index) {
         setSearchParams((current) => {
@@ -596,8 +582,15 @@ function Users() {
                                     {term ? `No users match "${search.trim()}".` : 'No users here.'}
                                 </Typography>
                             ) : (
-                                <TableContainer sx={{ overflowX: 'auto' }}>
-                                    <Table size="small" sx={{ minWidth: 1000 }}>
+                                <TableContainer
+                                    sx={{
+                                        overflowX: 'auto',
+                                        // Pending rows carry the widest set of actions - show the
+                                        // scrollbar there so they're clearly reachable.
+                                        ...(TABS[tab].slug === 'pending' && visibleScrollbarSx),
+                                    }}
+                                >
+                                    <Table size="small">
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell>Name</TableCell>
