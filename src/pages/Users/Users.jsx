@@ -585,9 +585,9 @@ function Users() {
                                 <TableContainer
                                     sx={{
                                         overflowX: 'auto',
-                                        // Pending rows carry the widest set of actions - show the
-                                        // scrollbar there so they're clearly reachable.
-                                        ...(TABS[tab].slug === 'pending' && visibleScrollbarSx),
+                                        // Visible scrollbar on every tab (hidden app-wide otherwise)
+                                        // so a table wider than the card is clearly scrollable.
+                                        ...visibleScrollbarSx,
                                     }}
                                 >
                                     <Table size="small">
