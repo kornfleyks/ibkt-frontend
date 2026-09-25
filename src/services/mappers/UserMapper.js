@@ -1,3 +1,4 @@
+import { parseUtcDateTime } from "../../utils/mondayDateTime";
 import { USERS } from "../../constants/boards/users";
 
 export function mapUser(item) {
@@ -12,5 +13,6 @@ export function mapUser(item) {
     email: columns[USERS.COLUMNS.EMAIL]?.text || "",
     role: columns[USERS.COLUMNS.ROLE]?.text || "",
     accountStatus: columns[USERS.COLUMNS.ACCOUNT_STATUS]?.text || "",
+    lastLogin: parseUtcDateTime(columns[USERS.COLUMNS.LAST_LOGIN]?.value),
   };
 }

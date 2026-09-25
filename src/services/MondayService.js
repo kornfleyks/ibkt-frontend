@@ -1,4 +1,4 @@
-import { readAuth, clearAuth } from './authStorage';
+import { readAuth, clearAuth, updateStoredRole } from './authStorage';
 
 // All Monday requests go through our own server, which holds the API
 // token. The browser never sees it (see /server/index.js).
@@ -6,6 +6,16 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
 function getAuthToken() {
     return readAuth()?.token ?? null;
+}
+
+// requireAuth sends the account's live role on every response, so a role
+// change made by an Admin reaches this browser on its next request.
+function syncRoleFromResponse(response) {
+    const role = response.headers.get('X-User-Role');
+
+    if (role) {
+        updateStoredRole(role);
+    }
 }
 
 // This is a plain module, not a component, so it can't read AuthContext -
@@ -35,6 +45,8 @@ export async function serverPost(path, body) {
         body: JSON.stringify(body),
     });
 
+    syncRoleFromResponse(response);
+
     if (response.status === 401) {
         handleUnauthorized();
         throw new Error('Not authenticated.');
@@ -57,6 +69,8 @@ export async function serverGet(path) {
     const response = await fetch(`${SERVER_URL}${path}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
+
+    syncRoleFromResponse(response);
 
     if (response.status === 401) {
         handleUnauthorized();
@@ -88,6 +102,8 @@ export async function mondayRequest(query, variables = {}, { cacheTtlMs } = {}) 
             cacheTtlMs,
         }),
     });
+
+    syncRoleFromResponse(response);
 
     if (response.status === 401) {
         handleUnauthorized();
@@ -215,6 +231,8 @@ export async function uploadMondayFile(itemId, columnId, file) {
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
   });
+
+  syncRoleFromResponse(response);
 
   if (response.status === 401) {
     handleUnauthorized();

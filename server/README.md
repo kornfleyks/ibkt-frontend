@@ -40,6 +40,35 @@ npm run migrate:case-owners            # dry run: report only
 npm run migrate:case-owners -- --apply # write the matched rows
 ```
 
+## Account state and user administration
+
+`requireAuth` checks every request against each account's **live** Status and
+Role, held in memory (`accountState.js`) - so a suspension or role change
+applies on the next request, without asking Monday each time. The memory is
+filled by one Users-board read at startup and kept current by:
+
+- this server's own writes (`POST /api/admin/users/:id/status`, role changes
+  proxied through `/api/monday`);
+- Monday webhooks for edits made directly on the board (`webhooks.js`).
+
+Admin endpoints (`userAdmin.js`):
+
+- `GET /api/admin/users/:id/open-work` - the user's open cases (any stage
+  but Rejected/Archived/Completed) and open tasks (New/In Progress/Waiting).
+- `POST /api/admin/users/:id/status` with `{ "status": "..." }` - Suspend and
+  Archive first reassign that open work to the acting Admin (each move is
+  activity-logged); you can't change your own status. `/api/monday` refuses
+  direct writes to Account Status so this can't be skipped.
+
+Webhooks need a **public** URL (Monday can't reach localhost). Once deployed,
+set `MONDAY_WEBHOOK_SECRET` and run once:
+
+```
+npm run register:users-webhooks -- https://your-public-server.example.com
+```
+
+Until then, edits made directly on Monday are picked up at the next restart.
+
 ## Setup
 
 ```

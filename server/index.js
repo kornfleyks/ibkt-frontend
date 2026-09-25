@@ -9,6 +9,7 @@ import {
   findUserByEmail,
   createPendingUser,
   setUserPasswordHash,
+  setUserLastLogin,
   hashPassword,
   comparePassword,
   signToken,
@@ -26,6 +27,9 @@ import {
 } from "./activityLog.js";
 import { getLoginMaxAttempts, getLoginLockoutMinutes } from "./appSettings.js";
 import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
+import { initAccountState, applyAccountChange, TRACKED_COLUMNS } from "./accountState.js";
+import { registerUserAdminRoutes } from "./userAdmin.js";
+import { registerWebhookRoutes } from "./webhooks.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -210,7 +214,8 @@ function logMutationActivity({ query, variables, result, req, priorSnapshot }) {
 
 const app = express();
 
-app.use(cors({ origin: ALLOWED_ORIGINS }));
+// X-User-Role is set by requireAuth so the app can pick up a role change live.
+app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role"] }));
 app.use(express.json());
 
 app.post("/api/login", async (req, res) => {
@@ -249,6 +254,9 @@ app.post("/api/login", async (req, res) => {
     }
 
     clearLoginAttempts(email);
+
+    // Fire-and-forget: a failed Last Login write must never block a login.
+    setUserLastLogin(user.id).catch((err) => console.error("Failed to record last login:", err.message));
 
     const token = await signToken(user);
     const fullName = `${user.firstName} ${user.lastName}`.trim();
@@ -390,6 +398,8 @@ app.post("/api/admin/users/:id/password", requireAuth, requireAdmin, async (req,
 });
 
 registerCaseOwnerRoutes(app, { requireAuth });
+registerUserAdminRoutes(app, { requireAuth, requireAdmin });
+registerWebhookRoutes(app);
 
 // The frontend never talks to Monday directly: it has no way to hold an API
 // token without shipping it in the public JS bundle. Every Monday GraphQL
@@ -421,6 +431,18 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     (query.includes(CASE_OWNER_COLUMN_ID) || JSON.stringify(variables ?? {}).includes(CASE_OWNER_COLUMN_ID))
   ) {
     return res.status(403).json({ error: "Case Owner can only be changed through the case owner endpoint." });
+  }
+
+  // Account Status goes through POST /api/admin/users/:id/status, which
+  // hands over open work on Suspend/Archive and keeps the live account
+  // state in step - a direct write here would skip both.
+  const accountStatusColumn = Object.keys(TRACKED_COLUMNS).find((columnId) => TRACKED_COLUMNS[columnId] === "accountStatus");
+
+  if (
+    mutation &&
+    (query.includes(accountStatusColumn) || JSON.stringify(variables ?? {}).includes(accountStatusColumn))
+  ) {
+    return res.status(403).json({ error: "Account status can only be changed through the user status endpoint." });
   }
 
   if (!mutation) {
@@ -463,6 +485,20 @@ app.post("/api/monday", requireAuth, async (req, res) => {
       // simplest correct move is to drop everything rather than track which
       // reads it could have affected.
       clearCache();
+
+      // A role change made through the Users page applies to that user's
+      // very next request (requireAuth reads the live account state).
+      if (
+        isChangeColumnValue &&
+        variables?.boardId === USERS_BOARD_ID &&
+        TRACKED_COLUMNS[variables?.columnId] === "role"
+      ) {
+        try {
+          applyAccountChange(variables.itemId, { role: JSON.parse(variables.value)?.label ?? "" });
+        } catch {
+          // Unparseable value - the state is re-read at the next restart.
+        }
+      }
 
       logMutationActivity({ query, variables, result, req, priorSnapshot });
     } else {
@@ -566,4 +602,5 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
 
 app.listen(PORT, () => {
   console.log(`Upload proxy listening on http://localhost:${PORT}`);
+  initAccountState();
 });

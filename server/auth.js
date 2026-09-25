@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getSessionExpiryHours } from "./appSettings.js";
+import { getAccountState } from "./accountState.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const MONDAY_API_TOKEN = process.env.MONDAY_API_TOKEN;
@@ -19,6 +20,7 @@ const USERS_COLUMNS = {
   PASSWORD_HASH: "text_mm4935hf",
   ROLE: "color_mm496vat",
   ACCOUNT_STATUS: "color_mm49rj18",
+  LAST_LOGIN: "date_mm49bcnd",
 };
 
 // This module talks to Monday directly with the server's own API token,
@@ -125,6 +127,25 @@ export async function setUserPasswordHash(userId, passwordHash) {
   });
 }
 
+// Last Login is a date column with time; written in UTC like the Activity
+// Log's Timestamp, so the app can show it correctly in any timezone.
+export async function setUserLastLogin(userId) {
+  const now = new Date().toISOString();
+
+  const mutation = `
+    mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
+      change_column_value(board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+    }
+  `;
+
+  return mondayFetch(mutation, {
+    boardId: USERS_BOARD_ID,
+    itemId: userId,
+    columnId: USERS_COLUMNS.LAST_LOGIN,
+    value: JSON.stringify({ date: now.slice(0, 10), time: now.slice(11, 19) }),
+  });
+}
+
 export async function createPendingUser({ firstName, lastName, email, passwordHash }) {
   const columnValues = {
     [USERS_COLUMNS.FIRST_NAME]: firstName,
@@ -195,12 +216,40 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ error: "Not authenticated." });
   }
 
+  let payload;
+
   try {
-    req.user = jwt.verify(token, JWT_SECRET);
-    next();
+    payload = jwt.verify(token, JWT_SECRET);
   } catch {
     return res.status(401).json({ error: "Invalid or expired session." });
   }
+
+  // The token only proves who this is; whether the account is still Active
+  // and what role it has now come from the live account state (updated in
+  // memory, not read from Monday per request - see accountState.js). So a
+  // suspension or role change applies on the very next request.
+  getAccountState(payload.sub)
+    .then((state) => {
+      if (!state) {
+        return res.status(401).json({ error: "This account no longer exists.", code: "ACCOUNT_INACTIVE" });
+      }
+
+      if (state.accountStatus !== "Active") {
+        return res.status(401).json({ error: "This account is not active.", code: "ACCOUNT_INACTIVE" });
+      }
+
+      req.user = { ...payload, role: state.role };
+      // Lets the frontend pick up a role change without a new login.
+      res.set("X-User-Role", state.role);
+      next();
+    })
+    .catch((err) => {
+      // Monday unreachable and the user not yet in memory: fall back to the
+      // token's own claims rather than locking everyone out.
+      console.error("requireAuth: account state lookup failed, using token claims.", err.message);
+      req.user = payload;
+      next();
+    });
 }
 
 // Must run after requireAuth, which populates req.user.

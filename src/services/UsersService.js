@@ -1,4 +1,4 @@
-import { mondayRequest, changeMondayColumnValue, serverPost } from "./MondayService";
+import { mondayRequest, changeMondayColumnValue, serverPost, serverGet } from "./MondayService";
 import { USERS } from "../constants/boards/users";
 import { mapUser } from "./mappers/UserMapper";
 
@@ -40,10 +40,12 @@ export async function getAllUsersFull() {
                             "${USERS.COLUMNS.LAST_NAME}",
                             "${USERS.COLUMNS.EMAIL}",
                             "${USERS.COLUMNS.ROLE}",
-                            "${USERS.COLUMNS.ACCOUNT_STATUS}"
+                            "${USERS.COLUMNS.ACCOUNT_STATUS}",
+                            "${USERS.COLUMNS.LAST_LOGIN}"
                         ]) {
                             id
                             text
+                            value
                         }
                     }
                 }
@@ -70,10 +72,18 @@ export async function updateUserEmail(userId, email) {
   return changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.EMAIL, { email, text: email });
 }
 
-export async function updateUserStatus(userId, status) {
-  return changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.ACCOUNT_STATUS, {
-    label: status,
-  });
+// Through the server, not the Monday proxy (which refuses this column):
+// Suspend/Archive hand the user's open cases and tasks to the acting Admin
+// first, and the server's live account state has to change with it.
+// Resolves to { accountStatus, reassigned: { cases, tasks } }.
+export async function setUserStatus(userId, status) {
+  return serverPost(`/api/admin/users/${userId}/status`, { status });
+}
+
+// { cases: [{ id, name, stage }], tasks: [{ id, name, status }] } still open
+// and owned by the user - what a Suspend/Archive would hand over.
+export async function getUserOpenWork(userId) {
+  return serverGet(`/api/admin/users/${userId}/open-work`);
 }
 
 export async function updateUserRole(userId, role) {

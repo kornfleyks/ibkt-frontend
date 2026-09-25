@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "migrate:case-owners": "node scripts/migrateCaseOwners.js"
+    "migrate:case-owners": "node scripts/migrateCaseOwners.js",
+    "register:users-webhooks": "node scripts/registerUsersWebhooks.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

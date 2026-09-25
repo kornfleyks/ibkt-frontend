@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import {
     Table,
@@ -18,23 +19,30 @@ import {
     Alert,
     Card,
     CardContent,
+    Tabs,
+    Tab,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/EditOutlined';
 import CheckIcon from '@mui/icons-material/CheckOutlined';
 import CloseIcon from '@mui/icons-material/CloseOutlined';
 import LockIcon from '@mui/icons-material/LockOutlined';
+import InfoIcon from '@mui/icons-material/InfoOutlined';
 
 import PageHeader from '../../components/PageHeader';
 import {
     getAllUsersFull,
-    updateUserStatus,
-    updateUserRole,
     updateUserFirstName,
     updateUserLastName,
     updateUserEmail,
     resetUserPassword,
 } from '../../services/UsersService';
 import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
+import UserStatusDialog from '../../components/Users/UserStatusDialog';
+import RoleChangeDialog from '../../components/Users/RoleChangeDialog';
+import UserDetailDrawer from '../../components/Users/UserDetailDrawer';
+import { ACTIONS_BY_STATUS, HANDOVER_STATUSES, USER_STATUS_ACTIONS } from '../../components/Users/userStatusActions';
+import { formatRelativeTime } from '../../utils/relativeTime';
+import useAuth from '../../hooks/useAuth';
 
 const ROLE_OPTIONS = Object.values(USERS_STATUS_OPTIONS.ROLE);
 
@@ -350,43 +358,15 @@ function PasswordCell({ user }) {
     );
 }
 
-function UserRow({ user, onUpdate }) {
+function UserRow({ user, isSelf, onRequestRole, onRequestAction, onOpenDetails, onUpdate }) {
     const isRoleLocked = user.email?.trim().toLowerCase() === ROLE_LOCKED_EMAIL;
-    const [savingField, setSavingField] = useState(null);
-    const [error, setError] = useState(null);
-
-    async function handleStatusChange(status) {
-        setSavingField('status');
-        setError(null);
-
-        try {
-            await updateUserStatus(user.id, status);
-            onUpdate(user.id, { accountStatus: status });
-        } catch (err) {
-            console.error('Failed to update account status:', err);
-            setError('Failed to update status.');
-        } finally {
-            setSavingField(null);
-        }
-    }
-
-    async function handleRoleChange(role) {
-        setSavingField('role');
-        setError(null);
-
-        try {
-            await updateUserRole(user.id, role);
-            onUpdate(user.id, { role });
-        } catch (err) {
-            console.error('Failed to update role:', err);
-            setError('Failed to update role.');
-        } finally {
-            setSavingField(null);
-        }
-    }
+    // You can't take your own account out of action (the server refuses too).
+    const actions = (ACTIONS_BY_STATUS[user.accountStatus] ?? []).filter(
+        (action) => !(isSelf && HANDOVER_STATUSES.includes(USER_STATUS_ACTIONS[action].status)),
+    );
 
     return (
-        <TableRow>
+        <TableRow hover>
             <TableCell>
                 <NameCell user={user} onUpdate={onUpdate} />
             </TableCell>
@@ -397,7 +377,7 @@ function UserRow({ user, onUpdate }) {
 
             <TableCell>
                 {isRoleLocked ? (
-                    <Stack direction="row" alignItems="center" spacing={0.5} title="This account's role can't be changed here.">
+                    <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }} title="This account's role can't be changed here.">
                         <LockIcon fontSize="small" color="disabled" />
                         <span>{user.role || 'N/A'}</span>
                     </Stack>
@@ -406,8 +386,8 @@ function UserRow({ user, onUpdate }) {
                         select
                         size="small"
                         value={user.role || ''}
-                        disabled={savingField === 'role'}
-                        onChange={(event) => handleRoleChange(event.target.value)}
+                        // Confirmed in RoleChangeDialog before anything is saved.
+                        onChange={(event) => onRequestRole(user, event.target.value)}
                         sx={{ minWidth: 130 }}
                     >
                         {ROLE_OPTIONS.map((option) => (
@@ -423,73 +403,72 @@ function UserRow({ user, onUpdate }) {
                 <Chip label={user.accountStatus || 'N/A'} color={getStatusColor(user.accountStatus)} size="small" />
             </TableCell>
 
+            <TableCell sx={{ whiteSpace: 'nowrap' }} title={user.lastLogin ? user.lastLogin.toLocaleString() : undefined}>
+                {formatRelativeTime(user.lastLogin) ?? 'Never'}
+            </TableCell>
+
             <TableCell>
                 <PasswordCell user={user} />
             </TableCell>
 
             <TableCell>
-                {error && (
-                    <Alert severity="error" sx={{ fontSize: '0.75rem', mb: 1 }}>
-                        {error}
-                    </Alert>
-                )}
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                    {actions.map((action) => {
+                        const config = USER_STATUS_ACTIONS[action];
 
-                {user.accountStatus === ACCOUNT_STATUS.PENDING && (
-                    <Stack direction="row" spacing={1}>
-                        <Button
-                            size="small"
-                            variant="contained"
-                            color="success"
-                            disabled={savingField === 'status'}
-                            onClick={() => handleStatusChange(ACCOUNT_STATUS.ACTIVE)}
-                        >
-                            {savingField === 'status' ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : 'Approve'}
-                        </Button>
+                        return (
+                            <Button
+                                key={action}
+                                size="small"
+                                variant={config.color === 'success' ? 'contained' : 'outlined'}
+                                color={config.color}
+                                onClick={() => onRequestAction(user, action)}
+                            >
+                                {config.label}
+                            </Button>
+                        );
+                    })}
 
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            color="error"
-                            disabled={savingField === 'status'}
-                            onClick={() => handleStatusChange(ACCOUNT_STATUS.ARCHIVED)}
-                        >
-                            Reject
-                        </Button>
-                    </Stack>
-                )}
-
-                {user.accountStatus === ACCOUNT_STATUS.ACTIVE && (
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        color="error"
-                        disabled={savingField === 'status'}
-                        onClick={() => handleStatusChange(ACCOUNT_STATUS.SUSPENDED)}
-                    >
-                        Suspend
-                    </Button>
-                )}
-
-                {user.accountStatus === ACCOUNT_STATUS.SUSPENDED && (
-                    <Button
-                        size="small"
-                        variant="contained"
-                        color="success"
-                        disabled={savingField === 'status'}
-                        onClick={() => handleStatusChange(ACCOUNT_STATUS.ACTIVE)}
-                    >
-                        Reactivate
-                    </Button>
-                )}
+                    <IconButton size="small" onClick={() => onOpenDetails(user)} aria-label={`Details for ${user.email}`}>
+                        <InfoIcon fontSize="small" />
+                    </IconButton>
+                </Stack>
             </TableCell>
         </TableRow>
     );
 }
 
+const TABS = [
+    { label: 'All', slug: 'all', status: null },
+    { label: 'Active', slug: 'active', status: ACCOUNT_STATUS.ACTIVE },
+    { label: 'Pending', slug: 'pending', status: ACCOUNT_STATUS.PENDING },
+    { label: 'Suspended', slug: 'suspended', status: ACCOUNT_STATUS.SUSPENDED },
+    { label: 'Archived', slug: 'archived', status: ACCOUNT_STATUS.ARCHIVED },
+];
+
+function tabIndex(slug) {
+    return TABS.findIndex((item) => item.slug === slug);
+}
+
+function matchesSearch(user, term) {
+    if (!term) {
+        return true;
+    }
+
+    return [`${user.firstName} ${user.lastName}`, user.email].some((value) => value.toLowerCase().includes(term));
+}
+
 function Users() {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [notice, setNotice] = useState(null);
+    const [search, setSearch] = useState('');
+    const [statusRequest, setStatusRequest] = useState(null);
+    const [roleRequest, setRoleRequest] = useState(null);
+    const [detailUser, setDetailUser] = useState(null);
+    const [searchParams, setSearchParams] = useSearchParams();
 
     useEffect(() => {
         let cancelled = false;
@@ -530,13 +509,52 @@ function Users() {
         );
     }
 
-    const pendingCount = users.filter((user) => user.accountStatus === ACCOUNT_STATUS.PENDING).length;
+    function handleStatusChanged(userId, result) {
+        const { cases, tasks } = result.reassigned ?? {};
+
+        handleUserUpdate(userId, { accountStatus: result.accountStatus });
+        setStatusRequest(null);
+        setNotice(
+            cases || tasks
+                ? `Account set to ${result.accountStatus}. ${cases} case(s) and ${tasks} task(s) were reassigned to you.`
+                : `Account set to ${result.accountStatus}.`,
+        );
+    }
+
+    function handleRoleChanged(userId, updates) {
+        handleUserUpdate(userId, updates);
+        setRoleRequest(null);
+    }
+
+    const counts = Object.fromEntries(
+        TABS.map((item) => [
+            item.slug,
+            item.status ? users.filter((user) => user.accountStatus === item.status).length : users.length,
+        ]),
+    );
+
+    // Tab from ?tab=, else Pending when anyone is waiting for approval, else Active.
+    const requestedTab = tabIndex(searchParams.get('tab'));
+    const tab = requestedTab !== -1 ? requestedTab : tabIndex(counts.pending > 0 ? 'pending' : 'active');
+
+    function setTab(index) {
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            next.set('tab', TABS[index].slug);
+            return next;
+        }, { replace: true });
+    }
+
+    const term = search.trim().toLowerCase();
+    const visibleUsers = users
+        .filter((user) => !TABS[tab].status || user.accountStatus === TABS[tab].status)
+        .filter((user) => matchesSearch(user, term));
 
     return (
         <>
             <PageHeader
                 title="Users"
-                subtitle={pendingCount > 0 ? `${pendingCount} account(s) awaiting approval` : 'Manage user accounts'}
+                subtitle={counts.pending > 0 ? `${counts.pending} account(s) awaiting approval` : 'Manage user accounts'}
             />
 
             {error && (
@@ -545,36 +563,99 @@ function Users() {
                 </Alert>
             )}
 
+            {notice && (
+                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice(null)}>
+                    {notice}
+                </Alert>
+            )}
+
             {loading ? (
-                <Stack alignItems="center" sx={{ py: 4 }}>
+                <Stack sx={{ alignItems: 'center', py: 4 }}>
                     <CircularProgress size={28} sx={{ color: 'text.secondary' }} />
                 </Stack>
             ) : (
                 <Card>
                     <CardContent>
-                        <TableContainer sx={{ overflowX: 'auto' }}>
-                            <Table size="small" sx={{ minWidth: 900 }}>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Name</TableCell>
-                                        <TableCell>Email</TableCell>
-                                        <TableCell>Role</TableCell>
-                                        <TableCell>Status</TableCell>
-                                        <TableCell>Password</TableCell>
-                                        <TableCell>Actions</TableCell>
-                                    </TableRow>
-                                </TableHead>
+                        <Stack spacing={2}>
+                            <Tabs value={tab} onChange={(event, index) => setTab(index)} variant="scrollable" scrollButtons="auto">
+                                {TABS.map((item) => (
+                                    <Tab key={item.slug} label={`${item.label} (${counts[item.slug]})`} />
+                                ))}
+                            </Tabs>
 
-                                <TableBody>
-                                    {users.map((user) => (
-                                        <UserRow key={user.id} user={user} onUpdate={handleUserUpdate} />
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                            <TextField
+                                size="small"
+                                label="Search by name or email"
+                                value={search}
+                                onChange={(event) => setSearch(event.target.value)}
+                                sx={{ maxWidth: 360 }}
+                            />
+
+                            {visibleUsers.length === 0 ? (
+                                <Typography color="text.secondary" sx={{ py: 2 }}>
+                                    {term ? `No users match "${search.trim()}".` : 'No users here.'}
+                                </Typography>
+                            ) : (
+                                <TableContainer sx={{ overflowX: 'auto' }}>
+                                    <Table size="small" sx={{ minWidth: 1000 }}>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Name</TableCell>
+                                                <TableCell>Email</TableCell>
+                                                <TableCell>Role</TableCell>
+                                                <TableCell>Status</TableCell>
+                                                <TableCell>Last login</TableCell>
+                                                <TableCell>Password</TableCell>
+                                                <TableCell>Actions</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+
+                                        <TableBody>
+                                            {visibleUsers.map((user) => (
+                                                <UserRow
+                                                    key={user.id}
+                                                    user={user}
+                                                    isSelf={String(user.id) === String(currentUser?.id)}
+                                                    onUpdate={handleUserUpdate}
+                                                    onRequestRole={(target, role) => {
+                                                        if (role !== target.role) {
+                                                            setRoleRequest({ user: target, role });
+                                                        }
+                                                    }}
+                                                    onRequestAction={(target, action) => setStatusRequest({ user: target, action })}
+                                                    onOpenDetails={setDetailUser}
+                                                />
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
+                        </Stack>
                     </CardContent>
                 </Card>
             )}
+
+            {statusRequest && (
+                <UserStatusDialog
+                    key={`${statusRequest.user.id}-${statusRequest.action}`}
+                    user={statusRequest.user}
+                    action={statusRequest.action}
+                    onClose={() => setStatusRequest(null)}
+                    onChanged={handleStatusChanged}
+                />
+            )}
+
+            {roleRequest && (
+                <RoleChangeDialog
+                    key={`${roleRequest.user.id}-${roleRequest.role}`}
+                    user={roleRequest.user}
+                    newRole={roleRequest.role}
+                    onClose={() => setRoleRequest(null)}
+                    onChanged={handleRoleChanged}
+                />
+            )}
+
+            <UserDetailDrawer key={detailUser?.id ?? 'closed'} user={detailUser} onClose={() => setDetailUser(null)} />
         </>
     );
 }
