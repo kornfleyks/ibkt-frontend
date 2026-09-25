@@ -15,6 +15,8 @@ import TaskCard from './TaskCard';
 import AddTaskDialog from './AddTaskDialog';
 import { getCatTasks, getTaskTitleOptions } from '../../../../services/TasksService';
 import { getUsers } from '../../../../services/UsersService';
+import MyCasesToggle from '../../../Common/MyCasesToggle';
+import useMyCasesFilter from '../../../../hooks/useMyCasesFilter';
 
 function TasksTab({ cat }) {
     const [tasks, setTasks] = useState([]);
@@ -23,6 +25,7 @@ function TasksTab({ cat }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [addTaskOpen, setAddTaskOpen] = useState(false);
+    const myTasks = useMyCasesFilter('catTasks', 'ownerId');
 
     useEffect(() => {
         let cancelled = false;
@@ -70,6 +73,10 @@ function TasksTab({ cat }) {
 
     }, []);
 
+    // Same owner rule as the Tasks page: non-Admins only see tasks assigned
+    // to them; Admins see all, with a "My tasks" toggle remembered per page.
+    const visibleTasks = myTasks.filter(tasks);
+
     function handleTaskUpdate(taskId, updates) {
         setTasks((current) =>
             current.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
@@ -82,18 +89,28 @@ function TasksTab({ cat }) {
 
     return (
         <Stack spacing={2}>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                 <Typography variant="h6">
                     Tasks
                 </Typography>
 
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setAddTaskOpen(true)}
-                >
-                    Add Task
-                </Button>
+                <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+                    {myTasks.canToggle && (
+                        <MyCasesToggle
+                            label="My tasks"
+                            enabled={myTasks.enabled}
+                            onChange={myTasks.setEnabled}
+                        />
+                    )}
+
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => setAddTaskOpen(true)}
+                    >
+                        Add Task
+                    </Button>
+                </Stack>
             </Box>
 
             {error && (
@@ -103,18 +120,18 @@ function TasksTab({ cat }) {
             )}
 
             {loading && (
-                <Stack alignItems="center" sx={{ py: 4 }}>
+                <Stack sx={{ alignItems: 'center', py: 4 }}>
                     <CircularProgress size={28} sx={{ color: 'text.secondary' }} />
                 </Stack>
             )}
 
-            {!loading && tasks.length === 0 && (
+            {!loading && visibleTasks.length === 0 && (
                 <Typography color="text.secondary">
-                    No tasks for this cat yet.
+                    {tasks.length === 0 ? 'No tasks for this cat yet.' : 'No tasks for this cat are assigned to you.'}
                 </Typography>
             )}
 
-            {!loading && tasks.map((task) => (
+            {!loading && visibleTasks.map((task) => (
                 <TaskCard
                     key={task.id}
                     task={task}
