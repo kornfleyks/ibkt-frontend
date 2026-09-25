@@ -14,10 +14,12 @@ import {
 } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
 import useAuth from "../../hooks/useAuth";
+import { canSeeApplication } from "../../utils/ownership";
+import NotAssignedNotice from "../../components/Common/NotAssignedNotice";
 
 function AdoptionDetail() {
   const { id } = useParams();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const canEdit = hasRole("Admin");
 
   const [adoption, setAdoption] = useState(null);
@@ -44,6 +46,10 @@ function AdoptionDetail() {
 
   if (!adoption) {
     return null;
+  }
+
+  if (!canSeeApplication(adoption, user)) {
+    return <NotAssignedNotice backTo="/adoptions" backLabel="Back to adoptions" />;
   }
 
   function startEditing() {

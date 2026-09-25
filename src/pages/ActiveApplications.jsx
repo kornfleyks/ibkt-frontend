@@ -57,7 +57,7 @@ function ActiveApplications() {
         subtitle="Manage active applications"
         actions={
           <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-            <MyCasesToggle enabled={myCases.enabled} onChange={myCases.setEnabled} />
+            {myCases.canToggle && <MyCasesToggle enabled={myCases.enabled} onChange={myCases.setEnabled} />}
 
             <Button
               variant="contained"

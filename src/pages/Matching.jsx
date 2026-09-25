@@ -123,7 +123,7 @@ function Matching() {
       <PageHeader
         title="Matching"
         subtitle={`Match cats with applicants${stages.length ? ` (${stages.join(", ")})` : ""}`}
-        actions={<MyCasesToggle enabled={myCases.enabled} onChange={myCases.setEnabled} />}
+        actions={myCases.canToggle && <MyCasesToggle enabled={myCases.enabled} onChange={myCases.setEnabled} />}
       />
 
       {loadError && (

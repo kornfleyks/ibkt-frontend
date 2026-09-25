@@ -35,7 +35,7 @@ function Adoptions() {
       <PageHeader
         title="Adoptions"
         subtitle="Approved applications"
-        actions={<MyCasesToggle enabled={myCases.enabled} onChange={myCases.setEnabled} />}
+        actions={myCases.canToggle && <MyCasesToggle enabled={myCases.enabled} onChange={myCases.setEnabled} />}
       />
 
       {myCases.enabled && visibleAdoptions.length === 0 && (

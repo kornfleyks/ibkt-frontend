@@ -133,11 +133,13 @@ function Tasks() {
                 subtitle="Manage tasks"
                 actions={
                     <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                        <MyCasesToggle
-                            label="My tasks"
-                            enabled={myTasks.enabled}
-                            onChange={myTasks.setEnabled}
-                        />
+                        {myTasks.canToggle && (
+                            <MyCasesToggle
+                                label="My tasks"
+                                enabled={myTasks.enabled}
+                                onChange={myTasks.setEnabled}
+                            />
+                        )}
 
                         <Button
                             variant="contained"

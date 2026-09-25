@@ -9,6 +9,9 @@ import { activeApplicationWorkspaceTabs } from "../../config/activeApplicationWo
 import DecisionActions from "../../components/ActiveApplications/DecisionActions";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../constants/statuses/activeApplicationsStatuses";
 import useTabParam from "../../hooks/useTabParam";
+import useAuth from "../../hooks/useAuth";
+import { canSeeApplication } from "../../utils/ownership";
+import NotAssignedNotice from "../../components/Common/NotAssignedNotice";
 import ActivityTab from "../../components/ActivityLog/ActivityTab";
 import { ACTIVE_APPLICATIONS } from "../../constants/boards/activeApplications";
 
@@ -16,6 +19,7 @@ const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
 function ActiveApplicationWorkspace() {
   const { id } = useParams();
+  const { user } = useAuth();
 
   const [application, setApplication] = useState(null);
   const [tab, setTab] = useTabParam(activeApplicationWorkspaceTabs);
@@ -39,6 +43,10 @@ function ActiveApplicationWorkspace() {
 
   if (!application) {
     return null;
+  }
+
+  if (!canSeeApplication(application, user)) {
+    return <NotAssignedNotice backTo="/active-applications" backLabel="Back to applications" />;
   }
 
   return (

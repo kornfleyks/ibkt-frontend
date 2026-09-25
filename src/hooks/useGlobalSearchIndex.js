@@ -5,17 +5,19 @@ import { getActiveApplications } from "../services/ActiveApplicationsService";
 import { getTasks } from "../services/TasksService";
 import { canAccessPath, getAccessibleNavItems } from "../utils/navigationAccess";
 import { buildSearchIndex } from "../utils/globalSearch";
+import { canSeeApplication, canSeeTask } from "../utils/ownership";
 
 // Re-fetched when the search is opened again after this long, so records
 // created or renamed since are picked up without a page reload.
 const STALE_AFTER_MS = 60_000;
 
 // Only boards whose section this user can open are fetched - a Rescuer
-// never loads (or sees) applications, etc.
+// never loads (or sees) applications, etc. `canSee` then applies the
+// ownership rule per record (non-Admins: only their own cases / tasks).
 const SOURCES = [
-  { key: "cats", path: "/cats", load: getCats },
-  { key: "applications", path: "/active-applications", load: getActiveApplications },
-  { key: "tasks", path: "/tasks", load: getTasks },
+  { key: "cats", path: "/cats", load: getCats, canSee: () => true },
+  { key: "applications", path: "/active-applications", load: getActiveApplications, canSee: canSeeApplication },
+  { key: "tasks", path: "/tasks", load: getTasks, canSee: canSeeTask },
 ];
 
 function useGlobalSearchIndex() {
@@ -47,7 +49,7 @@ function useGlobalSearchIndex() {
       const source = sources[position];
 
       if (result.status === "fulfilled") {
-        data[source.key] = result.value;
+        data[source.key] = result.value.filter((record) => source.canSee(record, user));
       } else {
         console.error(`Global search: failed to load ${source.key}:`, result.reason);
         failed.push(source.key);

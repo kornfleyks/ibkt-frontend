@@ -1,5 +1,6 @@
 import { useState } from "react";
 import useAuth from "./useAuth";
+import { isAdmin, isOwnedBy } from "../utils/ownership";
 
 const STORAGE_PREFIX = "ibkt.myCases.";
 
@@ -21,28 +22,33 @@ function writeStored(key, value) {
   }
 }
 
-// A per-page "My cases" / "My tasks" toggle, remembered per browser. `filter`
-// narrows a list to items the logged-in user owns when the toggle is on;
-// the session user id is the same as their Users board item id, which is
-// what `ownerField` holds (caseOwnerId on applications, ownerId on tasks).
+// Owner-based list filtering for a page (see utils/ownership.js):
+// - non-Admins only ever see items they own - `filter` always narrows,
+//   and there's no toggle (`canToggle` false);
+// - Admins see everything, with an optional per-page "My cases" /
+//   "My tasks" toggle, remembered per browser, to narrow to their own.
+// `ownerField` is the item's owner id field (caseOwnerId on applications,
+// ownerId on tasks).
 function useMyCasesFilter(pageKey, ownerField = "caseOwnerId") {
   const { user } = useAuth();
-  const [enabled, setEnabledState] = useState(() => readStored(pageKey));
+  const [toggledOn, setToggledOn] = useState(() => readStored(pageKey));
+  const canToggle = isAdmin(user);
+  const enabled = canToggle ? toggledOn : true;
 
   function setEnabled(value) {
-    setEnabledState(value);
+    setToggledOn(value);
     writeStored(pageKey, value);
   }
 
   function filter(items) {
-    if (!enabled || !user) {
+    if (!enabled) {
       return items;
     }
 
-    return items.filter((item) => String(item[ownerField]) === String(user.id));
+    return items.filter((item) => isOwnedBy(item[ownerField], user));
   }
 
-  return { enabled, setEnabled, filter };
+  return { enabled, setEnabled, filter, canToggle };
 }
 
 export default useMyCasesFilter;
