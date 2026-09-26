@@ -1,22 +1,10 @@
 import { useEffect, useState } from "react";
 import { Box, LinearProgress, Tooltip, Typography } from "@mui/material";
-import useMondayUsage from "../../hooks/useMondayUsage";
-import { nextMondayLimitReset } from "../../constants/mondayApiUsage";
+import useMondayUsage from "../../../hooks/useMondayUsage";
+import { nextMondayLimitReset } from "../../../constants/mondayApiUsage";
+import { formatDuration } from "../../../utils/formatDuration";
 
 const TICK_MS = 30_000;
-
-// "4h 12m", "12m", "under 1m".
-function formatDuration(ms) {
-  const minutes = Math.floor(ms / 60_000);
-
-  if (minutes < 1) {
-    return "under 1m";
-  }
-
-  const hours = Math.floor(minutes / 60);
-
-  return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
-}
 
 // Re-renders every TICK_MS so the countdown stays current.
 function useNow() {
@@ -31,10 +19,11 @@ function useNow() {
   return now;
 }
 
-// Development aid (APP_ENV=development, Admins only - see Sidebar): today's
-// Monday API calls made by this server, updated after every request, and
-// when the allowance resets - midnight UTC normally, or when Monday said a
-// block (429) ends.
+// Today's Monday API usage, updated after every request, and when the
+// allowance resets - midnight UTC normally, or when Monday said a block
+// (429) ends. The count starts from Monday's own figure when the server
+// starts, then adds every call the server makes. Shown in the sidebar in
+// development (Admins only) and on App Settings in every environment.
 function MondayUsageCounter({ collapsed }) {
   const usage = useMondayUsage();
   const now = useNow();
@@ -50,7 +39,7 @@ function MondayUsageCounter({ collapsed }) {
   const ratio = usage ? Math.min(count / limit, 1) : 0;
   const color = blocked || ratio >= 0.95 ? "error" : ratio >= 0.8 ? "warning" : "primary";
   const label = usage ? `${count.toLocaleString()} / ${limit.toLocaleString()}` : "-";
-  const tooltip = `Monday API calls made by this server today (UTC). ${
+  const tooltip = `Monday API calls used today (UTC). ${
     blocked ? "Monday is refusing calls until" : "The allowance resets at"
   } ${resetTime} your time.`;
 

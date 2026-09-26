@@ -40,6 +40,8 @@ import { registerCommunicationRoutes } from "./communications.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch, mondayRetryAfterSeconds } from "./mondayRateLimit.js";
 import { getMondayUsage } from "./mondayUsage.js";
+import { syncMondayUsageFromMonday } from "./mondayUsageSync.js";
+import { registerHealthRoutes, startKeepAlive } from "./serverHealth.js";
 import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER } from "../src/constants/mondayApiUsage.js";
 
 const PORT = process.env.PORT || 4000;
@@ -453,6 +455,7 @@ registerSessionEventRoutes(app, { requireAuth });
 registerNotificationRoutes(app, { requireAuth });
 registerCommunicationRoutes(app, { requireAuth });
 registerMondayApiVersionRoutes(app, { requireAuth, requireAdmin });
+registerHealthRoutes(app, { requireAuth, requireAdmin });
 
 // The frontend never talks to Monday directly: it has no way to hold an API
 // token without shipping it in the public JS bundle. Every Monday GraphQL
@@ -757,8 +760,13 @@ app.listen(PORT, () => {
   console.log(`Upload proxy listening on http://localhost:${PORT}`);
   // Settings first: they carry the MONDAY_API_VERSION pin used by every
   // later Monday request.
-  loadAppSettings().finally(initAccountState);
+  loadAppSettings().finally(() => {
+    initAccountState();
+    // One call: the real daily limit and today's official usage.
+    syncMondayUsageFromMonday();
+  });
   startMondayApiVersionChecks();
+  startKeepAlive();
 });
 
 // A normal stop (Render redeploy/sleep, Ctrl+C, node --watch restart)

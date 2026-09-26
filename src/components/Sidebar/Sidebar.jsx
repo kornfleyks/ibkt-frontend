@@ -9,7 +9,7 @@ import useAuth from "../../hooks/useAuth";
 import { getAccessibleNavItems } from "../../utils/navigationAccess";
 
 import SidebarFooter from "../SidebarFooter/SidebarFooter";
-import MondayUsageCounter from "./MondayUsageCounter";
+import MondayUsageCounter from "../Common/MondayUsageCounter";
 import { ROLES } from "../../constants/roles";
 
 function Sidebar() {

@@ -22,6 +22,8 @@ import {
 } from '@mui/material';
 import { EditIcon, CheckIcon, CloseIcon, AddIcon } from '../../components/icons';
 import PageHeader from '../../components/PageHeader';
+import MondayUsageCounter from '../../components/Common/MondayUsageCounter';
+import ServerHealthStatus from '../../components/Common/ServerHealthStatus';
 import {
     getSettings,
     saveSetting,
@@ -551,6 +553,22 @@ function AppSettings() {
                     {error}
                 </Alert>
             )}
+
+            {/* Monitoring: the same counter as the development sidebar (at the
+                same width) and the server's health, side by side. */}
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+                <Card sx={{ flex: '1 1 260px', maxWidth: 320 }}>
+                    <CardContent>
+                        <MondayUsageCounter />
+                    </CardContent>
+                </Card>
+
+                <Card sx={{ flex: '1 1 260px', maxWidth: 320 }}>
+                    <CardContent>
+                        <ServerHealthStatus />
+                    </CardContent>
+                </Card>
+            </Box>
 
             {loading ? (
                 <Stack alignItems="center" sx={{ py: 4 }}>

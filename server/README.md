@@ -33,6 +33,20 @@ directly. It holds the Monday API token server-side and does two things:
     (SIGTERM/SIGINT) flushes them first, a crash loses what's buffered.
   - App Settings are re-read at most every 10 minutes (saves through the app
     apply at once); simultaneous reloads share one call.
+- Health and keep-alive (`serverHealth.js`, no Monday calls): `GET
+  /api/health` is public and answers `{ "ok": true }`. On Render
+  (`RENDER_EXTERNAL_URL`, set automatically; `KEEP_ALIVE_URL` overrides it)
+  the server calls its own public `/api/health` every 10 minutes so the free
+  plan doesn't put it to sleep; locally it's off. It can't wake itself once
+  asleep - the next visit or deploy does. `GET /api/admin/server-health`
+  (Admin) returns uptime, start time, the self-ping's last result and
+  memory, shown on App Settings.
+- Tracks today's Monday usage (`mondayUsage.js`, `mondayUsageSync.js`): on
+  start it reads Monday's daily limit and today's official usage once, then
+  adds every call it makes (per UTC day, also saved to `.monday-usage.json`).
+  Admins get it on every response (`X-Monday-Usage: used/limit`, plus
+  `X-Monday-Blocked-For` seconds while Monday returns 429); App Settings
+  shows it always, the sidebar in development (`APP_ENV=development`).
 - Respects Monday's rate limit (`mondayRateLimit.js`): every Monday call goes
   through `mondayFetch`. On a 429 it pauses all Monday calls until Monday's
   `Retry-After`, failing fast meanwhile; `/api/monday` and `/api/upload`
