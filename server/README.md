@@ -276,6 +276,40 @@ Only Admins and the application's Case Owner may use them
 (`applicationAccess.js`, shared with Communications). `/api/upload` and
 `/api/monday` refuse the Contract File column so this can't be skipped.
 
+## Post-adoption (`postAdoption/`)
+
+An application's post-adoption record (the Post Adoption tab). The rules
+live once in `postAdoption/rules.js` (pure functions); `store.js` picks the
+storage: `databaseStore.js` when `post_adoption` is in `DATABASE_BOARDS`,
+else `mondayStore.js`. Both read and write the same fields
+(`postAdoption/fields.js`), so the browser always calls these routes and
+has no Monday branch for this tab.
+
+- `GET /api/applications/:id/post-adoption` - `{ record | null, photos }`.
+- `GET /api/applications/:id/post-adoption/owner-options` - active Admins
+  and the application's Case Owner.
+- `POST /api/applications/:id/post-adoption` - start: `{ adoptionDate,
+  arrivalDate? }`. Creates the record linked to the application and its
+  cat (1 Monday call), status Active, 9 check-ins Not Due with due dates.
+- `POST /api/applications/:id/post-adoption/:recordId` - changes; answers
+  the saved record.
+- `POST|DELETE .../:recordId/photos[/:assetId]` - Photos / Videos Received,
+  with uploader details (`itemFiles.js`, shared with Contracts).
+
+Rules: due dates count from the Arrival Date, else the Adoption Date (24h,
+72h, weeks 1-4, 3 and 6 months, 1 year; month ends clamp); when that date
+changes only check-ins still Not Due move. A check-in marked Sent sets Last
+Check-In Sent to today and adds 1 to Chase Count; Received sets Last
+Response Received. All Required Check-Ins Complete follows whether all 9
+are Received. Values sent explicitly win over the rules.
+
+The owner (a link to Users, `scripts/createPostAdoptionOwnerColumn.js`;
+the old text column is kept as "Post-Adoption Owner (old)") must be an
+active Admin or the Case Owner, and is notified when made owner or taken
+off. Escalation Required set to Urgent notifies the Case Owner and every
+Admin. Only Admins and the Case Owner may use these routes; `/api/upload`
+and `/api/monday` refuse the photos column.
+
 ## Own account (`account.js`)
 
 Behind the app's Account page (`/account`, Profile and Settings tabs). Every

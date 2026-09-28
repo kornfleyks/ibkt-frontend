@@ -59,6 +59,8 @@ import { MIRRORED_BOARDS } from "./database/mondaySchema.js";
 import { registerCatRoutes } from "./cats.js";
 import { registerApplicationRoutes } from "./applications.js";
 import { registerContractRoutes, CONTRACT_FILE_COLUMN_ID } from "./contracts.js";
+import { registerPostAdoptionRoutes } from "./postAdoption/routes.js";
+import { PHOTOS_COLUMN_ID as POST_ADOPTION_PHOTOS_COLUMN_ID } from "./postAdoption/fields.js";
 import { addFileToColumn } from "./mondayFiles.js";
 import { registerReadOnlyBoardRoutes } from "./readOnlyBoards.js";
 import { registerUserRoutes } from "./users.js";
@@ -86,10 +88,11 @@ if (!REGISTRATION_INVITE_CODE) {
 
 const ITEM_ID_PATTERN = /^\d+$/;
 
-// File columns only their own routes may change (contracts.js):
-// /api/upload and /api/monday refuse them.
+// File columns only their own routes may change (contracts.js,
+// postAdoption/routes.js): /api/upload and /api/monday refuse them.
 const PROTECTED_FILE_COLUMNS = [
   { columnId: CONTRACT_FILE_COLUMN_ID, error: "Contract files can only be changed from the application's Contracts tab." },
+  { columnId: POST_ADOPTION_PHOTOS_COLUMN_ID, error: "Post-adoption photos can only be changed from the application's Post Adoption tab." },
 ];
 const COLUMN_ID_PATTERN = /^[a-zA-Z0-9_]+$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -468,6 +471,7 @@ registerTaskRoutes(app, { requireAuth });
 registerCatRoutes(app, { requireAuth });
 registerApplicationRoutes(app, { requireAuth });
 registerContractRoutes(app, { requireAuth });
+registerPostAdoptionRoutes(app, { requireAuth });
 registerReadOnlyBoardRoutes(app, { requireAuth });
 registerUserRoutes(app, { requireAuth, requireAdmin });
 registerCommunicationRoutes(app, { requireAuth });
@@ -534,8 +538,8 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "Case Owner can only be changed through the case owner endpoint." });
   }
 
-  // Contract files go through their own route (access check, uploader
-  // details).
+  // Contract and post-adoption photo files go through their own routes
+  // (access check, uploader details).
   const protectedFileColumn = PROTECTED_FILE_COLUMNS.find(
     ({ columnId }) => query.includes(columnId) || JSON.stringify(variables ?? {}).includes(columnId),
   );
@@ -750,8 +754,8 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
     return res.status(400).json({ error: "Invalid itemId or columnId." });
   }
 
-  // Contract files have their own route, which checks access and records
-  // who uploaded them.
+  // Contract and post-adoption photo files have their own routes, which
+  // check access and record who uploaded them.
   const protectedFileColumn = PROTECTED_FILE_COLUMNS.find((column) => column.columnId === columnId);
 
   if (protectedFileColumn) {

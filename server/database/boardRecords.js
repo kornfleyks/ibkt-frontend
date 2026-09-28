@@ -16,7 +16,8 @@ import { logActivity, resolveColumnLabel } from "../activityLog.js";
 //          (date + time as an ISO string)
 //   empty: the value when the text is empty (e.g. "N/A"; default "")
 //   write: "text" | "longText" | "status" | "dropdown" (one label, new ones
-//          allowed) | "number" | "links" (ids) | "date" | "name" (the item name)
+//          allowed) | "number" | "links" (ids) | "date" | "checkbox" (true /
+//          false) | "name" (the item name)
 //   label: the Activity Log's field name (default: the column's)
 //   shownBy: another field whose value the log shows (e.g. an id field shown by name)
 
@@ -170,6 +171,10 @@ async function toStoreValues(table, fields, changes) {
         break;
       case "date":
         if (value !== null && !(typeof value === "string" && DATE_PATTERN.test(value))) throw new InputError(`${key} must be YYYY-MM-DD.`);
+        out.fields[field] = value;
+        break;
+      case "checkbox":
+        if (typeof value !== "boolean") throw new InputError(`${key} must be true or false.`);
         out.fields[field] = value;
         break;
       case "links": {

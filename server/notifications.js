@@ -176,6 +176,12 @@ const ASSIGNMENT_TEXT = {
     assigned: (actor, name) => `${actor} assigned you a task: ${name}`,
     unassigned: (actor, name) => `${actor} took you off the task: ${name}`,
   },
+  postAdoption: {
+    assignedType: TYPE.POST_ADOPTION_ASSIGNED,
+    unassignedType: TYPE.POST_ADOPTION_UNASSIGNED,
+    assigned: (actor, name) => `${actor} made you the post-adoption owner of ${name}`,
+    unassigned: (actor, name) => `${actor} took you off the post-adoption of ${name}`,
+  },
   case: {
     assignedType: TYPE.CASE_ASSIGNED,
     unassignedType: TYPE.CASE_UNASSIGNED,
@@ -201,6 +207,21 @@ export function notifyAssignmentChange({ kind, previousIds = [], nextIds = [], a
     if (!next.has(id)) {
       createNotification({ recipientId: id, type: text.unassignedType, message: text.unassigned(actor.name, target.name), actor, target, link });
     }
+  }
+}
+
+// A post-adoption escalated to Urgent: everyone in `recipientIds` (the
+// Case Owner and the Admins), once each, except the actor.
+export function notifyUrgentEscalation({ recipientIds, actor, target, link }) {
+  for (const id of new Set(recipientIds.map(String))) {
+    createNotification({
+      recipientId: id,
+      type: TYPE.ESCALATION,
+      message: `${actor.name} marked the post-adoption of ${target.name} as urgent`,
+      actor,
+      target,
+      link,
+    });
   }
 }
 

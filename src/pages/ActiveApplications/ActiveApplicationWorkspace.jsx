@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import OverviewTab from "../../components/ActiveApplications/Workspace/OverviewTab";
 import ContractsTab from "../../components/ActiveApplications/Workspace/ContractsTab";
 import PaymentsTab from "../../components/ActiveApplications/Workspace/PaymentsTab";
+import PostAdoptionTab from "../../components/ActiveApplications/Workspace/PostAdoption/PostAdoptionTab";
 import PageHeader from "../../components/PageHeader";
 import { getActiveApplication } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
@@ -113,6 +114,7 @@ function ActiveApplicationWorkspace() {
           onApplicationChange={(updates) => setApplication((current) => ({ ...current, ...updates }))}
         />
       )}
+      {activeApplicationWorkspaceTabs[tab].slug === "post-adoption" && <PostAdoptionTab application={application} />}
       {activeApplicationWorkspaceTabs[tab].slug === "activity" && (
         <ActivityTab boardId={ACTIVE_APPLICATIONS.BOARD_ID} itemId={application.id} />
       )}
