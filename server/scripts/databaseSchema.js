@@ -108,6 +108,15 @@ await transaction(async (run) => {
     sent_at timestamptz
   )`);
   await run("create index if not exists monday_outbox_pending on monday_outbox (status, id)");
+  // 'sending': a Monday item being created by the sync (database-first
+  // records, Phase 3) - if the run is cut off, the next one looks the item
+  // up by its DB ID before trying again, so it's never made twice.
+  await run("alter table monday_outbox drop constraint if exists monday_outbox_status_check");
+  await run("alter table monday_outbox add constraint monday_outbox_status_check check (status in ('pending', 'sending', 'sent', 'failed'))");
+
+  // Records made in the database before their Monday item exists get a
+  // temporary negative id from here, replaced by the Monday id at the sync.
+  await run("create sequence if not exists local_item_ids");
 
   // Nightly sync bookkeeping (Phase 2, database/sync.js).
   await run(`create table if not exists sync_runs (

@@ -1,44 +1,15 @@
-import { mondayRequest, changeMondayColumnValue, createMondayItem } from "./MondayService";
-import { APP_SETTINGS, SETTING_KEYS } from "../constants/boards/appSettings";
+import { serverGet, serverPost } from "./MondayService";
+import { SETTING_KEYS } from "../constants/boards/appSettings";
 import { SETTING_DEFINITIONS } from "../constants/settingDefinitions";
 import { formatListSetting, resolveListSetting } from "../utils/listSetting";
 
 export { SETTING_KEYS, SETTING_DEFINITIONS };
 export { parseListSetting, formatListSetting } from "../utils/listSetting";
 
-function mapSetting(item) {
-  const columns = Object.fromEntries(item.column_values.map((column) => [column.id, column]));
-
-  return {
-    id: item.id,
-    name: item.name,
-    key: columns[APP_SETTINGS.COLUMNS.SETTING_KEY]?.text || "",
-    value: columns[APP_SETTINGS.COLUMNS.VALUE]?.text || "",
-    description: columns[APP_SETTINGS.COLUMNS.DESCRIPTION]?.text || "",
-  };
-}
-
+// [{ id, name, key, value, description }] - served by the server from
+// memory (database or Monday, see server/appSettings.js).
 export async function getSettings() {
-  const query = `
-    query ($boardId: ID!) {
-      boards(ids: [$boardId]) {
-        items_page(limit: 100) {
-          items {
-            id
-            name
-            column_values {
-              id
-              text
-            }
-          }
-        }
-      }
-    }
-  `;
-
-  const data = await mondayRequest(query, { boardId: APP_SETTINGS.BOARD_ID });
-
-  return data.boards[0].items_page.items.map(mapSetting);
+  return serverGet("/api/settings");
 }
 
 // Appends a placeholder (id: null, isDefault: true) for every defined
@@ -64,33 +35,19 @@ export function withDefinedSettings(settings) {
   return [...settings, ...missing];
 }
 
-// Updates the row, or creates it first when the setting is a placeholder
-// from withDefinedSettings.
+// Saves by key: changes the value, or adds the row when the setting is a
+// placeholder from withDefinedSettings. Admins only (checked by the server).
 export async function saveSetting(setting, value) {
-  if (setting.id) {
-    return updateSettingValue(setting.id, value);
-  }
-
-  return createSetting({
-    name: setting.name,
+  return serverPost("/api/admin/settings", {
     key: setting.key,
     value,
+    name: setting.name,
     description: setting.description,
   });
 }
 
-export async function updateSettingValue(settingId, value) {
-  return changeMondayColumnValue(APP_SETTINGS.BOARD_ID, settingId, APP_SETTINGS.COLUMNS.VALUE, value);
-}
-
 export async function createSetting({ name, key, value, description }) {
-  const columnValues = {
-    [APP_SETTINGS.COLUMNS.SETTING_KEY]: key,
-    [APP_SETTINGS.COLUMNS.VALUE]: value,
-    [APP_SETTINGS.COLUMNS.DESCRIPTION]: { text: description },
-  };
-
-  return createMondayItem(APP_SETTINGS.BOARD_ID, name, columnValues);
+  return serverPost("/api/admin/settings", { key, value, name, description });
 }
 
 // Shared by every numeric-setting getter below - a settings-board hiccup

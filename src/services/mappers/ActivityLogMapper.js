@@ -1,5 +1,5 @@
-import { parseUtcDateTime } from "../../utils/mondayDateTime";
-import { ACTIVITY_LOG } from "../../constants/boards/activityLog";
+import { parseUtcDateTime } from "../../utils/mondayDateTime.js";
+import { ACTIVITY_LOG } from "../../constants/boards/activityLog.js";
 
 export function mapActivityLogEntry(item) {
   const columns = Object.fromEntries(

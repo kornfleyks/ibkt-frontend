@@ -117,7 +117,7 @@ export function registerCaseOwnerRoutes(app, { requireAuth }) {
         }
       }
 
-      const priorSnapshot = await getItemSnapshot(id, CASE_OWNER_COLUMN_ID);
+      const priorSnapshot = await getItemSnapshot(id, CASE_OWNER_COLUMN_ID, ACTIVE_APPLICATIONS.BOARD_ID);
 
       await writeCaseOwner(id, owner?.id ?? null);
 

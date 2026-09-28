@@ -1,6 +1,6 @@
 import os from "node:os";
 import { randomUUID } from "node:crypto";
-import { query } from "./db.js";
+import { query, transaction, ident } from "./db.js";
 import { finishCreation } from "./boardStore.js";
 import { SYNC_MARKER } from "./mirror.js";
 import { MIRRORED_BOARDS } from "./mondaySchema.js";
@@ -113,11 +113,19 @@ function planOperations(entries) {
 
     operation.entryIds.push(entry.id);
 
+    // A record made in the database only: its Monday item is created now.
+    if (entry.action === "create" && entry.changes.local) {
+      operation.kind = "create";
+      operation.key = entry.changes.key;
+      operation.createEntryId = entry.id;
+    }
+
     if (entry.action === "delete") {
-      operation.kind = "archive";
+      // Deleted before its Monday item was ever made: nothing to send.
+      operation.kind = operation.kind === "create" ? "drop" : "archive";
       operation.columns = {};
       operation.name = undefined;
-    } else if (operation.kind !== "archive") {
+    } else if (operation.kind !== "archive" && operation.kind !== "drop") {
       if (entry.changes.name !== undefined) operation.name = entry.changes.name;
       Object.assign(operation.columns, entry.changes.columns ?? {});
     }
@@ -141,6 +149,19 @@ function operationField(operation, index, variables) {
       alias,
       declaration: `$item${index}: ID!, $body${index}: String!`,
       field: `${alias}: create_update(item_id: $item${index}, body: $body${index}) { id }`,
+    };
+  }
+
+  if (operation.kind === "create") {
+    variables[`board${index}`] = String(operation.boardId);
+    variables[`name${index}`] = String(operation.name || "Untitled").slice(0, 255);
+    // The key in "DB ID" lets a cut-off run find the item instead of making it twice.
+    variables[`values${index}`] = JSON.stringify({ ...forMonday(operation.columns), [operation.dbIdColumn]: operation.key });
+
+    return {
+      alias,
+      declaration: `$board${index}: ID!, $name${index}: String!, $values${index}: JSON`,
+      field: `${alias}: create_item(board_id: $board${index}, item_name: $name${index}, column_values: $values${index}, create_labels_if_missing: true) { id }`,
     };
   }
 
@@ -171,6 +192,62 @@ async function markFailed(entryIds, error) {
   );
 
   return rows.filter((row) => row.status === "failed").length;
+}
+
+function tableOf(boardId) {
+  return MIRRORED_BOARDS.find((board) => board.boardId === String(boardId))?.table ?? null;
+}
+
+// A database-only record's Monday item exists: its temporary id becomes the
+// Monday id - on the row and on any of its changes still queued - and its
+// entries are done. One transaction, so the swap is all or nothing.
+async function applyCreatedId({ boardId, itemId, entryIds }, mondayId) {
+  const table = tableOf(boardId);
+
+  await transaction(async (run) => {
+    if (table) {
+      await run(`update ${ident(table)} set monday_item_id = $2 where monday_item_id = $1`, [itemId, mondayId]);
+    }
+
+    await run("update monday_outbox set monday_item_id = $3 where board_id = $1 and monday_item_id = $2", [boardId, itemId, mondayId]);
+    await run("update monday_outbox set status = 'sent', sent_at = now(), last_error = null where id = any($1)", [entryIds]);
+  });
+}
+
+// Database-only records whose creation was cut off (left 'sending'): Monday
+// may or may not have made the item, so look it up by its DB ID first - all
+// in one request. Found: take its id. Not found: send it again.
+async function recoverSending(counter, dbIdColumns) {
+  const { rows } = await query("select * from monday_outbox where status = 'sending' order by id");
+  const lookups = rows.filter((row) => dbIdColumns.has(row.board_id) && row.changes?.key);
+
+  if (!lookups.length || counter.calls >= counter.max) return 0;
+
+  const variables = {};
+  const fields = lookups.map((row, index) => {
+    variables[`board${index}`] = String(row.board_id);
+    variables[`key${index}`] = String(row.changes.key);
+    return `s${index}: items_page_by_column_values(board_id: $board${index}, limit: 1, columns: [{ column_id: "${dbIdColumns.get(row.board_id)}", column_values: [$key${index}] }]) { items { id } }`;
+  });
+  const declarations = lookups.map((_, index) => `$board${index}: ID!, $key${index}: String!`).join(", ");
+  const result = await mondayCall(`query (${declarations}) { ${fields.join("\n")} }`, variables, counter);
+
+  if (!result.data) return 0;
+
+  let recovered = 0;
+
+  for (const [index, row] of lookups.entries()) {
+    const found = result.data[`s${index}`]?.items?.[0]?.id;
+
+    if (found) {
+      await applyCreatedId({ boardId: row.board_id, itemId: row.monday_item_id, entryIds: [row.id] }, Number(found));
+      recovered += 1;
+    } else {
+      await query("update monday_outbox set status = 'pending' where id = $1", [row.id]);
+    }
+  }
+
+  return recovered;
 }
 
 // Creations interrupted between "created in Monday" and "saved here".
@@ -251,8 +328,15 @@ async function run(reason) {
   try {
     await recoverCreations(counter);
 
+    const dbIdColumns = new Map((await query("select board_id, db_id_column from monday_sync_columns")).rows.map((row) => [row.board_id, row.db_id_column]));
+    sent += await recoverSending(counter, dbIdColumns);
+
     const { rows: entries } = await query("select * from monday_outbox where status = 'pending' order by id limit 2000");
     const operations = planOperations(entries);
+
+    for (const operation of operations) {
+      if (operation.kind === "create") operation.dbIdColumn = dbIdColumns.get(String(operation.boardId));
+    }
 
     for (let start = 0; start < operations.length; start += OPERATIONS_PER_REQUEST) {
       if (counter.calls >= counter.max) {
@@ -262,7 +346,10 @@ async function run(reason) {
 
       const batch = operations.slice(start, start + OPERATIONS_PER_REQUEST);
       // Nothing for Monday to do (e.g. a create with no column values).
-      const empty = batch.filter((operation) => operation.kind === "change" && operation.name === undefined && !Object.keys(operation.columns).length);
+      // (A record deleted before its Monday item was made is "drop".)
+      const empty = batch.filter(
+        (operation) => operation.kind === "drop" || (operation.kind === "change" && operation.name === undefined && !Object.keys(operation.columns).length),
+      );
       const real = batch.filter((operation) => !empty.includes(operation));
 
       if (empty.length) {
@@ -274,6 +361,13 @@ async function run(reason) {
 
       const variables = {};
       const parts = real.map((operation, index) => operationField(operation, index, variables));
+      const creating = real.filter((operation) => operation.kind === "create").map((operation) => operation.createEntryId);
+
+      // Marked first: if the run dies mid-request, the next one checks
+      // Monday for these items before creating them again.
+      if (creating.length) {
+        await query("update monday_outbox set status = 'sending' where id = any($1)", [creating]);
+      }
 
       let result;
 
@@ -281,11 +375,22 @@ async function run(reason) {
         result = await mondayCall(`mutation (${parts.map((part) => part.declaration).join(", ")}) { ${parts.map((part) => part.field).join("\n")} }`, variables, counter);
       } catch (err) {
         if (err.rateLimited) {
+          // Refused before Monday did anything: safe to send again.
+          if (creating.length) await query("update monday_outbox set status = 'pending' where id = any($1)", [creating]);
           stopped = err.message;
           break;
         }
 
-        for (const operation of real) exhausted += await markFailed(operation.entryIds, err.message);
+        // Unknown whether Monday made the items: creations stay 'sending'
+        // for the DB ID check next run; the rest are retried.
+        if (creating.length) {
+          await query("update monday_outbox set attempts = attempts + 1, last_error = $2 where id = any($1)", [creating, String(err.message).slice(0, 1000)]);
+        }
+
+        for (const operation of real) {
+          const retry = operation.kind === "create" ? operation.entryIds.filter((id) => id !== operation.createEntryId) : operation.entryIds;
+          if (retry.length) exhausted += await markFailed(retry, err.message);
+        }
         failed += real.reduce((sum, operation) => sum + operation.entryIds.length, 0);
         continue;
       }
@@ -304,6 +409,9 @@ async function run(reason) {
         if (error) {
           exhausted += await markFailed(operation.entryIds, error);
           failed += operation.entryIds.length;
+        } else if (operation.kind === "create") {
+          await applyCreatedId(operation, Number(result.data[alias].id));
+          sent += operation.entryIds.length;
         } else {
           await markSent(operation.entryIds);
           sent += operation.entryIds.length;
@@ -352,13 +460,12 @@ export function runSync(reason = "manual") {
 export async function getSyncStatus() {
   const [{ rows: runs }, { rows: counts }, { rows: failures }] = await Promise.all([
     query("select * from sync_runs order by id desc limit 1"),
-    query(`select count(*) filter (where status = 'pending')::int as waiting,
+    query(`select count(*) filter (where status in ('pending', 'sending'))::int as waiting,
                   count(*) filter (where status = 'failed')::int as failed,
                   max(last_error) filter (where status = 'failed') as last_error
            from monday_outbox`),
     query("select board_id, monday_item_id, action, last_error, created_at from monday_outbox where status = 'failed' order by id desc limit 10"),
   ]);
-  const tableOf = (boardId) => MIRRORED_BOARDS.find((board) => board.boardId === boardId)?.table ?? boardId;
 
   return {
     scheduled: syncEnabled(),
@@ -370,7 +477,7 @@ export async function getSyncStatus() {
     lastError: counts[0].last_error,
     // The latest failed changes, with Monday's reason (most recent first).
     failures: failures.map((row) => ({
-      board: tableOf(row.board_id),
+      board: tableOf(row.board_id) ?? row.board_id,
       itemId: row.monday_item_id === null ? null : String(row.monday_item_id),
       action: row.action,
       error: row.last_error,

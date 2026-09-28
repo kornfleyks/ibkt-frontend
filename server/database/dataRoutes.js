@@ -1,12 +1,9 @@
 import { isDatabaseEnabled } from "./db.js";
-import { MIRRORED_BOARDS } from "./mondaySchema.js";
+import { databaseBoards } from "./switches.js";
 import { listItems, getItem, createItem, updateItem, deleteItem, StoreError } from "./boardStore.js";
 
 // /api/data/<board> - the database-first endpoints (Phase 1). Each board
-// answers only when its switch is on: DATABASE_BOARDS in this server's
-// environment, e.g. "tasks,cats" (empty = all boards still use Monday).
-// It's per server, not in App Settings or the database, because local and
-// Render share the same database - switching locally must not switch live.
+// answers only when its switch is on (DATABASE_BOARDS, see switches.js).
 // Admin-only until each board's own access rules move over (Phase 4).
 //
 //   GET    /api/data/boards          which boards are switched on
@@ -15,15 +12,6 @@ import { listItems, getItem, createItem, updateItem, deleteItem, StoreError } fr
 //   POST   /api/data/:board          { mondayItemId, name, fields } (mondayItemId until Phase 2.2)
 //   PATCH  /api/data/:board/:id      { name?, fields }
 //   DELETE /api/data/:board/:id
-
-export function databaseBoards() {
-  const known = new Set(MIRRORED_BOARDS.map((board) => board.table));
-
-  return (process.env.DATABASE_BOARDS ?? "")
-    .split(",")
-    .map((name) => name.trim())
-    .filter((name) => known.has(name));
-}
 
 function send(res, work) {
   work

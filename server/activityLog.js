@@ -9,6 +9,11 @@ import { ACTIVITY_LOG } from "../src/constants/boards/activityLog.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch } from "./mondayRateLimit.js";
 import { clearCache } from "./mondayCache.js";
+import { readOne } from "./mondayReads.js";
+import { getActivityLogPageSize } from "./appSettings.js";
+import { mapActivityLogEntry } from "../src/services/mappers/ActivityLogMapper.js";
+import { isDatabaseBoard, isCopyTrusted } from "./database/switches.js";
+import * as stored from "./database/activityStore.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
@@ -128,12 +133,31 @@ async function mondayDirectRequest(query, variables = {}) {
   return result.data;
 }
 
+// With "activity_log" in DATABASE_BOARDS, entries are saved in the database
+// (database/activityStore.js) instead of on Monday, at once and with no
+// Monday call; the nightly sync copies them to the board.
+function inDatabase() {
+  return isDatabaseBoard("activity_log");
+}
+
 // Reads an item's name plus a column's current human-readable value before
 // a change_column_value mutation overwrites it - the mutation payload only
 // ever carries the new value, so this is the only way to log what it
-// changed *from*. Never throws: a failed read degrades to blanks rather
-// than blocking the real mutation it's protecting.
-export async function getItemSnapshot(itemId, columnId) {
+// changed *from*. From the database copy when it's current (no Monday
+// call), else Monday. Never throws: a failed read degrades to blanks
+// rather than blocking the real mutation it's protecting.
+export async function getItemSnapshot(itemId, columnId, boardId) {
+  if (isCopyTrusted() && boardId) {
+    try {
+      const snapshot = await stored.itemSnapshot(boardId, itemId, columnId);
+
+      if (snapshot) return snapshot;
+    } catch (err) {
+      console.error("Activity log: couldn't read the item from the database.", err.message);
+    }
+  }
+
+
   const query = `
     query ($itemId: [ID!], $columnIds: [String!]) {
       items(ids: $itemId) {
@@ -172,6 +196,16 @@ export async function getItemSnapshot(itemId, columnId) {
 // column (file uploads, comments) but still need the item's name for a
 // readable Description.
 export async function getItemName(itemId) {
+  if (isCopyTrusted()) {
+    try {
+      const name = await stored.itemName(itemId);
+
+      if (name !== null) return name;
+    } catch (err) {
+      console.error("Activity log: couldn't read the item name from the database.", err.message);
+    }
+  }
+
   const query = `
     query ($itemId: [ID!]) {
       items(ids: $itemId) {
@@ -209,6 +243,29 @@ export async function logActivity({
 }) {
   try {
     const now = new Date();
+
+    if (inDatabase()) {
+      // One at a time, in order, like the Monday writes.
+      enqueueWrite(() =>
+        stored.insertEntry({
+          name: (description || `${actionType} on ${boardName}`).slice(0, 255),
+          occurredAt: now,
+          actorName,
+          actorId,
+          board: boardName,
+          boardId,
+          itemName,
+          itemId,
+          actionType,
+          description,
+          fieldChanged,
+          oldValue,
+          newValue,
+          rawDetails: JSON.stringify(raw).slice(0, 2000),
+        }),
+      ).catch((err) => console.error("Activity log: failed to save the entry.", err.message));
+      return;
+    }
 
     const columnValues = {
       [ACTIVITY_LOG.COLUMNS.TIMESTAMP]: {
@@ -321,5 +378,53 @@ export function flushActivityLog() {
 
     // So Activity Log reads show the new entries instead of a cached list.
     clearCache([ACTIVITY_LOG.BOARD_ID]);
+  });
+}
+
+const LIST_QUERY = `
+  query ($boardId: ID!, $limit: Int!) {
+    boards(ids: [$boardId]) { items_page(limit: $limit) { items { id column_values { id text value } } } }
+  }
+`;
+
+// Newest first; the page size (App Settings) caps how far back it goes.
+async function listActivity({ boardId, itemId }) {
+  const limit = await getActivityLogPageSize();
+
+  if (inDatabase()) {
+    return stored.listEntries({ limit, boardId, itemId });
+  }
+
+  // Monday: the whole page of entries, filtered here (as the app did before).
+  const data = await readOne({ query: LIST_QUERY, variables: { boardId: ACTIVITY_LOG.BOARD_ID, limit } });
+  const entries = data.boards[0].items_page.items.map(mapActivityLogEntry).sort((a, b) => Number(b.id) - Number(a.id));
+
+  return boardId === undefined ? entries : entries.filter((entry) => entry.boardId === String(boardId) && entry.itemId === String(itemId));
+}
+
+const ID_PATTERN = /^\d+$/;
+
+export function registerActivityRoutes(app, { requireAuth }) {
+  // Every signed-in user, as before: the dashboard's recent activity and the
+  // item Activity tabs (the Activity Log page itself is Admin-only).
+  //   GET /api/activity                          all (newest first)
+  //   GET /api/activity?boardId=..&itemId=..     one item's
+  app.get("/api/activity", requireAuth, async (req, res) => {
+    const { boardId, itemId } = req.query;
+
+    if ((boardId !== undefined || itemId !== undefined) && !(ID_PATTERN.test(boardId ?? "") && ID_PATTERN.test(itemId ?? ""))) {
+      return res.status(400).json({ error: "boardId and itemId must both be given as numbers." });
+    }
+
+    try {
+      res.json(await listActivity({ boardId, itemId }));
+    } catch (err) {
+      if (err.rateLimited) {
+        return res.status(429).json({ error: err.message, retryAfterSeconds: err.retryAfterSeconds });
+      }
+
+      console.error("Activity log: failed to list.", err);
+      res.status(500).json({ error: "Failed to load the activity." });
+    }
   });
 }

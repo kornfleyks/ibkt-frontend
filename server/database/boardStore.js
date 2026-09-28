@@ -85,8 +85,10 @@ function toRecord(board, row) {
   };
 }
 
+// Negative ids are records made in the database whose Monday item the sync
+// hasn't created yet (createLocalItem).
 function checkId(id) {
-  if (!/^\d+$/.test(String(id ?? ""))) {
+  if (!/^-?\d+$/.test(String(id ?? ""))) {
     throw new StoreError("Invalid item id.");
   }
 
@@ -164,9 +166,11 @@ export async function getItem(table, id) {
 }
 
 // Inserts the record and queues its fields for Monday, in one transaction.
-// The Monday item already exists with the name (created just before, or by
-// the caller), so only the columns are queued.
-async function insertRecord(board, { id, name, key, entries, pendingKey }) {
+// Normally the Monday item already exists with the name (created just
+// before, or by the caller), so only the columns are queued; `local` means
+// it doesn't yet - the sync creates it (name, columns and the key for its
+// "DB ID" column).
+async function insertRecord(board, { id, name, key, entries, pendingKey, local = false }) {
   return transaction(async (run) => {
     const names = ["monday_item_id", "name", "monday_created_at", "record_uid", ...entries.map((entry) => entry.field)];
     const values = [id, name, new Date().toISOString(), key, ...entries.map((entry) => entry.value)];
@@ -183,7 +187,7 @@ async function insertRecord(board, { id, name, key, entries, pendingKey }) {
       boardId: board.boardId,
       itemId: id,
       action: "create",
-      changes: { columns: mondayChanges(board, entries, rows[0]) },
+      changes: { ...(local && { local: true, name, key }), columns: mondayChanges(board, entries, rows[0]) },
     });
 
     if (pendingKey) {
@@ -270,6 +274,48 @@ export async function createItem(table, { mondayItemId, name, fields }) {
   await query("update pending_creations set monday_item_id = $2 where key = $1", [key, id]);
 
   return insertRecord(board, { id, name, key, entries, pendingKey: key });
+}
+
+// Creates a record in the database only, with no Monday call: it gets a
+// temporary negative id, and the nightly sync creates its Monday item and
+// swaps in the Monday id. For records nothing else links to by id
+// (notifications, Activity Log entries, App Settings rows); the record's
+// `key` (record_uid) never changes, so use that where an id must last.
+export async function createLocalItem(table, { name, fields }) {
+  const board = await boardFor(table);
+  const entries = resolveFields(board, fields);
+
+  if (!name || typeof name !== "string") {
+    throw new StoreError("A name is required.");
+  }
+
+  const { rows } = await query("select -nextval('local_item_ids') as id");
+
+  return insertRecord(board, { id: Number(rows[0].id), name, key: randomUUID(), entries, local: true });
+}
+
+// For modules that query a board themselves: the table's field (column)
+// name for a Monday column id, its companion field, and rows -> records.
+export async function boardFields(table) {
+  const board = await boardFor(table);
+
+  const field = (columnId) => {
+    const column = board.columns.get(columnId);
+
+    if (!column) {
+      throw new StoreError(`Column ${columnId} isn't mapped on ${table} (run scripts/databaseSchema.js).`, 503);
+    }
+
+    return column.name;
+  };
+
+  return {
+    table: board.table,
+    field,
+    extra: (columnId) => board.columns.get(columnId)?.extra ?? null,
+    type: (columnId) => board.columns.get(columnId)?.type ?? null,
+    toRecord: (row) => ({ ...toRecord(board, row), key: row.record_uid ?? null }),
+  };
 }
 
 // Completes a creation interrupted after its Monday item was made (called by

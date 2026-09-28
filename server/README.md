@@ -103,6 +103,22 @@ a database would need. Optional: without `DATABASE_URL` nothing changes.
     `node scripts/createDbIdColumns.js` (done; re-running costs nothing).
   - `GET /api/admin/sync` (status, failures) and `POST /api/admin/sync/run`
     (Admin) - the Monday Sync card on App Settings.
+- The server's own boards (Phase 3), each behind `DATABASE_BOARDS`
+  (`database/switches.js`); switched off they still use Monday:
+  - `app_settings`: `GET /api/settings` (signed in, from memory) and
+    `POST /api/admin/settings` `{ key, value, name?, description? }`
+    (Admins; logged).
+  - `notifications`: same `/api/notifications` endpoints; ids are the
+    record key (a UUID) so they survive the sync.
+  - `activity_log`: entries saved at once (no 10-second batch);
+    `GET /api/activity` (signed in; `?boardId=&itemId=` for one item).
+  - New rows on these boards get a temporary negative id and no Monday
+    call (`createLocalItem`); the sync creates their Monday items.
+  - With any board switched on, old values and item names for the log
+    come from the database copy (`isCopyTrusted`), not Monday.
+  - The generic `/api/monday` route refuses changes to switched-on boards,
+    and App Settings changes from non-Admins.
+  - Switch on only after a fresh full copy, and on both servers together.
 
 ## Case Owner (`caseOwner.js`)
 

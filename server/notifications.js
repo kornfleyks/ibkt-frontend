@@ -7,6 +7,10 @@ import {
 import { mondayDirectRequest } from "./mondayClient.js";
 import { getAccountState } from "./accountState.js";
 import { pushToUser } from "./sessionEvents.js";
+import { isDatabaseBoard, isCopyTrusted } from "./database/switches.js";
+import { query, ident } from "./database/db.js";
+import { boardFields } from "./database/boardStore.js";
+import * as stored from "./database/notificationsStore.js";
 
 // In-app notifications: one row per notification on the Notifications
 // board, created here when something is assigned to / taken off someone
@@ -16,6 +20,14 @@ import { pushToUser } from "./sessionEvents.js";
 //
 // Only actions that go through this server notify: something assigned
 // directly on Monday doesn't (that would need webhooks).
+//
+// With "notifications" in DATABASE_BOARDS they're kept in the database
+// instead (database/notificationsStore.js): no Monday calls for the bell,
+// and the nightly sync copies them to the board.
+
+function inDatabase() {
+  return isDatabaseBoard("notifications");
+}
 
 export const NOTIFICATIONS_BOARD_ID = NOTIFICATIONS.BOARD_ID;
 
@@ -95,6 +107,32 @@ export async function createNotification({ recipientId, type, message, actor, ta
 
     const now = new Date().toISOString();
     const recipientName = `${recipient.firstName ?? ""} ${recipient.lastName ?? ""}`.trim();
+    const pushed = {
+      message: message.slice(0, 255),
+      type,
+      read: false,
+      actorName: actor.name,
+      targetBoardId: String(target.boardId ?? ""),
+      targetItemId: String(target.itemId ?? ""),
+      targetName: target.name ?? "",
+      link: link ?? "",
+    };
+
+    if (inDatabase()) {
+      const saved = await stored.insertNotification({
+        recipientId,
+        recipientName,
+        type,
+        message: message.slice(0, 255),
+        actor,
+        target,
+        link,
+        now: new Date(now),
+      });
+
+      pushToUser(recipientId, "notification", { ...pushed, id: saved.id, createdAt: saved.createdAt });
+      return;
+    }
 
     const columnValues = {
       [COLUMNS.RECIPIENT_ID]: String(recipientId),
@@ -125,18 +163,7 @@ export async function createNotification({ recipientId, type, message, actor, ta
       ),
     );
 
-    pushToUser(recipientId, "notification", {
-      id: data.create_item.id,
-      message: message.slice(0, 255),
-      type,
-      read: false,
-      actorName: actor.name,
-      targetBoardId: String(target.boardId ?? ""),
-      targetItemId: String(target.itemId ?? ""),
-      targetName: target.name ?? "",
-      link: link ?? "",
-      createdAt: `${now.slice(0, 19)}Z`,
-    });
+    pushToUser(recipientId, "notification", { ...pushed, id: data.create_item.id, createdAt: `${now.slice(0, 19)}Z` });
   } catch (err) {
     console.error("Notifications: failed to create notification.", err.message);
   }
@@ -194,6 +221,10 @@ export function notifyMentions({ mentionIds, actor, target, link }) {
 // lets one-off alerts (e.g. an API version reaching maintenance) be sent
 // once per person, even across server restarts.
 export async function getNotifiedRecipientIds(targetItemId) {
+  if (inDatabase()) {
+    return stored.notifiedRecipientIds(targetItemId);
+  }
+
   const data = await mondayDirectRequest(
     `query ($boardId: ID!, $columnIds: [String!], $query: ItemsQuery) {
       boards(ids: [$boardId]) {
@@ -231,6 +262,18 @@ function taskLink(catId) {
 }
 
 async function readTaskCatId(taskId) {
+  // From the database copy when it's current (no Monday call).
+  if (isCopyTrusted()) {
+    try {
+      const { field, table } = await boardFields("tasks");
+      const { rows } = await query(`select ${ident(field(TASKS.COLUMNS.LINKED_CAT))} as cats from ${ident(table)} where monday_item_id = $1`, [Number(taskId)]);
+
+      if (rows[0]) return rows[0].cats?.[0] ? String(rows[0].cats[0]) : null;
+    } catch (err) {
+      console.error("Notifications: couldn't read the task's cat from the database.", err.message);
+    }
+  }
+
   const data = await mondayDirectRequest(
     `query ($ids: [ID!], $columnIds: [String!]) {
       items(ids: $ids) { column_values(ids: $columnIds) { ... on BoardRelationValue { linked_item_ids } } }
@@ -362,7 +405,7 @@ async function isOwnNotification(userId, notificationId) {
 export function registerNotificationRoutes(app, { requireAuth }) {
   app.get("/api/notifications", requireAuth, async (req, res) => {
     try {
-      res.json(await listNotifications(req.user.sub));
+      res.json(inDatabase() ? await stored.listNotifications(req.user.sub, RECENT_LIMIT) : await listNotifications(req.user.sub));
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to load notifications." });
@@ -372,11 +415,17 @@ export function registerNotificationRoutes(app, { requireAuth }) {
   app.post("/api/notifications/:id/read", requireAuth, async (req, res) => {
     const { id } = req.params;
 
-    if (!ITEM_ID_PATTERN.test(id)) {
+    if (inDatabase() ? !stored.isNotificationId(id) : !ITEM_ID_PATTERN.test(id)) {
       return res.status(400).json({ error: "Invalid notification id." });
     }
 
     try {
+      if (inDatabase()) {
+        return (await stored.markNotificationRead(req.user.sub, id))
+          ? res.json({ ok: true })
+          : res.status(404).json({ error: "Notification not found." });
+      }
+
       if (!(await isOwnNotification(req.user.sub, id))) {
         return res.status(404).json({ error: "Notification not found." });
       }
@@ -391,6 +440,10 @@ export function registerNotificationRoutes(app, { requireAuth }) {
 
   app.post("/api/notifications/read-all", requireAuth, async (req, res) => {
     try {
+      if (inDatabase()) {
+        return res.json({ marked: await stored.markAllNotificationsRead(req.user.sub) });
+      }
+
       const data = await mondayDirectRequest(
         `query ($boardId: ID!, $unread: ItemsQuery) {
           boards(ids: [$boardId]) { items_page(limit: 500, query_params: $unread) { items { id } } }

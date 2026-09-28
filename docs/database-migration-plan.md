@@ -77,9 +77,15 @@ Creating a record creates its Monday item immediately (1 call) and stores the Mo
 App Settings card for the sync: last run, changes sent, waiting, failed (with reasons), Monday calls used by the sync. Admin alert (bell) if a run fails or entries are stuck.
 *Done when:* the card shows real runs; a failing entry raises one admin notification.
 
-### Phase 3 - The server's own boards (7 points)
+### Phase 3 - The server's own boards (9 points) - BUILT 2026-09-28, switch pending
 
-These don't change any page, and they stop steady Monday usage.
+These stop steady Monday usage. The pages look the same, but the App Settings and Activity Log pages (and the dashboard's recent activity) now read through server endpoints instead of Monday directly.
+
+Built and tested offline (fake Monday, 21 checks), all behind `DATABASE_BOARDS` (off by default). Decisions: new notifications, log entries and settings get their Monday item in the nightly sync, not at once (3.0); old values and item names for logging come from the database copy once any board is switched on; only Admins may change App Settings (checked by the server). To switch on: `DATABASE_URL` on Render, a fresh full copy (1 Monday call), then `DATABASE_BOARDS=app_settings,notifications,activity_log` on both servers at the same time.
+
+**3.0 Records created in the database first - 2 pts**
+A record nothing links to by id is saved with a temporary id and no Monday call; the nightly sync creates its Monday item (with its DB ID key), swaps in the Monday id, and after a cut-off run finds the item by DB ID instead of making it twice.
+*Done when:* such records reach Monday in the nightly sync in batches; a cut-off run makes no duplicate.
 
 **3.1 App Settings from the database - 2 pts**
 *Done when:* settings are read and saved in the database, synced nightly; no Monday reads for settings.
@@ -119,10 +125,10 @@ Remove what is no longer needed (copy-from-Monday mirror, Users webhooks, Monday
 |---|---|
 | 1 Foundation | 8 |
 | 2 Nightly sync | 11 |
-| 3 Server's own boards | 7 |
+| 3 Server's own boards | 9 |
 | 4 Pages, board by board | 34 |
 | 5 Tidy up | 3 |
-| **Total** | **63** |
+| **Total** | **65** |
 
 ## 5. Rolling out and backing out
 

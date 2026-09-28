@@ -25,9 +25,10 @@ import {
   getItemSnapshot,
   getItemName,
   flushActivityLog,
+  registerActivityRoutes,
   CATS_BOARD_ID,
 } from "./activityLog.js";
-import { loadAppSettings, invalidateSettingsCache } from "./appSettings.js";
+import { loadAppSettings, invalidateSettingsCache, registerSettingsRoutes } from "./appSettings.js";
 import { checkLockout, recordFailedAttempt, clearAttempts } from "./loginLockout.js";
 import { APP_SETTINGS } from "../src/constants/boards/appSettings.js";
 import { USERS } from "../src/constants/boards/users.js";
@@ -51,6 +52,7 @@ import { registerSyncRoutes } from "./database/syncRoutes.js";
 import { startSyncSchedule } from "./database/sync.js";
 import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER } from "../src/constants/mondayApiUsage.js";
 import { isDatabaseEnabled, getQueryCount } from "./database/db.js";
+import { isDatabaseBoardId } from "./database/switches.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -425,6 +427,8 @@ registerUserAdminRoutes(app, { requireAuth, requireAdmin });
 registerWebhookRoutes(app);
 registerSessionEventRoutes(app, { requireAuth });
 registerNotificationRoutes(app, { requireAuth });
+registerSettingsRoutes(app, { requireAuth, requireAdmin });
+registerActivityRoutes(app, { requireAuth });
 registerCommunicationRoutes(app, { requireAuth });
 registerAccountRoutes(app, { requireAuth });
 registerMondayApiVersionRoutes(app, { requireAuth, requireAdmin });
@@ -459,6 +463,18 @@ app.post("/api/monday", requireAuth, async (req, res) => {
   // server-side check, not just a client-side Admin-only page.
   if (mutation && variables?.boardId === USERS_BOARD_ID && req.user.role !== "Admin") {
     return res.status(403).json({ error: "Only Admins can modify user accounts." });
+  }
+
+  // App Settings change through POST /api/admin/settings (Admins only).
+  if (mutation && String(variables?.boardId) === APP_SETTINGS.BOARD_ID && req.user.role !== "Admin") {
+    return res.status(403).json({ error: "Only Admins can change App Settings." });
+  }
+
+  // A board kept in the database (DATABASE_BOARDS) is changed only through
+  // its own endpoints: a write straight to Monday would be overwritten by
+  // the nightly sync.
+  if (mutation && variables?.boardId && isDatabaseBoardId(variables.boardId)) {
+    return res.status(409).json({ error: "This board is kept in the database now; reload the page to use the new version." });
   }
 
   // Case Owner assignment rules (who may assign, who may be picked) live in
@@ -505,7 +521,7 @@ app.post("/api/monday", requireAuth, async (req, res) => {
   const isChangeColumnValue = mutation && MUTATION_KIND_PATTERNS.changeColumnValue.test(query);
   const priorSnapshot =
     isChangeColumnValue && variables?.itemId && variables?.columnId
-      ? await getItemSnapshot(variables.itemId, variables.columnId)
+      ? await getItemSnapshot(variables.itemId, variables.columnId, variables.boardId)
       : null;
 
   try {
