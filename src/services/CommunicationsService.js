@@ -1,12 +1,16 @@
 import { mondayRequest, serverGet, serverPost } from "./MondayService";
 import { isDatabaseBoard } from "./DatabaseBoardsService";
 import { CATS } from "../constants/boards/cats";
+import { ACTIVE_APPLICATIONS } from "../constants/boards/activeApplications";
 
 // Boards whose threads can be kept in the database, by board id -> table.
-const THREAD_TABLES = { [CATS.BOARD_ID]: "cats" };
+const THREAD_TABLES = {
+  [CATS.BOARD_ID]: "cats",
+  [ACTIVE_APPLICATIONS.BOARD_ID]: "applications",
+};
 
-// A Communications thread is the Monday updates on one item (a cat today;
-// applications later - see constants/communicationBoards.js).
+// A Communications thread is the Monday updates on one item (a cat or an
+// application - see constants/communicationBoards.js).
 //
 // The app talks to Monday through one shared service-account token, so
 // every update's real `creator` is always that same account - not whoever

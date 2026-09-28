@@ -13,6 +13,7 @@ import useAuth from "../../hooks/useAuth";
 import { canSeeApplication } from "../../utils/ownership";
 import NotAssignedNotice from "../../components/Common/NotAssignedNotice";
 import ActivityTab from "../../components/ActivityLog/ActivityTab";
+import CommunicationsTab from "../../components/Communications/CommunicationsTab";
 import { ACTIVE_APPLICATIONS } from "../../constants/boards/activeApplications";
 
 function ActiveApplicationWorkspace() {
@@ -85,6 +86,9 @@ function ActiveApplicationWorkspace() {
           application={application}
           onApplicationChange={(updates) => setApplication((current) => ({ ...current, ...updates }))}
         />
+      )}
+      {activeApplicationWorkspaceTabs[tab].slug === "communications" && (
+        <CommunicationsTab boardId={ACTIVE_APPLICATIONS.BOARD_ID} itemId={application.id} />
       )}
       {activeApplicationWorkspaceTabs[tab].slug === "activity" && (
         <ActivityTab boardId={ACTIVE_APPLICATIONS.BOARD_ID} itemId={application.id} />

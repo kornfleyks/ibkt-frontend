@@ -235,7 +235,13 @@ only see their own (best-effort, like the other board guards).
 
 Communications posts go through `POST /api/communications/:boardId/:itemId`
 with `{ "text": "..." }`, for boards listed in
-`src/constants/communicationBoards.js` (Cats today). The server adds the
+`src/constants/communicationBoards.js` (Cats and Active Applications). Reading
+(`GET /api/communications/:boardId/:itemId`) and posting follow the item's
+page: any signed-in user on a cat, only Admins and the Case Owner on an
+application (`403` otherwise; `THREAD_ACCESS` in `communications.js`). A
+board added after its items were already kept in the database gets its
+existing Monday updates with `node scripts/databaseCopyCommunications.js
+<table>` (the backfill skips database boards). The server adds the
 "[Author - Role]" prefix from the session, keeps only mentions of Active
 accounts (tokens `@[Name](userId)`, see `src/utils/mentions.js`) and
 notifies them. `GET /api/users/mentionable` lists the Active accounts

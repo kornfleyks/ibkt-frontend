@@ -15,7 +15,7 @@ import {
 } from '../../services/CommunicationsService';
 
 // The Communications thread of one item on any board listed in
-// constants/communicationBoards.js (Cats today).
+// constants/communicationBoards.js (Cats and Active Applications).
 function CommunicationsTab({ boardId, itemId }) {
 
     const [messages, setMessages] = useState([]);

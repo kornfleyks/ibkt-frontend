@@ -1,9 +1,11 @@
 import { COMMUNICATION_BOARDS } from "../src/constants/communicationBoards.js";
+import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
 import { extractMentionIds, keepAllowedMentions } from "../src/utils/mentions.js";
 import { mondayDirectRequest } from "./mondayClient.js";
 import { listActiveAccounts, findKnownAccount, isAccountStateReady, displayNameOf } from "./accountState.js";
 import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemName } from "./activityLog.js";
+import { canAccessApplication } from "./applicationAccess.js";
 import { notifyMentions } from "./notifications.js";
 import { isDatabaseBoardId } from "./database/switches.js";
 import { query } from "./database/db.js";
@@ -34,6 +36,29 @@ function toUpdate(row) {
 
 const ITEM_ID_PATTERN = /^\d+$/;
 const MAX_MESSAGE_LENGTH = 5000;
+
+// Who may read and post on a board's threads, beyond being signed in.
+// Boards not listed (Cats) are open to every signed-in user.
+const THREAD_ACCESS = {
+  [ACTIVE_APPLICATIONS.BOARD_ID]: canAccessApplication,
+};
+
+function canUseThread(user, boardId, itemId) {
+  const rule = THREAD_ACCESS[boardId];
+
+  return rule ? rule(user, itemId) : true;
+}
+
+// The communications board an item is on, or null (create_update carries
+// no board id). Asks Monday; only the legacy /api/monday proxy needs it.
+export async function communicationBoardOfItem(itemId) {
+  const data = await mondayDirectRequest(`query ($itemId: [ID!]) { items(ids: $itemId) { board { id } } }`, {
+    itemId: [itemId],
+  });
+  const boardId = data?.items?.[0]?.board?.id;
+
+  return boardId && COMMUNICATION_BOARDS[boardId] ? String(boardId) : null;
+}
 
 export function registerCommunicationRoutes(app, { requireAuth }) {
   // Who can be @mentioned: Active accounts only, id/name/role, from memory.
@@ -87,6 +112,10 @@ export function registerCommunicationRoutes(app, { requireAuth }) {
     }
 
     try {
+      if (!(await canUseThread(req.user, boardId, itemId))) {
+        return res.status(403).json({ error: "You can't see this thread." });
+      }
+
       const { rows } = await query(
         "select * from communications where board_id = $1 and monday_item_id = $2 order by monday_created_at desc nulls last, monday_update_id desc limit 200",
         [boardId, Number(itemId)],
@@ -120,6 +149,10 @@ export function registerCommunicationRoutes(app, { requireAuth }) {
     const body = `[${actor.name} - ${req.user.role}] ${text}`;
 
     try {
+      if (!(await canUseThread(req.user, boardId, itemId))) {
+        return res.status(403).json({ error: "You can't post on this thread." });
+      }
+
       if (isDatabaseBoardId(boardId)) {
         const row = await createLocalPost({ boardId, itemId, message: text, author: actor.name, role: req.user.role });
 

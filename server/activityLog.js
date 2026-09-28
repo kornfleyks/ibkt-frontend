@@ -33,9 +33,9 @@ const BOARD_REGISTRY = {
   [TASKS.BOARD_ID]: { name: "Tasks", columns: TASKS.COLUMNS },
 };
 
-// CommunicationsService's create_update mutation (Cat Communications posts)
-// doesn't send a board_id - it's the only caller of that mutation today, so
-// this is a safe hardcoded association rather than a guess.
+// The Cats file-upload endpoint in index.js sends no board_id - CatsService
+// is its only caller, so this is a safe hardcoded association rather than
+// a guess.
 export const CATS_BOARD_ID = CATS.BOARD_ID;
 
 function titleCase(constantKey) {

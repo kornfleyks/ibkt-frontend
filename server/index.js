@@ -39,7 +39,7 @@ import { registerUserAdminRoutes } from "./userAdmin.js";
 import { registerWebhookRoutes } from "./webhooks.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
-import { registerCommunicationRoutes } from "./communications.js";
+import { registerCommunicationRoutes, communicationBoardOfItem } from "./communications.js";
 import { registerTaskRoutes } from "./tasks.js";
 import { registerAccountRoutes } from "./account.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
@@ -180,16 +180,24 @@ function logMutationActivity({ query, variables, result, req, priorSnapshot }) {
     return;
   }
 
-  // create_update (Cat Communications) doesn't send a board_id at all.
+  // create_update doesn't send a board_id at all, so the item's board is
+  // looked up. (Communications posts go through /api/communications now;
+  // this only covers a create_update sent straight to the proxy.)
   if (MUTATION_KIND_PATTERNS.createUpdate.test(query) && variables?.itemId) {
-    getItemName(variables.itemId).then((itemName) => {
+    Promise.all([
+      getItemName(variables.itemId),
+      communicationBoardOfItem(variables.itemId).catch((err) => {
+        console.error("Activity log: couldn't find the item's board.", err.message);
+        return null;
+      }),
+    ]).then(([itemName, boardId]) => {
       const resolvedName = itemName || `item ${variables.itemId}`;
 
       logActivity({
         actorId,
         actorName,
-        boardId: CATS_BOARD_ID,
-        boardName: "Cats",
+        boardId: boardId ?? "",
+        boardName: resolveBoardName(boardId),
         itemId: variables.itemId,
         itemName: resolvedName,
         actionType: "Commented",
