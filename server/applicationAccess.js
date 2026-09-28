@@ -13,3 +13,26 @@ export async function canAccessApplication(user, applicationId) {
 
   return (snapshot?.linkedIds ?? []).includes(String(user.sub));
 }
+
+// Route guard for /api/applications/:id/... (and :assetId when present):
+// valid ids, and the signed-in user is an Admin or the Case Owner.
+export function requireApplicationAccess(what) {
+  return async (req, res, next) => {
+    const { id, assetId } = req.params;
+
+    if (!/^\d+$/.test(id ?? "") || (assetId !== undefined && !/^\d+$/.test(assetId))) {
+      return res.status(400).json({ error: "Invalid application or file id." });
+    }
+
+    try {
+      if (!(await canAccessApplication(req.user, id))) {
+        return res.status(403).json({ error: `You can't see this application's ${what}.` });
+      }
+
+      next();
+    } catch (err) {
+      console.error(`Application ${what}:`, err);
+      res.status(500).json({ error: `The ${what} request failed.` });
+    }
+  };
+}

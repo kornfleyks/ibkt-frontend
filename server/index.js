@@ -58,6 +58,8 @@ import { refreshFileCopy } from "./database/fileCopies.js";
 import { MIRRORED_BOARDS } from "./database/mondaySchema.js";
 import { registerCatRoutes } from "./cats.js";
 import { registerApplicationRoutes } from "./applications.js";
+import { registerContractRoutes, CONTRACT_FILE_COLUMN_ID } from "./contracts.js";
+import { addFileToColumn } from "./mondayFiles.js";
 import { registerReadOnlyBoardRoutes } from "./readOnlyBoards.js";
 import { registerUserRoutes } from "./users.js";
 
@@ -83,6 +85,12 @@ if (!REGISTRATION_INVITE_CODE) {
 }
 
 const ITEM_ID_PATTERN = /^\d+$/;
+
+// File columns only their own routes may change (contracts.js):
+// /api/upload and /api/monday refuse them.
+const PROTECTED_FILE_COLUMNS = [
+  { columnId: CONTRACT_FILE_COLUMN_ID, error: "Contract files can only be changed from the application's Contracts tab." },
+];
 const COLUMN_ID_PATTERN = /^[a-zA-Z0-9_]+$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACTIVE_ACCOUNT_STATUSES = new Set(["Active"]);
@@ -459,6 +467,7 @@ registerActivityRoutes(app, { requireAuth });
 registerTaskRoutes(app, { requireAuth });
 registerCatRoutes(app, { requireAuth });
 registerApplicationRoutes(app, { requireAuth });
+registerContractRoutes(app, { requireAuth });
 registerReadOnlyBoardRoutes(app, { requireAuth });
 registerUserRoutes(app, { requireAuth, requireAdmin });
 registerCommunicationRoutes(app, { requireAuth });
@@ -523,6 +532,16 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     (query.includes(CASE_OWNER_COLUMN_ID) || JSON.stringify(variables ?? {}).includes(CASE_OWNER_COLUMN_ID))
   ) {
     return res.status(403).json({ error: "Case Owner can only be changed through the case owner endpoint." });
+  }
+
+  // Contract files go through their own route (access check, uploader
+  // details).
+  const protectedFileColumn = PROTECTED_FILE_COLUMNS.find(
+    ({ columnId }) => query.includes(columnId) || JSON.stringify(variables ?? {}).includes(columnId),
+  );
+
+  if (mutation && protectedFileColumn) {
+    return res.status(403).json({ error: protectedFileColumn.error });
   }
 
   // Account Status goes through POST /api/admin/users/:id/status, which
@@ -731,38 +750,24 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
     return res.status(400).json({ error: "Invalid itemId or columnId." });
   }
 
-  const query = `
-    mutation ($file: File!) {
-      add_file_to_column (
-        item_id: ${itemId},
-        column_id: "${columnId}",
-        file: $file
-      ) {
-        id
-      }
-    }
-  `;
+  // Contract files have their own route, which checks access and records
+  // who uploaded them.
+  const protectedFileColumn = PROTECTED_FILE_COLUMNS.find((column) => column.columnId === columnId);
 
-  const formData = new FormData();
-  formData.append("query", query);
-  formData.append(
-    "variables[file]",
-    new Blob([file.buffer], { type: file.mimetype }),
-    file.originalname,
-  );
+  if (protectedFileColumn) {
+    return res.status(403).json({ error: protectedFileColumn.error });
+  }
 
   try {
-    const response = await mondayFetch(`${MONDAY_API_URL}/file`, {
-      method: "POST",
-      headers: mondayHeaders({ json: false }),
-      body: formData,
-    });
+    let assetId;
 
-    const result = await response.json();
+    try {
+      assetId = await addFileToColumn(itemId, columnId, file);
+    } catch (err) {
+      if (!err.mondayErrors) throw err;
 
-    if (result.errors) {
-      console.error(result.errors);
-      return res.status(502).json({ error: result.errors[0].message });
+      console.error(err.mondayErrors);
+      return res.status(502).json({ error: err.message });
     }
 
     // A cached read of this item's file column is now stale (uploads are
@@ -794,7 +799,7 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
     // Boards kept in the database hold a copy of the file column.
     await refreshFileCopy(itemId, columnId);
 
-    res.json(result.data.add_file_to_column);
+    res.json({ id: assetId });
   } catch (err) {
     if (sendRateLimited(res, err)) {
       return;

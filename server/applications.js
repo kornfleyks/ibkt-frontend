@@ -67,9 +67,10 @@ export const APPLICATION_FIELDS = {
   matchConfidence: { column: A.MATCH_CONFIDENCE, write: "status" },
   teamDecision: { column: A.TEAM_DECISION, write: "status" },
   decisionNotes: { column: A.DECISION_NOTES, write: "longText" },
-  draftContractGenerated: { column: A.DRAFT_CONTRACT_GENERATED },
-  finalContractSent: { column: A.FINAL_CONTRACT_SENT },
-  signedContractReceived: { column: A.SIGNED_CONTRACT_RECEIVED },
+  // Set to "Yes" when a matching contract file is uploaded (contracts.js).
+  draftContractGenerated: { column: A.DRAFT_CONTRACT_GENERATED, write: "status" },
+  finalContractSent: { column: A.FINAL_CONTRACT_SENT, write: "status" },
+  signedContractReceived: { column: A.SIGNED_CONTRACT_RECEIVED, write: "status" },
   paymentRequired: { column: A.PAYMENT_REQUIRED },
   paymentStatus: { column: A.PAYMENT_STATUS },
   internalNotes: { column: A.INTERNAL_NOTES, write: "longText" },

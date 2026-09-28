@@ -333,12 +333,24 @@ export async function uploadMondayFile(itemId, columnId, file) {
   formData.append("columnId", columnId);
   formData.append("file", file);
 
+  return serverUpload("/api/upload", formData);
+}
+
+// A multipart POST to the server (the browser sets the boundary header).
+export async function serverUpload(path, formData) {
+  return serverSend(path, { method: "POST", body: formData }, "Upload failed.");
+}
+
+export async function serverDelete(path) {
+  return serverSend(path, { method: "DELETE" }, "Request failed.");
+}
+
+async function serverSend(path, init, fallbackError) {
   const token = getAuthToken();
 
-  const response = await fetch(`${SERVER_URL}/api/upload`, {
-    method: "POST",
+  const response = await fetch(`${SERVER_URL}${path}`, {
+    ...init,
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    body: formData,
   });
 
   syncRoleFromResponse(response);
@@ -352,7 +364,7 @@ export async function uploadMondayFile(itemId, columnId, file) {
 
   if (!response.ok || result.error) {
     console.error(result.error);
-    throw new Error(result.error || "Upload failed.");
+    throw new Error(result.error || fallbackError);
   }
 
   return result;

@@ -181,6 +181,26 @@ await transaction(async (run) => {
   )`);
   await run("create index if not exists communications_item on communications (monday_item_id)");
 
+  // Who uploaded a file through the app, and what it is. Monday only knows
+  // the shared service account as uploader; the file itself stays on
+  // Monday (asset_id is its Monday asset).
+  await run(`create table if not exists file_uploads (
+    asset_id bigint primary key,
+    board_id text not null,
+    monday_item_id bigint not null,
+    column_id text not null,
+    file_name text not null,
+    size_bytes bigint,
+    mime_type text,
+    document_type text,
+    note text,
+    uploaded_by_id text,
+    uploaded_by_name text,
+    uploaded_by_role text,
+    uploaded_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists file_uploads_item on file_uploads (board_id, monday_item_id, column_id)");
+
   const existing = (await run("select board_id, column_id, column_name, extra_column from monday_columns")).rows;
   const existingTypes = new Map(
     (await run(`select table_name, column_name, data_type from information_schema.columns where table_schema = 'public'`)).rows.map(

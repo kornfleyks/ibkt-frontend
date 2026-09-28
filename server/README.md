@@ -255,6 +255,27 @@ may read it (agreed), and it's served from memory only (no Monday call;
 unknown ids are 404). The in-memory email/phone stay current for changes made
 through the app; edits made directly on Monday apply at the next restart.
 
+## Contracts (`contracts.js`)
+
+An application's contract files (the Contracts tab). The files stay in the
+application's **Contract File** column on Monday; the `file_uploads` table
+(created by `scripts/databaseSchema.js`) keeps who really uploaded each one
+(name and role), when, its size and type, a document type (`DRAFT`,
+`FINAL`, `SIGNED`, `OTHER`, see `src/constants/contractDocumentTypes.js`)
+and an optional note. Monday itself only ever sees the service account.
+Files added directly on Monday show Monday's own uploader and time.
+
+- `GET /api/applications/:id/contracts` - the files, newest first.
+- `POST /api/applications/:id/contracts` - multipart `file` (20MB max),
+  `documentType`, `note` (500 characters max). A Draft / Final / Signed
+  file sets Draft Contract Generated / Final Contract Sent / Signed
+  Contract Received to "Yes" (logged); answers `{ contract, statusChanges }`.
+- `DELETE /api/applications/:id/contracts/:assetId` - statuses stay as they are.
+
+Only Admins and the application's Case Owner may use them
+(`applicationAccess.js`, shared with Communications). `/api/upload` and
+`/api/monday` refuse the Contract File column so this can't be skipped.
+
 ## Own account (`account.js`)
 
 Behind the app's Account page (`/account`, Profile and Settings tabs). Every

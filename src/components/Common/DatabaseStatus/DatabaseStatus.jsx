@@ -2,14 +2,9 @@ import { useEffect, useState } from "react";
 import { Box, Button, LinearProgress, Tooltip, Typography } from "@mui/material";
 import { getDatabaseHealth } from "../../../services/DatabaseHealthService";
 import { formatRelativeTime } from "../../../utils/relativeTime";
+import { formatBytes } from "../../../utils/formatBytes";
 
 const REFRESH_MS = 60_000;
-
-function formatBytes(bytes) {
-  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${bytes} B`;
-}
 
 function Row({ label, value, color = "text.secondary" }) {
   return (

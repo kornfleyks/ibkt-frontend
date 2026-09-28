@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import OverviewTab from "../../components/ActiveApplications/Workspace/OverviewTab";
+import ContractsTab from "../../components/ActiveApplications/Workspace/ContractsTab";
 import PageHeader from "../../components/PageHeader";
 import { getActiveApplication } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
@@ -97,6 +98,12 @@ function ActiveApplicationWorkspace() {
           noun="application"
           pageKey="applicationTasks"
           ownTasksOnly={false}
+        />
+      )}
+      {activeApplicationWorkspaceTabs[tab].slug === "contracts" && (
+        <ContractsTab
+          application={application}
+          onApplicationChange={(updates) => setApplication((current) => ({ ...current, ...updates }))}
         />
       )}
       {activeApplicationWorkspaceTabs[tab].slug === "activity" && (
