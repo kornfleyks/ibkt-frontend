@@ -77,7 +77,7 @@ Creating a record creates its Monday item immediately (1 call) and stores the Mo
 App Settings card for the sync: last run, changes sent, waiting, failed (with reasons), Monday calls used by the sync. Admin alert (bell) if a run fails or entries are stuck.
 *Done when:* the card shows real runs; a failing entry raises one admin notification.
 
-### Phase 3 - The server's own boards (9 points) - BUILT 2026-09-28, switch pending
+### Phase 3 - The server's own boards (9 points) - LIVE 2026-09-28
 
 These stop steady Monday usage. The pages look the same, but the App Settings and Activity Log pages (and the dashboard's recent activity) now read through server endpoints instead of Monday directly.
 
@@ -100,18 +100,18 @@ Log entries written to the database; the "old value" is read from the database i
 
 ### Phase 4 - The pages, board by board (34 points)
 
-Each subtask: rewrite the board's page data code to use `/api/data/<board>` (D7), carry over the board's access rules into the endpoints (they are Admin-only until then), switch it on in `DATABASE_BOARDS`, run it for a few days, then retire its Monday path. Done when the board's pages make no Monday calls except files, and its changes reach Monday nightly.
+Each subtask: rewrite the board's page data code to use a board endpoint (e.g. `/api/tasks`, app-shaped, built on the store; D7), keeping the Monday code beside it so the app follows the switch (`/api/database-boards`), carry over the board's access rules into the endpoints (they are Admin-only until then), switch it on in `DATABASE_BOARDS`, run it for a few days, then retire its Monday path. Done when the board's pages make no Monday calls except files, and its changes reach Monday nightly.
 
 | # | Subtask | Pts | Notes |
 |---|---|---|---|
-| 4.1 | Tasks | 4 | Owner links, due dates, task options. |
-| 4.2 | Cats | 5 | Largest board; bonded groups; statuses; options (breed, colour). |
-| 4.3 | Communications | 3 | Messages as database rows; posted to Monday as updates nightly; @mentions and notifications unchanged. |
-| 4.4 | Files and photos | 4 | Uploads still go to Monday on the item created at D2 time; file lists in the database; Monday file links fetched on demand and cached for their lifetime. |
-| 4.5 | Applications | 5 | Many long-text fields; stages; stage actions. |
-| 4.6 | Matching and Case Owner | 4 | Both sides of two-way links written by the app; case-owner rules unchanged. |
-| 4.7 | Travel, Post-Adoption, Rescuers | 4 | Smaller boards, similar pattern. |
-| 4.8 | Users and logins | 5 | Last: password hashes and login state move to the database; live role/suspension updates unchanged; Monday webhooks no longer needed. |
+| 4.1 | Tasks | 4 | BUILT 2026-09-28: `/api/tasks` (server/tasks.js); same access as before; logs and owner notifications done by the server; titles from `column_options`; suspend hand-over uses the database. |
+| 4.2 | Cats | 5 | BUILT 2026-09-28 (`server/cats.js`). |
+| 4.3 | Communications | 3 | BUILT 2026-09-28: messages saved in the database, posted to Monday at the sync. |
+| 4.4 | Files and photos | 4 | BUILT 2026-09-28: uploads still go to Monday; a copy of each file column is refreshed after every upload or delete (1 call). |
+| 4.5 | Applications | 5 | BUILT 2026-09-28 (`server/applications.js`). |
+| 4.6 | Matching and Case Owner | 4 | BUILT 2026-09-28: the store keeps both sides of two-way links in step; case-owner rules unchanged. |
+| 4.7 | Travel, Post-Adoption, Rescuers | 4 | BUILT 2026-09-28 (`server/readOnlyBoards.js`). |
+| 4.8 | Users and logins | 5 | BUILT 2026-09-28: sign-in, account state, Account and Users pages from the database; passwords kept in both places (user's choice), never returned by any endpoint; Monday webhooks ignored when on. |
 
 ### Phase 5 - Tidy up (3 points)
 

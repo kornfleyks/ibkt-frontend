@@ -2,6 +2,7 @@ import { ACTIVITY_LOG } from "../../src/constants/boards/activityLog.js";
 import { query, ident } from "./db.js";
 import { boardFields, createLocalItem } from "./boardStore.js";
 import { MIRRORED_BOARDS } from "./mondaySchema.js";
+import { namesOf, textOf } from "./columnText.js";
 
 // The Activity Log in the database ("activity_log" in DATABASE_BOARDS):
 // entries are saved at once with no Monday call (the nightly sync copies
@@ -89,38 +90,6 @@ function tableOf(boardId) {
   return MIRRORED_BOARDS.find((board) => board.boardId === String(boardId))?.table ?? null;
 }
 
-// Names of items on any board, by id: Map(id -> name).
-async function namesOf(ids) {
-  const wanted = [...new Set(ids.map(Number).filter(Number.isFinite))];
-
-  if (!wanted.length) return new Map();
-
-  const union = MIRRORED_BOARDS.map((board) => `select monday_item_id, name from ${ident(board.table)} where monday_item_id = any($1)`).join(" union all ");
-  const { rows } = await query(union, [wanted]);
-
-  return new Map(rows.map((row) => [String(row.monday_item_id), row.name ?? ""]));
-}
-
-// A stored value as Monday would show it as text.
-async function textOf(type, main, extraValue) {
-  if (main === null || main === undefined) return "";
-
-  switch (type) {
-    case "board_relation": {
-      const names = await namesOf(main);
-      return main.map((id) => names.get(String(id)) ?? "").filter(Boolean).join(", ");
-    }
-    case "dropdown":
-      return main.join(", ");
-    case "date":
-      return `${main}${extraValue ? ` ${String(extraValue).slice(0, 5)}` : ""}`;
-    case "checkbox":
-      return main ? "v" : "";
-    default:
-      return String(main);
-  }
-}
-
 // { itemName, columnText, linkedIds } for an item's column, or null when the
 // copy doesn't have the item (the caller then asks Monday).
 export async function itemSnapshot(boardId, itemId, columnId) {
@@ -144,7 +113,9 @@ export async function itemSnapshot(boardId, itemId, columnId) {
   return {
     itemName: rows[0].name ?? "",
     // A column the copy doesn't keep (e.g. files) reads as empty.
-    columnText: main ? await textOf(columnType, rows[0].main, rows[0].companion) : "",
+    columnText: main
+      ? textOf(columnType, rows[0].main, rows[0].companion, columnType === "board_relation" ? await namesOf(rows[0].main) : undefined)
+      : "",
     linkedIds: columnType === "board_relation" ? (rows[0].main ?? []).map(String) : [],
   };
 }

@@ -33,16 +33,36 @@ export const MIRRORED_BOARDS = [
 // `communications` table.
 export const COMMUNICATION_BOARD_IDS = Object.keys(COMMUNICATION_BOARDS);
 
-// Secrets are not copied: a second copy only adds risk.
-export const EXCLUDED_COLUMN_IDS = new Set([
+// Columns never copied into the database. (Empty since sign-in moved to
+// the database, database-first plan 4.8: the user chose to keep passwords
+// and tokens in both places.)
+export const EXCLUDED_COLUMN_IDS = new Set([]);
+
+// Stored, but never returned by any endpoint or sent to the browser.
+export const SECRET_COLUMN_IDS = new Set([
   USERS.COLUMNS.PASSWORD_HASH,
   USERS.COLUMNS.LOGIN_TOKEN,
   USERS.COLUMNS.PASSWORD_RESET_TOKEN,
 ]);
 
-// Monday column type -> how it's stored. `sql: null` = not copied (files
-// stay in Monday; mirrors only repeat another board's data; subitems are
-// unused). `extra` = a companion column (<name>_<suffix>) for detail
+// Two-way links: Monday keeps each pair in step itself, and the app writes
+// only the first column of each. In the database the store keeps the
+// second in step, and only the changed side is sent to Monday.
+// [boardId, columnId] pairs.
+export const LINK_PAIRS = [
+  [[ACTIVE_APPLICATIONS.BOARD_ID, "board_relation_mm4852qa"], [CATS.BOARD_ID, "board_relation_mm48ar6q"]], // Linked Cat / Linked Adopter
+  [[ACTIVE_APPLICATIONS.BOARD_ID, "board_relation_mm482g9z"], [TRAVEL.BOARD_ID, "board_relation_mm486b2n"]], // Travel / Linked Adopter
+  [[ACTIVE_APPLICATIONS.BOARD_ID, "board_relation_mm49xt5w"], [POST_ADOPTION.BOARD_ID, "board_relation_mm497ap1"]], // Post-Adoption / Linked Adopter
+  [[CATS.BOARD_ID, "board_relation_mm474v6b"], [RESCUERS.BOARD_ID, "board_relation_mm48rqcz"]], // Linked Rescuer / link to Cats
+  [[CATS.BOARD_ID, "board_relation_mm481sxw"], [TRAVEL.BOARD_ID, "board_relation_mm48vpn9"]], // Travel / Linked Cat
+  [[CATS.BOARD_ID, "board_relation_mm49kxgg"], [POST_ADOPTION.BOARD_ID, "board_relation_mm493c3r"]], // Post-Adoption / Linked Cat
+];
+
+// Monday column type -> how it's stored. `sql: null` = not copied (mirrors
+// only repeat another board's data; subitems are unused). Files stay on
+// Monday: their column is a read-only copy of Monday's { text, value }
+// (file names, asset ids, links), refreshed after each upload or delete and
+// never sent back. `extra` = a companion column (<name>_<suffix>) for detail
 // Monday needs back: a date's time, a country's code, a phone's country, an
 // email's display text. `writable: false` = Monday sets it, never written.
 export const TYPE_SPECS = {
@@ -61,7 +81,7 @@ export const TYPE_SPECS = {
   board_relation: { sql: "bigint[]" },
   item_id: { sql: "bigint", writable: false },
   creation_log: { sql: "timestamptz", writable: false },
-  file: { sql: null },
+  file: { sql: "jsonb", writable: false },
   mirror: { sql: null },
   lookup: { sql: null },
   subtasks: { sql: null },
@@ -217,6 +237,8 @@ export function readToDb(type, column, item, options) {
       return { main: toNumber(column?.text ?? item?.id), extra: null };
     case "creation_log":
       return { main: item?.created_at ?? null, extra: null };
+    case "file":
+      return { main: value?.files?.length ? { text: column?.text ?? "", value } : null, extra: null };
     default:
       return { main: column?.text || null, extra: null };
   }
@@ -270,6 +292,7 @@ export function inputToDb(type, raw, options) {
       return undefined;
     case "item_id":
     case "creation_log":
+    case "file":
       return undefined;
     default:
       return { main: typeof value === "string" ? value : JSON.stringify(value), extra: null };

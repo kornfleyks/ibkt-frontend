@@ -4,7 +4,8 @@ import { SYNC_MARKER } from "./mirror.js";
 import { mondayFetch } from "../mondayRateLimit.js";
 import { mondayHeaders } from "../mondayApiVersion.js";
 import { loadColumnMap } from "./rows.js";
-import { MIRRORED_BOARDS, specFor, dbToInput } from "./mondaySchema.js";
+import { MIRRORED_BOARDS, LINK_PAIRS, SECRET_COLUMN_IDS, specFor, dbToInput, inputToDb } from "./mondaySchema.js";
+import { columnValues as toColumnFields } from "./rows.js";
 
 // The database as the app's store (database-first plan, Phase 1): read and
 // write any mirrored board, and queue every change for Monday in the
@@ -63,6 +64,70 @@ async function boardFor(table) {
   return { ...board, columns: mapping.columns, byField };
 }
 
+// "boardId:columnId" -> { table, field } of the other side of a two-way link.
+async function linkPartners() {
+  const map = await columnMap();
+  const partners = new Map();
+  const sideOf = ([boardId, columnId]) => {
+    const board = map.get(boardId);
+    const column = board?.columns.get(columnId);
+
+    return column ? { table: board.table, field: column.name } : null;
+  };
+
+  for (const [a, b] of LINK_PAIRS) {
+    const sideA = sideOf(a);
+    const sideB = sideOf(b);
+
+    if (sideA && sideB) {
+      partners.set(a.join(":"), sideB);
+      partners.set(b.join(":"), sideA);
+    }
+  }
+
+  return partners;
+}
+
+// After a link column of `itemId` went from `before` to `after` ids: the
+// other side of a two-way link gets `itemId` added / removed on the items
+// that were linked / unlinked. Database only (Monday keeps its own pairs in
+// step when the changed side reaches it), inside the caller's transaction.
+async function keepLinksInStep(run, board, itemId, changes) {
+  const partners = await linkPartners();
+
+  for (const { columnId, before, after } of changes) {
+    const partner = partners.get(`${board.boardId}:${columnId}`);
+
+    if (!partner) continue;
+
+    const previous = new Set((before ?? []).map(Number));
+    const next = new Set((after ?? []).map(Number));
+    const added = [...next].filter((id) => !previous.has(id));
+    const removed = [...previous].filter((id) => !next.has(id));
+    const field = ident(partner.field);
+
+    if (added.length) {
+      await run(
+        `update ${ident(partner.table)} set ${field} = array_append(coalesce(${field}, '{}'), $1::bigint), updated_at = now()
+         where monday_item_id = any($2) and not ($1::bigint = any(coalesce(${field}, '{}')))`,
+        [itemId, added],
+      );
+    }
+
+    if (removed.length) {
+      await run(`update ${ident(partner.table)} set ${field} = array_remove(${field}, $1::bigint), updated_at = now() where monday_item_id = any($2)`, [
+        itemId,
+        removed,
+      ]);
+    }
+  }
+}
+
+// The link columns among `entries`, as { columnId, field }.
+function linkEntries(entries) {
+  return entries.filter((entry) => entry.part === "main" && entry.column.type === "board_relation");
+}
+
 const NUMERIC_TYPES = new Set(["numbers", "numeric"]);
 
 function toRecord(board, row) {
@@ -72,6 +137,10 @@ function toRecord(board, row) {
     if (SYSTEM.has(key)) continue;
 
     const entry = board.byField.get(key);
+
+    // Passwords and tokens never leave the server.
+    if (entry && SECRET_COLUMN_IDS.has(entry.columnId)) continue;
+
     // node-postgres returns numeric as a string; the app wants numbers.
     fields[key] = entry && entry.part === "main" && NUMERIC_TYPES.has(entry.column.type) && value !== null ? Number(value) : value;
   }
@@ -182,6 +251,13 @@ async function insertRecord(board, { id, name, key, entries, pendingKey, local =
     ).catch((err) => {
       throw err.code === "23505" ? new StoreError(`${board.table} item ${id} already exists.`, 409) : new StoreError(err.message);
     });
+
+    await keepLinksInStep(
+      run,
+      board,
+      id,
+      linkEntries(entries).map((entry) => ({ columnId: entry.columnId, before: [], after: rows[0][entry.field] })),
+    );
 
     await queueForMonday(run, {
       boardId: board.boardId,
@@ -318,6 +394,66 @@ export async function boardFields(table) {
   };
 }
 
+// A file column's copy of Monday's { text, value } (files stay on Monday),
+// set after an upload or delete. Not queued: Monday already has it.
+export async function setFileCopy(table, itemId, columnId, files) {
+  const board = await boardFor(table);
+  const column = board.columns.get(columnId);
+
+  if (!column || column.type !== "file") {
+    throw new StoreError(`${columnId} isn't a file column on ${table}.`);
+  }
+
+  await query(`update ${ident(table)} set ${ident(column.name)} = $2, updated_at = now() where monday_item_id = $1`, [
+    checkId(itemId),
+    files?.value?.files?.length ? files : null,
+  ]);
+}
+
+// A message (Communications thread post) saved in the database only: a
+// temporary negative id until the nightly sync posts it to Monday. Stored
+// like copied posts (author, role and message apart); Monday gets the
+// "[Author - Role] message" body the app has always posted.
+export async function createLocalPost({ boardId, itemId, message, author, role }) {
+  const body = `[${author} - ${role}] ${message}`;
+
+  return transaction(async (run) => {
+    const { rows: [idRow] } = await run("select -nextval('local_item_ids') as id");
+    const id = Number(idRow.id);
+    const { rows } = await run(
+      `insert into communications (monday_update_id, board_id, monday_item_id, author, role, body, monday_created_at)
+       values ($1, $2, $3, $4, $5, $6, now()) returning *`,
+      [id, String(boardId), checkId(itemId), author, role, message],
+    );
+
+    await queueForMonday(run, { boardId: String(boardId), itemId: checkId(itemId), action: "create_update", changes: { body, localUpdateId: id } });
+
+    return rows[0];
+  });
+}
+
+// { columnId: value } in Monday's column-value format (as the server's
+// Monday code sends it) -> the table's fields, e.g. for sign-in and the
+// Account page, which kept their Monday-shaped values.
+export async function fieldsFromMondayValues(table, columnValues) {
+  const board = await boardFor(table);
+  const fields = {};
+
+  for (const [columnId, value] of Object.entries(columnValues ?? {})) {
+    const column = board.columns.get(columnId);
+
+    if (!column) throw new StoreError(`Column ${columnId} isn't mapped on ${table}.`);
+
+    const converted = inputToDb(column.type, JSON.stringify(value), column.options);
+
+    if (converted === undefined) throw new StoreError(`Can't store that value in ${columnId}.`);
+
+    Object.assign(fields, toColumnFields(column, converted));
+  }
+
+  return fields;
+}
+
 // Completes a creation interrupted after its Monday item was made (called by
 // the sync's recovery with a pending_creations row that has monday_item_id).
 export async function finishCreation(pending) {
@@ -352,6 +488,15 @@ export async function updateItem(table, id, { name, fields }) {
   }
 
   return transaction(async (run) => {
+    const links = linkEntries(entries);
+    let before = null;
+
+    if (links.length) {
+      ({
+        rows: [before],
+      } = await run(`select ${links.map((entry) => ident(entry.field)).join(", ")} from ${ident(table)} where monday_item_id = $1 for update`, [itemId]));
+    }
+
     const sets = [
       ...(name !== undefined ? [["name", name]] : []),
       ...entries.map((entry) => [entry.field, entry.value]),
@@ -370,6 +515,13 @@ export async function updateItem(table, id, { name, fields }) {
       throw new StoreError(`${table} item ${id} not found.`, 404);
     }
 
+    await keepLinksInStep(
+      run,
+      board,
+      itemId,
+      links.map((entry) => ({ columnId: entry.columnId, before: before?.[entry.field] ?? [], after: rows[0][entry.field] })),
+    );
+
     await queueForMonday(run, {
       boardId: board.boardId,
       itemId,
@@ -386,11 +538,19 @@ export async function deleteItem(table, id) {
   const itemId = checkId(id);
 
   return transaction(async (run) => {
-    const { rowCount } = await run(`delete from ${ident(table)} where monday_item_id = $1`, [itemId]);
+    const links = [...board.columns].filter(([, column]) => column.type === "board_relation");
+    const { rows } = await run(`delete from ${ident(table)} where monday_item_id = $1 returning *`, [itemId]);
 
-    if (!rowCount) {
+    if (!rows[0]) {
       throw new StoreError(`${table} item ${id} not found.`, 404);
     }
+
+    await keepLinksInStep(
+      run,
+      board,
+      itemId,
+      links.map(([columnId, column]) => ({ columnId, before: rows[0][column.name] ?? [], after: [] })),
+    );
 
     await queueForMonday(run, { boardId: board.boardId, itemId, action: "delete", changes: {} });
   });

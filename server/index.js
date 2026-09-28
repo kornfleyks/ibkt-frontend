@@ -40,6 +40,7 @@ import { registerWebhookRoutes } from "./webhooks.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
 import { registerCommunicationRoutes } from "./communications.js";
+import { registerTaskRoutes } from "./tasks.js";
 import { registerAccountRoutes } from "./account.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch, mondayRetryAfterSeconds } from "./mondayRateLimit.js";
@@ -52,7 +53,13 @@ import { registerSyncRoutes } from "./database/syncRoutes.js";
 import { startSyncSchedule } from "./database/sync.js";
 import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER } from "../src/constants/mondayApiUsage.js";
 import { isDatabaseEnabled, getQueryCount } from "./database/db.js";
-import { isDatabaseBoardId } from "./database/switches.js";
+import { isDatabaseBoardId, databaseBoards } from "./database/switches.js";
+import { refreshFileCopy } from "./database/fileCopies.js";
+import { MIRRORED_BOARDS } from "./database/mondaySchema.js";
+import { registerCatRoutes } from "./cats.js";
+import { registerApplicationRoutes } from "./applications.js";
+import { registerReadOnlyBoardRoutes } from "./readOnlyBoards.js";
+import { registerUserRoutes } from "./users.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -191,6 +198,18 @@ function logMutationActivity({ query, variables, result, req, priorSnapshot }) {
       });
     });
   }
+}
+
+// Whether a Monday request names a board kept in the database (best-effort
+// like the other board guards: it catches any request naming the board id).
+function namesDatabaseBoard(query, variables) {
+  const text = `${query} ${JSON.stringify(variables ?? {})}`;
+
+  return databaseBoards().some((table) => {
+    const boardId = MIRRORED_BOARDS.find((board) => board.table === table)?.boardId;
+
+    return boardId && text.includes(boardId);
+  });
 }
 
 // Monday refused because of its rate limit: pass on a readable message and
@@ -429,6 +448,11 @@ registerSessionEventRoutes(app, { requireAuth });
 registerNotificationRoutes(app, { requireAuth });
 registerSettingsRoutes(app, { requireAuth, requireAdmin });
 registerActivityRoutes(app, { requireAuth });
+registerTaskRoutes(app, { requireAuth });
+registerCatRoutes(app, { requireAuth });
+registerApplicationRoutes(app, { requireAuth });
+registerReadOnlyBoardRoutes(app, { requireAuth });
+registerUserRoutes(app, { requireAuth, requireAdmin });
 registerCommunicationRoutes(app, { requireAuth });
 registerAccountRoutes(app, { requireAuth });
 registerMondayApiVersionRoutes(app, { requireAuth, requireAdmin });
@@ -470,10 +494,15 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "Only Admins can change App Settings." });
   }
 
-  // A board kept in the database (DATABASE_BOARDS) is changed only through
-  // its own endpoints: a write straight to Monday would be overwritten by
-  // the nightly sync.
-  if (mutation && variables?.boardId && isDatabaseBoardId(variables.boardId)) {
+  // A board kept in the database (DATABASE_BOARDS) is read and changed only
+  // through its own endpoints: a write straight to Monday would be
+  // overwritten by the nightly sync, and a read would cost a Monday call
+  // (and, for Users, could reach columns the endpoints never return). File
+  // changes are the exception - files stay on Monday - and the database's
+  // copy of the column is refreshed after them.
+  const isFileChange = mutation && MUTATION_KIND_PATTERNS.updateAssets.test(query);
+
+  if (namesDatabaseBoard(query, variables) && !isFileChange) {
     return res.status(409).json({ error: "This board is kept in the database now; reload the page to use the new version." });
   }
 
@@ -543,6 +572,12 @@ app.post("/api/monday", requireAuth, async (req, res) => {
       // (e.g. matching a cat updates both cats and applications). A mutation
       // that names no board (e.g. create_update) drops everything.
       clearCache(variables?.boardId ? [variables.boardId] : undefined);
+
+      // A file removed on a board kept in the database: refresh its copy
+      // before answering, so the page's next read shows it gone.
+      if (isFileChange && variables?.itemId && variables?.columnId && isDatabaseBoardId(variables?.boardId)) {
+        await refreshFileCopy(variables.itemId, variables.columnId);
+      }
 
       // App Settings changed through the app (e.g. a new Monday API version)
       // apply on the next request instead of after the settings refresh.
@@ -638,6 +673,8 @@ app.post("/api/monday/batch", requireAuth, async (req, res) => {
       results[index] = { error: "Only reads can be batched.", status: 400 };
     } else if (query.includes(NOTIFICATIONS_BOARD_ID) || JSON.stringify(variables ?? {}).includes(NOTIFICATIONS_BOARD_ID)) {
       results[index] = { error: "Notifications are only available through /api/notifications.", status: 403 };
+    } else if (namesDatabaseBoard(query, variables)) {
+      results[index] = { error: "This board is kept in the database now; reload the page to use the new version.", status: 409 };
     } else {
       reads.push({ index, request: { query, variables, cacheTtlMs } });
     }
@@ -745,6 +782,9 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
         raw: { itemId, columnId, fileName: file.originalname },
       });
     });
+
+    // Boards kept in the database hold a copy of the file column.
+    await refreshFileCopy(itemId, columnId);
 
     res.json(result.data.add_file_to_column);
   } catch (err) {

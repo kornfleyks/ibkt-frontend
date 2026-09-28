@@ -1,6 +1,8 @@
 import { USERS } from "../src/constants/boards/users.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch } from "./mondayRateLimit.js";
+import { isDatabaseBoard } from "./database/switches.js";
+import * as usersStore from "./database/usersStore.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
@@ -10,6 +12,8 @@ const MONDAY_API_URL = process.env.MONDAY_API_URL;
 //   - one full read of the Users board at startup (initAccountState),
 //   - this server's own writes / proxied Users-board mutations (applyAccountChange),
 //   - Monday webhooks for edits made directly on the board (see webhooks.js).
+// With "users" in DATABASE_BOARDS the reads come from the database instead
+// (no Monday calls) and the webhooks are ignored - the database is the store.
 // Resets on restart like mondayCache.js - the startup read rebuilds it.
 
 const accounts = new Map();
@@ -65,7 +69,31 @@ const COLUMN_IDS = [
   USERS.COLUMNS.PHONE,
 ];
 
+function fromStore(user) {
+  return {
+    role: user.role,
+    accountStatus: user.accountStatus,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    phone: user.phone,
+  };
+}
+
 async function loadAll() {
+  if (isDatabaseBoard("users")) {
+    const users = await usersStore.allUsers();
+
+    accounts.clear();
+
+    for (const user of users) {
+      accounts.set(user.id, fromStore(user));
+    }
+
+    initialized = true;
+    return;
+  }
+
   const data = await mondayDirectRequest(
     `query ($boardId: ID!, $columnIds: [String!]) {
       boards(ids: [$boardId]) {
@@ -87,6 +115,16 @@ async function loadAll() {
 }
 
 async function loadOne(userId) {
+  if (isDatabaseBoard("users")) {
+    const user = await usersStore.userById(userId);
+
+    if (user) {
+      accounts.set(user.id, fromStore(user));
+    }
+
+    return user ? accounts.get(user.id) : null;
+  }
+
   const data = await mondayDirectRequest(
     `query ($ids: [ID!], $columnIds: [String!]) {
       items(ids: $ids) { id column_values(ids: $columnIds) { id text value } }

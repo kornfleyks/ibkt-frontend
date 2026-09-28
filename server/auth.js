@@ -6,6 +6,8 @@ import { USERS } from "../src/constants/boards/users.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch as rateLimitedFetch } from "./mondayRateLimit.js";
 import { parsePreferences } from "../src/constants/preferences.js";
+import { isDatabaseBoard } from "./database/switches.js";
+import * as usersStore from "./database/usersStore.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -23,6 +25,25 @@ const USERS_COLUMNS = USERS.COLUMNS;
 // This module talks to Monday directly with the server's own API token,
 // deliberately bypassing the generic /api/monday proxy - auth has to work
 // before a session token exists to authenticate that proxy call with.
+// With "users" in DATABASE_BOARDS it reads and writes the database instead
+// (database/usersStore.js); the nightly sync copies changes to Monday.
+function inDatabase() {
+  return isDatabaseBoard("users");
+}
+
+// A usersStore row -> the same shape as mapUserItem.
+function fromStore(user) {
+  return {
+    id: user.id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email,
+    passwordHash: user.passwordHash,
+    role: user.role,
+    accountStatus: user.accountStatus,
+    preferences: parsePreferences(user.preferencesText),
+  };
+}
 async function mondayFetch(query, variables = {}) {
   const response = await rateLimitedFetch(MONDAY_API_URL, {
     method: "POST",
@@ -59,6 +80,10 @@ function mapUserItem(item) {
 // per-entity lookups) is simpler and more robust than relying on Monday's
 // column-type-specific filter operators for an exact email match.
 async function getAllAuthUsers() {
+  if (inDatabase()) {
+    return (await usersStore.allUsers()).map(fromStore);
+  }
+
   const query = `
     query ($boardId: ID!) {
       boards(ids: [$boardId]) {
@@ -101,6 +126,10 @@ export async function findUserByEmail(email) {
 }
 
 export async function setUserPasswordHash(userId, passwordHash) {
+  if (inDatabase()) {
+    return usersStore.setUserValues(userId, { [USERS_COLUMNS.PASSWORD_HASH]: passwordHash });
+  }
+
   const mutation = `
     mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
       change_column_value(
@@ -126,6 +155,10 @@ export async function setUserPasswordHash(userId, passwordHash) {
 // Log's Timestamp, so the app can show it correctly in any timezone.
 export async function setUserLastLogin(userId) {
   const now = new Date().toISOString();
+
+  if (inDatabase()) {
+    return usersStore.setUserValues(userId, { [USERS_COLUMNS.LAST_LOGIN]: { date: now.slice(0, 10), time: now.slice(11, 19) } });
+  }
 
   const mutation = `
     mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
@@ -153,6 +186,14 @@ function parseJson(rawValue) {
 // self-service updates). Includes the password hash for current-password
 // checks - never send the result to the browser as-is.
 export async function getAccountRow(userId) {
+  if (inDatabase()) {
+    const user = await usersStore.userById(userId);
+
+    return user
+      ? { ...fromStore(user), phone: user.phone, emailVerified: user.emailVerified, lastLoginRaw: user.lastLoginRaw }
+      : null;
+  }
+
   const query = `
     query ($ids: [ID!]) {
       items(ids: $ids) {
@@ -189,6 +230,10 @@ export async function getAccountRow(userId) {
 
 // columnValues: { [columnId]: value } in Monday's column-value format.
 export async function setUserColumns(userId, columnValues) {
+  if (inDatabase()) {
+    return usersStore.setUserValues(userId, columnValues);
+  }
+
   const mutation = `
     mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
       change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
@@ -211,6 +256,10 @@ export async function createPendingUser({ firstName, lastName, email, passwordHa
     [USERS_COLUMNS.ROLE]: { label: "Adopter" },
     [USERS_COLUMNS.ACCOUNT_STATUS]: { label: "Pending" },
   };
+
+  if (inDatabase()) {
+    return usersStore.createUser(`${firstName} ${lastName}`, columnValues);
+  }
 
   const mutation = `
     mutation (

@@ -5,6 +5,9 @@ import { listActiveAccounts, findKnownAccount, isAccountStateReady, displayNameO
 import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemName } from "./activityLog.js";
 import { notifyMentions } from "./notifications.js";
+import { isDatabaseBoardId } from "./database/switches.js";
+import { query } from "./database/db.js";
+import { createLocalPost } from "./database/boardStore.js";
 
 // Posting to an item's Communications thread (a Monday update). Goes
 // through here rather than the generic proxy so that:
@@ -14,6 +17,20 @@ import { notifyMentions } from "./notifications.js";
 //     notified,
 //   - the thread's board is known (create_update itself carries no board).
 // Works for any board listed in COMMUNICATION_BOARDS.
+//
+// When the item's board is kept in the database (DATABASE_BOARDS), threads
+// are read from and posted to the database (the nightly sync posts new
+// messages to Monday), in the same update shape the app reads from Monday.
+
+// A stored message -> { id, text_body, created_at, creator } as Monday answers.
+function toUpdate(row) {
+  return {
+    id: String(row.monday_update_id),
+    text_body: row.author ? `[${row.author} - ${row.role ?? ""}] ${row.body ?? ""}` : row.body ?? "",
+    created_at: row.monday_created_at ? new Date(row.monday_created_at).toISOString() : null,
+    creator: null,
+  };
+}
 
 const ITEM_ID_PATTERN = /^\d+$/;
 const MAX_MESSAGE_LENGTH = 5000;
@@ -56,6 +73,32 @@ export function registerCommunicationRoutes(app, { requireAuth }) {
     });
   });
 
+  // The thread, newest first (as Monday lists updates). Database boards only;
+  // otherwise the app reads Monday.
+  app.get("/api/communications/:boardId/:itemId", requireAuth, async (req, res) => {
+    const { boardId, itemId } = req.params;
+
+    if (!COMMUNICATION_BOARDS[boardId] || !ITEM_ID_PATTERN.test(itemId)) {
+      return res.status(400).json({ error: "This item has no communications thread." });
+    }
+
+    if (!isDatabaseBoardId(boardId)) {
+      return res.status(409).json({ error: "This board is still kept on Monday on this server." });
+    }
+
+    try {
+      const { rows } = await query(
+        "select * from communications where board_id = $1 and monday_item_id = $2 order by monday_created_at desc nulls last, monday_update_id desc limit 200",
+        [boardId, Number(itemId)],
+      );
+
+      res.json({ updates: rows.map(toUpdate) });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to load the messages." });
+    }
+  });
+
   // Body: { text }. Responds with the created update, in the same shape the
   // frontend already reads updates in.
   app.post("/api/communications/:boardId/:itemId", requireAuth, async (req, res) => {
@@ -77,21 +120,27 @@ export function registerCommunicationRoutes(app, { requireAuth }) {
     const body = `[${actor.name} - ${req.user.role}] ${text}`;
 
     try {
-      const data = await mondayDirectRequest(
-        `mutation ($itemId: ID!, $body: String!) {
-          create_update(item_id: $itemId, body: $body) {
-            id
-            text_body
-            created_at
-            creator { name }
-          }
-        }`,
-        { itemId, body },
-      );
+      if (isDatabaseBoardId(boardId)) {
+        const row = await createLocalPost({ boardId, itemId, message: text, author: actor.name, role: req.user.role });
 
-      // The thread is read by item id (untagged), so this also clears it.
-      clearCache([boardId]);
-      res.json({ update: data.create_update });
+        res.json({ update: toUpdate(row) });
+      } else {
+        const data = await mondayDirectRequest(
+          `mutation ($itemId: ID!, $body: String!) {
+            create_update(item_id: $itemId, body: $body) {
+              id
+              text_body
+              created_at
+              creator { name }
+            }
+          }`,
+          { itemId, body },
+        );
+
+        // The thread is read by item id (untagged), so this also clears it.
+        clearCache([boardId]);
+        res.json({ update: data.create_update });
+      }
 
       const itemName = (await getItemName(itemId)) || `item ${itemId}`;
       const target = { boardId, itemId, name: itemName };

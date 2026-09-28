@@ -6,10 +6,28 @@ import {
   uploadMondayFile,
   updateColumnAssets,
   getColumnSettings,
+  serverGet,
+  serverPost,
 } from "./MondayService";
+import { isDatabaseBoard } from "./DatabaseBoardsService";
 import { CATS } from "../constants/boards/cats";
 import { CATS_STATUS_OPTIONS } from "../constants/statuses/catsStatuses";
 import { mapCat } from "./mappers/CatMapper";
+
+// Cats come from the database (server/cats.js) when the server has the
+// "cats" board switched on, otherwise from Monday as before. Both give the
+// same cat shape (see CatMapper). Files always go to Monday; the server
+// refreshes the database's copy after each upload or delete.
+const inDatabase = () => isDatabaseBoard("cats");
+
+// One field change, through the server when the board is in the database.
+async function changeCat(catId, changes, mondayChange) {
+  if (await inDatabase()) {
+    return serverPost(`/api/cats/${catId}`, changes);
+  }
+
+  return mondayChange();
+}
 
 // Cat fields that upload as files after the item exists, rather than as
 // plain create_item column values.
@@ -35,6 +53,10 @@ export async function getCatOld(id) {
 }
 
 export async function getCats() {
+  if (await inDatabase()) {
+    return serverGet("/api/cats");
+  }
+
   const query = `
         query ($boardId: ID!) {
             boards(ids: [$boardId]) {
@@ -70,6 +92,13 @@ export async function getCats() {
 }
 
 export async function getCat(id) {
+  if (await inDatabase()) {
+    return serverGet(`/api/cats/${id}`).catch((err) => {
+      if (/not found/i.test(err.message)) return null;
+      throw err;
+    });
+  }
+
   const query = `
         query ($boardId: ID!, $itemId: ID!) {
             boards(ids: [$boardId]) {
@@ -108,12 +137,6 @@ export async function getCat(id) {
 
   const item = data.boards[0].items_page.items[0];
 
-  console.log(
-    item.column_values.find(
-      (column) => column.id === CATS.COLUMNS.PASSPORT_FILE,
-    ),
-  );
-
   if (!item) {
     return null;
   }
@@ -130,6 +153,10 @@ export async function getAvailableCats() {
 // Breed/Colour are Monday "dropdown" columns - their option list lives on
 // the column definition, not on any item, so it has to be fetched separately.
 export async function getCatDropdownOptions() {
+  if (await inDatabase()) {
+    return serverGet("/api/cats/options");
+  }
+
   const columns = await getColumnSettings(CATS.BOARD_ID, [
     CATS.COLUMNS.BREED,
     CATS.COLUMNS.COLOUR,
@@ -148,70 +175,90 @@ export async function getCatDropdownOptions() {
 // Rescuer isn't mandatory when a cat is added, so this also has to support
 // clearing it (rescuerId === null unlinks rather than leaving it untouched).
 export async function updateCatRescuer(catId, rescuerId) {
-  return changeMondayColumnValue(
-    CATS.BOARD_ID,
-    catId,
-    CATS.COLUMNS.LINKED_RESCUER,
-    { item_ids: rescuerId ? [Number(rescuerId)] : [] },
+  return changeCat(catId, { rescuerId: rescuerId ?? null }, () =>
+    changeMondayColumnValue(
+      CATS.BOARD_ID,
+      catId,
+      CATS.COLUMNS.LINKED_RESCUER,
+      { item_ids: rescuerId ? [Number(rescuerId)] : [] },
+    ),
   );
 }
 
 export async function updateCatStatus(catId, status) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.STATUS, {
-    label: status,
-  });
+  return changeCat(catId, { status }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.STATUS, {
+      label: status,
+    }),
+  );
 }
 
 export async function updateCatName(catId, name) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.NAME, name);
+  return changeCat(catId, { name }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.NAME, name),
+  );
 }
 
 export async function updateCatGender(catId, gender) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.GENDER, {
-    label: gender,
-  });
+  return changeCat(catId, { gender }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.GENDER, {
+      label: gender,
+    }),
+  );
 }
 
 export async function updateCatAge(catId, age) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.AGE, String(age));
+  return changeCat(catId, { age: age === "" || age === null || age === undefined ? null : Number(age) }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.AGE, String(age)),
+  );
 }
 
 export async function updateCatBreed(catId, breed) {
-  return changeMondayColumnValue(
-    CATS.BOARD_ID,
-    catId,
-    CATS.COLUMNS.BREED,
-    { labels: [breed] },
-    { createLabelsIfMissing: true },
+  return changeCat(catId, { breed }, () =>
+    changeMondayColumnValue(
+      CATS.BOARD_ID,
+      catId,
+      CATS.COLUMNS.BREED,
+      { labels: [breed] },
+      { createLabelsIfMissing: true },
+    ),
   );
 }
 
 export async function updateCatColour(catId, colour) {
-  return changeMondayColumnValue(
-    CATS.BOARD_ID,
-    catId,
-    CATS.COLUMNS.COLOUR,
-    { labels: [colour] },
-    { createLabelsIfMissing: true },
+  return changeCat(catId, { colour }, () =>
+    changeMondayColumnValue(
+      CATS.BOARD_ID,
+      catId,
+      CATS.COLUMNS.COLOUR,
+      { labels: [colour] },
+      { createLabelsIfMissing: true },
+    ),
   );
 }
 
 export async function updateCatVaccinated(catId, vaccinated) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.VACCINATED, {
-    label: vaccinated,
-  });
+  return changeCat(catId, { vaccinated }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.VACCINATED, {
+      label: vaccinated,
+    }),
+  );
 }
 
 export async function updateCatNeutered(catId, neutered) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.NEUTERED, {
-    label: neutered,
-  });
+  return changeCat(catId, { sterilized: neutered }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.NEUTERED, {
+      label: neutered,
+    }),
+  );
 }
 
 export async function updateCatMedicationRequired(catId, medicationRequired) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.MEDICATION_REQUIRED, {
-    label: medicationRequired,
-  });
+  return changeCat(catId, { medicationRequired }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.MEDICATION_REQUIRED, {
+      label: medicationRequired,
+    }),
+  );
 }
 
 export async function uploadCatPassportFile(catId, file) {
@@ -265,7 +312,9 @@ export async function deleteCatVideo(catId, remainingFiles) {
 }
 
 export async function updateCatMicrochipNumber(catId, microchipNumber) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.MICROCHIP_NUMBER, microchipNumber);
+  return changeCat(catId, { microchipNumber }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.MICROCHIP_NUMBER, microchipNumber),
+  );
 }
 
 // Cross-links every cat in a bonded group to every other cat in it (not
@@ -273,6 +322,11 @@ export async function updateCatMicrochipNumber(catId, microchipNumber) {
 // its groupmates, so the relationship reads correctly from any of them.
 export async function linkBondedCats(catIds) {
   const uniqueIds = [...new Set(catIds.map(Number))];
+
+  if (await inDatabase()) {
+    await serverPost("/api/cats/bonded", { catIds: uniqueIds.map(String) });
+    return;
+  }
 
   await Promise.all(
     uniqueIds.map((catId) =>
@@ -284,9 +338,11 @@ export async function linkBondedCats(catIds) {
 }
 
 export async function updateCatFelvFivStatus(catId, felvFivStatus) {
-  return changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.FELV_FIV_STATUS, {
-    label: felvFivStatus,
-  });
+  return changeCat(catId, { felvFivStatus }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.FELV_FIV_STATUS, {
+      label: felvFivStatus,
+    }),
+  );
 }
 
 function parseDropdownLabels(settingsStr) {
@@ -309,6 +365,31 @@ function parseDropdownLabels(settingsStr) {
   } catch {
     return [];
   }
+}
+
+// The Add Cat form's fields -> the server's field names (database mode).
+const CREATE_FIELD_NAMES = {
+  neutered: "sterilized",
+};
+
+async function createCatItem(input, columnValues) {
+  if (await inDatabase()) {
+    const values = {};
+
+    for (const [field, value] of Object.entries(input)) {
+      if (field !== "name" && value !== undefined && value !== null && value !== "") {
+        values[CREATE_FIELD_NAMES[field] ?? field] = field === "age" ? Number(value) : value;
+      }
+    }
+
+    const cat = await serverPost("/api/cats", { name: input.name, ...values });
+
+    return cat.id;
+  }
+
+  return createMondayItem(CATS.BOARD_ID, input.name, columnValues, {
+    createLabelsIfMissing: true,
+  });
 }
 
 export async function createCat(input, files = {}) {
@@ -381,9 +462,7 @@ export async function createCat(input, files = {}) {
     };
   }
 
-  const itemId = await createMondayItem(CATS.BOARD_ID, input.name, columnValues, {
-    createLabelsIfMissing: true,
-  });
+  const itemId = await createCatItem(input, columnValues);
 
   const uploadTasks = Object.entries(CAT_FILE_FIELDS).flatMap(([field, columnId]) => {
     const value = files[field];

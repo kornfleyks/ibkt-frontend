@@ -7,6 +7,8 @@ import { logActivity, getItemSnapshot, resolveBoardName } from "./activityLog.js
 import { notifyAssignmentChange } from "./notifications.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch } from "./mondayRateLimit.js";
+import { isDatabaseBoard } from "./database/switches.js";
+import { boardFields, updateItem } from "./database/boardStore.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
@@ -55,6 +57,14 @@ export async function getAssignableUsers() {
 // Raw write with no rule checks - callers (the endpoint below, the
 // migration script) must have validated the user first.
 export async function writeCaseOwner(applicationId, userId) {
+  // Applications kept in the database: saved there (the nightly sync sends it).
+  if (isDatabaseBoard("applications")) {
+    const { field } = await boardFields("applications");
+
+    await updateItem("applications", applicationId, { fields: { [field(CASE_OWNER_COLUMN_ID)]: userId ? [Number(userId)] : [] } });
+    return;
+  }
+
   const mutation = `
     mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
       change_column_value(

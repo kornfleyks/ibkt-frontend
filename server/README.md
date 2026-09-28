@@ -119,6 +119,37 @@ a database would need. Optional: without `DATABASE_URL` nothing changes.
   - The generic `/api/monday` route refuses changes to switched-on boards,
     and App Settings changes from non-Admins.
   - Switch on only after a fresh full copy, and on both servers together.
+    `scripts/databaseBackfill.js` skips switched-on boards (the database
+    is their store).
+- Pages, board by board (Phase 4). The app asks `GET /api/database-boards`
+  (signed in) once per page load and uses the board's endpoints when it's
+  on, Monday otherwise.
+  - `tasks` (`tasks.js`, `database/tasksStore.js`): `GET /api/tasks`,
+    `/api/tasks/title-options`, `/api/tasks/:id`, `POST /api/tasks`
+    (1 Monday call: the item), `POST /api/tasks/:id` (changes). Logs
+    changes with old values and notifies owners; hand-over on suspend
+    uses the database too.
+  - The other boards follow the same pattern: one module per board, with
+    its fields declared once (`database/boardRecords.js` turns rows into the
+    records the app's mappers made from Monday, checks and saves changes,
+    logs old and new values): `cats.js` (`/api/cats`, options, bonded),
+    `applications.js` (`/api/applications`; Case Owner stays in
+    `caseOwner.js`), `readOnlyBoards.js` (`/api/travel`,
+    `/api/post-adoption`, `/api/rescuers`), `users.js` (`/api/users/names`,
+    `/api/admin/users`), and `communications.js` (threads and posts; new
+    messages reach Monday at the sync). Sign-in, the account state and the
+    Account page use `database/usersStore.js` when Users is on; Monday's
+    Users webhooks are then ignored.
+  - Two-way links (`LINK_PAIRS` in `mondaySchema.js`, e.g. an application's
+    Linked Cat and the cat's Linked Adopter): the store keeps the other side
+    in step in the database; only the changed side is sent to Monday.
+  - Files stay on Monday. Each file column has a read-only copy (names,
+    asset ids, links); after an upload (`/api/upload`) or a file delete the
+    column is read back from Monday (1 call, `database/fileCopies.js`).
+  - Passwords and tokens are stored (and synced to Monday, as chosen) but
+    never returned by any endpoint (`SECRET_COLUMN_IDS`).
+  - The generic `/api/monday` and `/api/monday/batch` routes refuse reads
+    and writes naming a switched-on board (file changes excepted).
 
 ## Case Owner (`caseOwner.js`)
 

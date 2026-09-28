@@ -12,7 +12,7 @@ const ROWS_PER_INSERT = 100;
 // labels for status/dropdown columns.
 export async function loadColumnMap(run = query) {
   const [{ rows }, { rows: optionRows }] = await Promise.all([
-    run("select board_id, column_id, table_name, column_name, monday_type, extra_column from monday_columns"),
+    run("select board_id, column_id, table_name, column_name, monday_type, extra_column, settings from monday_columns"),
     run("select board_id, column_id, option_key, label from column_options"),
   ]);
   const map = new Map();
@@ -26,6 +26,7 @@ export async function loadColumnMap(run = query) {
       name: row.column_name,
       type: row.monday_type,
       extra: row.extra_column ?? null,
+      settings: row.settings ?? null,
       options: new Map(),
     });
   }

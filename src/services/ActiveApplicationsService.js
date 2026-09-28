@@ -8,6 +8,20 @@ import {
 import { ACTIVE_APPLICATIONS } from "../constants/boards/activeApplications";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../constants/statuses/activeApplicationsStatuses";
 import { mapMondayActiveApplication } from "./mappers/ActiveApplicationMapper";
+import { isDatabaseBoard } from "./DatabaseBoardsService";
+
+// Applications come from the database (server/applications.js) when the
+// server has the "applications" board switched on, otherwise from Monday as
+// before. Both give the same shape (see ActiveApplicationMapper).
+const inDatabase = () => isDatabaseBoard("applications");
+
+async function changeApplication(applicationId, changes, mondayChange) {
+  if (await inDatabase()) {
+    return serverPost(`/api/applications/${applicationId}`, changes);
+  }
+
+  return mondayChange();
+}
 
 const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
@@ -49,6 +63,10 @@ export const ADOPTION_EDITABLE_FIELDS = {
 };
 
 export async function getActiveApplications() {
+  if (await inDatabase()) {
+    return serverGet("/api/applications");
+  }
+
   // The BoardRelationValue fragment is required for Linked Cat - without it
   // Monday returns no linked_items and every application looks unmatched.
   const query = `
@@ -86,6 +104,13 @@ export async function getActiveApplications() {
 }
 
 export async function getActiveApplication(id) {
+  if (await inDatabase()) {
+    return serverGet(`/api/applications/${id}`).catch((err) => {
+      if (/not found/i.test(err.message)) return null;
+      throw err;
+    });
+  }
+
   const query = `
         query ($boardId: ID!, $itemId: ID!) {
             boards(ids: [$boardId]) {
@@ -134,19 +159,25 @@ export async function getActiveApplication(id) {
 // Replaces the whole Linked Cat list - a bonded group is linked in one
 // write, and an empty list unlinks every cat.
 export async function setApplicationLinkedCats(applicationId, catIds) {
-  return changeMondayColumnValue(
-    ACTIVE_APPLICATIONS.BOARD_ID,
-    applicationId,
-    ACTIVE_APPLICATIONS.COLUMNS.LINKED_CAT,
-    {
-      item_ids: catIds.map(Number),
-    },
+  return changeApplication(applicationId, { linkedCatIds: catIds.map(String) }, () =>
+    changeMondayColumnValue(
+      ACTIVE_APPLICATIONS.BOARD_ID,
+      applicationId,
+      ACTIVE_APPLICATIONS.COLUMNS.LINKED_CAT,
+      {
+        item_ids: catIds.map(Number),
+      },
+    ),
   );
 }
 
 // Linked Cat is a Monday board setting ("allowMultipleItems"), not something
 // the item data reveals - a bonded group can only be linked when it's on.
 export async function linkedCatAllowsMultiple() {
+  if (await inDatabase()) {
+    return (await serverGet("/api/applications/linked-cat-multiple")).allowed;
+  }
+
   const [column] = await getColumnSettings(ACTIVE_APPLICATIONS.BOARD_ID, [
     ACTIVE_APPLICATIONS.COLUMNS.LINKED_CAT,
   ]);
@@ -160,11 +191,13 @@ export async function linkedCatAllowsMultiple() {
 
 // A falsy confidence clears the column (Monday treats `{}` as no label).
 export async function setApplicationMatchConfidence(applicationId, confidence) {
-  return changeMondayColumnValue(
-    ACTIVE_APPLICATIONS.BOARD_ID,
-    applicationId,
-    ACTIVE_APPLICATIONS.COLUMNS.MATCH_CONFIDENCE,
-    confidence ? { label: confidence } : {},
+  return changeApplication(applicationId, { matchConfidence: confidence || null }, () =>
+    changeMondayColumnValue(
+      ACTIVE_APPLICATIONS.BOARD_ID,
+      applicationId,
+      ACTIVE_APPLICATIONS.COLUMNS.MATCH_CONFIDENCE,
+      confidence ? { label: confidence } : {},
+    ),
   );
 }
 
@@ -196,11 +229,13 @@ export async function updateAdoptionField(id, field, value) {
         ? { text: value }
         : value;
 
-  return changeMondayColumnValue(
-    ACTIVE_APPLICATIONS.BOARD_ID,
-    id,
-    config.column,
-    payload,
+  return changeApplication(id, { [field]: value }, () =>
+    changeMondayColumnValue(
+      ACTIVE_APPLICATIONS.BOARD_ID,
+      id,
+      config.column,
+      payload,
+    ),
   );
 }
 

@@ -1,4 +1,9 @@
 import { mondayRequest, serverGet, serverPost } from "./MondayService";
+import { isDatabaseBoard } from "./DatabaseBoardsService";
+import { CATS } from "../constants/boards/cats";
+
+// Boards whose threads can be kept in the database, by board id -> table.
+const THREAD_TABLES = { [CATS.BOARD_ID]: "cats" };
 
 // A Communications thread is the Monday updates on one item (a cat today;
 // applications later - see constants/communicationBoards.js).
@@ -36,7 +41,17 @@ function mapUpdate(update) {
   };
 }
 
-export async function getCommunications(itemId) {
+// `boardId`: the item's board - its thread is read from the database when
+// the server has that board switched on (server/communications.js).
+export async function getCommunications(itemId, boardId = CATS.BOARD_ID) {
+  const table = THREAD_TABLES[boardId];
+
+  if (table && (await isDatabaseBoard(table))) {
+    const { updates } = await serverGet(`/api/communications/${boardId}/${itemId}`);
+
+    return updates.slice().reverse().map(mapUpdate);
+  }
+
   const query = `
     query ($itemId: [ID!]) {
       items(ids: $itemId) {

@@ -3,10 +3,27 @@ import {
   createMondayItem,
   changeMondayColumnValue,
   getColumnSettings,
+  serverGet,
+  serverPost,
 } from "./MondayService";
+import { isDatabaseBoard } from "./DatabaseBoardsService";
 import { TASKS } from "../constants/boards/tasks";
 import { mapTask } from "./mappers/TaskMapper";
 import { TASKS_STATUS_OPTIONS } from "../constants/statuses/tasksStatuses";
+
+// Tasks come from the database (server/tasks.js) when the server has the
+// "tasks" board switched on, otherwise from Monday as before. Both give the
+// same task shape (see TaskMapper).
+const inDatabase = () => isDatabaseBoard("tasks");
+
+// One field change, through the server when the board is in the database.
+async function changeTask(taskId, changes, mondayChange) {
+  if (await inDatabase()) {
+    return serverPost(`/api/tasks/${taskId}`, changes);
+  }
+
+  return mondayChange();
+}
 
 const TASK_ITEM_FIELDS = `
     id
@@ -27,6 +44,10 @@ const TASK_ITEM_FIELDS = `
 `;
 
 export async function getTasks() {
+  if (await inDatabase()) {
+    return serverGet("/api/tasks");
+  }
+
   const query = `
         query ($boardId: ID!) {
             boards(ids: [$boardId]) {
@@ -58,6 +79,10 @@ export async function getCatTasks(catId) {
 // The Task dropdown's option list lives on the column definition, not on
 // any item, so it has to be fetched separately (same as Cats Breed/Colour).
 export async function getTaskTitleOptions() {
+  if (await inDatabase()) {
+    return serverGet("/api/tasks/title-options");
+  }
+
   const columns = await getColumnSettings(TASKS.BOARD_ID, [TASKS.COLUMNS.TASK]);
   const settingsStr = columns.find((column) => column.id === TASKS.COLUMNS.TASK)?.settings_str;
 
@@ -78,6 +103,19 @@ export async function createCatTask(
   catId,
   { title, status, priority, dueDate, ownerId, waitingReason, description },
 ) {
+  if (await inDatabase()) {
+    return serverPost("/api/tasks", {
+      catId: String(catId),
+      title,
+      status,
+      priority,
+      dueDate: dueDate || null,
+      ownerId: ownerId ?? null,
+      waitingReason: status === TASKS_STATUS_OPTIONS.STATUS.WAITING ? waitingReason ?? "" : "",
+      description: description ?? "",
+    });
+  }
+
   const columnValues = {
     [TASKS.COLUMNS.TASK]: { labels: [title] },
     [TASKS.COLUMNS.STATUS]: { label: status },
@@ -106,6 +144,10 @@ export async function createCatTask(
 }
 
 export async function getTask(taskId) {
+  if (await inDatabase()) {
+    return serverGet(`/api/tasks/${taskId}`);
+  }
+
   const query = `
         query ($boardId: ID!, $itemId: ID!) {
             boards(ids: [$boardId]) {
@@ -129,47 +171,61 @@ export async function getTask(taskId) {
 }
 
 export async function updateTaskTitle(taskId, title) {
-  return changeMondayColumnValue(
-    TASKS.BOARD_ID,
-    taskId,
-    TASKS.COLUMNS.TASK,
-    { labels: [title] },
-    { createLabelsIfMissing: true },
+  return changeTask(taskId, { title }, () =>
+    changeMondayColumnValue(
+      TASKS.BOARD_ID,
+      taskId,
+      TASKS.COLUMNS.TASK,
+      { labels: [title] },
+      { createLabelsIfMissing: true },
+    ),
   );
 }
 
 export async function updateTaskStatus(taskId, status) {
-  return changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.STATUS, {
-    label: status,
-  });
+  return changeTask(taskId, { status }, () =>
+    changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.STATUS, {
+      label: status,
+    }),
+  );
 }
 
 export async function updateTaskPriority(taskId, priority) {
-  return changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.PRIORITY, {
-    label: priority,
-  });
+  return changeTask(taskId, { priority }, () =>
+    changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.PRIORITY, {
+      label: priority,
+    }),
+  );
 }
 
 export async function updateTaskDueDate(taskId, dueDate) {
-  return changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.DUE_DATE, {
-    date: dueDate,
-  });
+  return changeTask(taskId, { dueDate: dueDate || null }, () =>
+    changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.DUE_DATE, {
+      date: dueDate,
+    }),
+  );
 }
 
 export async function updateTaskOwner(taskId, ownerId) {
-  return changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.OWNER, {
-    item_ids: ownerId ? [Number(ownerId)] : [],
-  });
+  return changeTask(taskId, { ownerId: ownerId ?? null }, () =>
+    changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.OWNER, {
+      item_ids: ownerId ? [Number(ownerId)] : [],
+    }),
+  );
 }
 
 export async function updateTaskWaitingReason(taskId, waitingReason) {
-  return changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.WAITING_REASON, {
-    text: waitingReason,
-  });
+  return changeTask(taskId, { waitingReason }, () =>
+    changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.WAITING_REASON, {
+      text: waitingReason,
+    }),
+  );
 }
 
 export async function updateTaskDescription(taskId, description) {
-  return changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.TASK_DESCRIPTION, {
-    text: description,
-  });
+  return changeTask(taskId, { description }, () =>
+    changeMondayColumnValue(TASKS.BOARD_ID, taskId, TASKS.COLUMNS.TASK_DESCRIPTION, {
+      text: description,
+    }),
+  );
 }

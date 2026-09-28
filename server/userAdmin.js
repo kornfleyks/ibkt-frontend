@@ -10,6 +10,10 @@ import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemName, resolveBoardName } from "./activityLog.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch } from "./mondayRateLimit.js";
+import { isDatabaseBoard } from "./database/switches.js";
+import { listTasks, changeTask } from "./database/tasksStore.js";
+import { listApplications } from "./applications.js";
+import { setUserValues } from "./database/usersStore.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
@@ -77,22 +81,38 @@ function ownedBy(column, userId) {
 }
 
 // { cases: [{id, name, stage}], tasks: [{id, name, status}] } owned by userId.
-export async function getOpenWork(userId) {
-  const [applications, tasks] = await Promise.all([
-    readBoard(ACTIVE_APPLICATIONS.BOARD_ID, [ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER, ACTIVE_APPLICATIONS.COLUMNS.ADOPTION_STAGE]),
-    readBoard(TASKS.BOARD_ID, [TASKS.COLUMNS.OWNER, TASKS.COLUMNS.STATUS]),
-  ]);
+// Tasks from the database when that board is switched on (DATABASE_BOARDS).
+async function openTasksOf(userId) {
+  if (isDatabaseBoard("tasks")) {
+    return (await listTasks())
+      .filter((task) => task.ownerId === String(userId) && OPEN_TASK_STATUSES.includes(task.status))
+      .map((task) => ({ id: task.id, name: task.itemName, status: task.status }));
+  }
 
-  return {
-    cases: applications
-      .filter((item) => ownedBy(item.columns[ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER], userId))
-      .map((item) => ({ id: item.id, name: item.name, stage: item.columns[ACTIVE_APPLICATIONS.COLUMNS.ADOPTION_STAGE]?.text ?? "" }))
-      .filter((item) => !CLOSED_CASE_STAGES.includes(item.stage)),
-    tasks: tasks
-      .filter((item) => ownedBy(item.columns[TASKS.COLUMNS.OWNER], userId))
-      .map((item) => ({ id: item.id, name: item.name, status: item.columns[TASKS.COLUMNS.STATUS]?.text ?? "" }))
-      .filter((item) => OPEN_TASK_STATUSES.includes(item.status)),
-  };
+  return (await readBoard(TASKS.BOARD_ID, [TASKS.COLUMNS.OWNER, TASKS.COLUMNS.STATUS]))
+    .filter((item) => ownedBy(item.columns[TASKS.COLUMNS.OWNER], userId))
+    .map((item) => ({ id: item.id, name: item.name, status: item.columns[TASKS.COLUMNS.STATUS]?.text ?? "" }))
+    .filter((item) => OPEN_TASK_STATUSES.includes(item.status));
+}
+
+// Cases from the database when Applications is switched on.
+async function openCasesOf(userId) {
+  if (isDatabaseBoard("applications")) {
+    return (await listApplications())
+      .filter((application) => application.caseOwnerId === String(userId) && !CLOSED_CASE_STAGES.includes(application.adoptionStage))
+      .map((application) => ({ id: application.id, name: application.name, stage: application.adoptionStage }));
+  }
+
+  return (await readBoard(ACTIVE_APPLICATIONS.BOARD_ID, [ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER, ACTIVE_APPLICATIONS.COLUMNS.ADOPTION_STAGE]))
+    .filter((item) => ownedBy(item.columns[ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER], userId))
+    .map((item) => ({ id: item.id, name: item.name, stage: item.columns[ACTIVE_APPLICATIONS.COLUMNS.ADOPTION_STAGE]?.text ?? "" }))
+    .filter((item) => !CLOSED_CASE_STAGES.includes(item.stage));
+}
+
+export async function getOpenWork(userId) {
+  const [cases, tasks] = await Promise.all([openCasesOf(userId), openTasksOf(userId)]);
+
+  return { cases, tasks };
 }
 
 async function changeColumnValue(boardId, itemId, columnId, value) {
@@ -142,7 +162,11 @@ async function handOverOpenWork(userId, userName, actor) {
 
   for (const item of work.tasks) {
     try {
-      await changeColumnValue(TASKS.BOARD_ID, item.id, TASKS.COLUMNS.OWNER, { item_ids: [Number(actor.id)] });
+      if (isDatabaseBoard("tasks")) {
+        await changeTask(item.id, { ownerId: String(actor.id) });
+      } else {
+        await changeColumnValue(TASKS.BOARD_ID, item.id, TASKS.COLUMNS.OWNER, { item_ids: [Number(actor.id)] });
+      }
       moved.tasks += 1;
 
       logActivity({
@@ -213,7 +237,11 @@ export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
         }
       }
 
-      await changeColumnValue(USERS.BOARD_ID, id, USERS.COLUMNS.ACCOUNT_STATUS, { label: status });
+      if (isDatabaseBoard("users")) {
+        await setUserValues(id, { [USERS.COLUMNS.ACCOUNT_STATUS]: { label: status } });
+      } else {
+        await changeColumnValue(USERS.BOARD_ID, id, USERS.COLUMNS.ACCOUNT_STATUS, { label: status });
+      }
       // Loads an account registered since startup, so e.g. a just-approved
       // user is mentionable straight away rather than after their first login.
       await getAccountState(id);

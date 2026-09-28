@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { USERS } from "../src/constants/boards/users.js";
 import { applyAccountChange, TRACKED_COLUMNS } from "./accountState.js";
+import { isDatabaseBoard } from "./database/switches.js";
 import { clearCache } from "./mondayCache.js";
 
 // Receives Monday webhooks for the Users board's Status and Role columns,
@@ -39,7 +40,9 @@ export function registerWebhookRoutes(app) {
     const event = req.body?.event;
     const field = TRACKED_COLUMNS[event?.columnId];
 
-    if (event && String(event.boardId) === USERS.BOARD_ID && field) {
+    // With Users kept in the database, the database is the store: Monday's
+    // events are only the nightly sync's own copies arriving, so ignored.
+    if (event && String(event.boardId) === USERS.BOARD_ID && field && !isDatabaseBoard("users")) {
       // Status columns send { label: { text } }; a cleared value sends null.
       const text = event.value?.label?.text ?? "";
 

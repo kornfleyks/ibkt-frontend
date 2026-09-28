@@ -98,7 +98,13 @@ function planOperations(entries) {
 
   for (const entry of entries) {
     if (entry.action === "create_update") {
-      operations.push({ kind: "post", itemId: entry.monday_item_id, body: entry.changes.body, entryIds: [entry.id] });
+      operations.push({
+        kind: "post",
+        itemId: entry.monday_item_id,
+        body: entry.changes.body,
+        localUpdateId: entry.changes.localUpdateId ?? null,
+        entryIds: [entry.id],
+      });
       continue;
     }
 
@@ -411,6 +417,13 @@ async function run(reason) {
           failed += operation.entryIds.length;
         } else if (operation.kind === "create") {
           await applyCreatedId(operation, Number(result.data[alias].id));
+          sent += operation.entryIds.length;
+        } else if (operation.kind === "post" && operation.localUpdateId) {
+          // A message saved in the database first: it now has Monday's id.
+          await transaction(async (run) => {
+            await run("update communications set monday_update_id = $2 where monday_update_id = $1", [operation.localUpdateId, Number(result.data[alias].id)]);
+            await run("update monday_outbox set status = 'sent', sent_at = now(), last_error = null where id = any($1)", [operation.entryIds]);
+          });
           sent += operation.entryIds.length;
         } else {
           await markSent(operation.entryIds);

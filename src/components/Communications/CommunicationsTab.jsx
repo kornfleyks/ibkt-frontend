@@ -35,7 +35,7 @@ function CommunicationsTab({ boardId, itemId }) {
 
             try {
 
-                const data = await getCommunications(itemId);
+                const data = await getCommunications(itemId, boardId);
 
                 if (!cancelled) {
                     setMessages(data);
@@ -65,7 +65,7 @@ function CommunicationsTab({ boardId, itemId }) {
             cancelled = true;
         };
 
-    }, [itemId]);
+    }, [boardId, itemId]);
 
     // Without the list you can still write, just not @mention anyone.
     useEffect(() => {

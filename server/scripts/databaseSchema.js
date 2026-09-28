@@ -46,6 +46,14 @@ async function mondayColumns() {
   return data.boards;
 }
 
+function settingsOf(settingsStr) {
+  try {
+    return settingsStr ? JSON.parse(settingsStr) : null;
+  } catch {
+    return null;
+  }
+}
+
 // How an existing column is converted when its type changes.
 function usingClause(column, fromType, toSql) {
   if (fromType === "timestamp with time zone" && toSql === "date") {
@@ -65,6 +73,7 @@ const SQL_TYPE_NAMES = {
   numeric: "numeric",
   boolean: "boolean",
   bigint: "bigint",
+  jsonb: "jsonb",
 };
 
 const boards = await mondayColumns();
@@ -82,6 +91,8 @@ await transaction(async (run) => {
     primary key (board_id, column_id)
   )`);
   await run("alter table monday_columns add column if not exists extra_column text");
+  // Monday's column settings (e.g. whether a link column allows several items).
+  await run("alter table monday_columns add column if not exists settings jsonb");
 
   await run(`create table if not exists column_options (
     board_id text not null,
@@ -242,12 +253,12 @@ await transaction(async (run) => {
       }
 
       await run(
-        `insert into monday_columns (board_id, column_id, table_name, column_name, monday_type, sql_type, extra_column)
-         values ($1, $2, $3, $4, $5, $6, $7)
+        `insert into monday_columns (board_id, column_id, table_name, column_name, monday_type, sql_type, extra_column, settings)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)
          on conflict (board_id, column_id) do update
            set table_name = excluded.table_name, monday_type = excluded.monday_type,
-               sql_type = excluded.sql_type, extra_column = excluded.extra_column`,
-        [boardId, column.id, table, name, column.type, spec.sql, extraColumn],
+               sql_type = excluded.sql_type, extra_column = excluded.extra_column, settings = excluded.settings`,
+        [boardId, column.id, table, name, column.type, spec.sql, extraColumn, settingsOf(column.settings_str)],
       );
 
       if (OPTION_TYPES.has(column.type)) {

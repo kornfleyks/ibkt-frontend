@@ -1,8 +1,25 @@
 import { mondayRequest, changeMondayColumnValue, serverPost, serverGet } from "./MondayService";
 import { USERS } from "../constants/boards/users";
 import { mapUser } from "./mappers/UserMapper";
+import { isDatabaseBoard } from "./DatabaseBoardsService";
+
+// Users come from the database (server/users.js) when the server has the
+// "users" board switched on, otherwise from Monday as before.
+const inDatabase = () => isDatabaseBoard("users");
+
+async function changeUser(userId, changes, mondayChange) {
+  if (await inDatabase()) {
+    return serverPost(`/api/admin/users/${userId}`, changes);
+  }
+
+  return mondayChange();
+}
 
 export async function getUsers() {
+  if (await inDatabase()) {
+    return serverGet("/api/users/names");
+  }
+
   const query = `
         query ($boardId: ID!) {
             boards(ids: [$boardId]) {
@@ -29,6 +46,12 @@ export async function getUsers() {
 // Never fetches PASSWORD_HASH - that stays server-side, this is only for
 // the account-management page (name/email/role/status).
 export async function getAllUsersFull() {
+  if (await inDatabase()) {
+    const users = await serverGet("/api/admin/users");
+
+    return users.map((user) => ({ ...user, lastLogin: user.lastLogin ? new Date(user.lastLogin) : null }));
+  }
+
   const query = `
         query ($boardId: ID!) {
             boards(ids: [$boardId]) {
@@ -61,15 +84,21 @@ export async function getAllUsersFull() {
 }
 
 export async function updateUserFirstName(userId, firstName) {
-  return changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.FIRST_NAME, firstName);
+  return changeUser(userId, { firstName }, () =>
+    changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.FIRST_NAME, firstName),
+  );
 }
 
 export async function updateUserLastName(userId, lastName) {
-  return changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.LAST_NAME, lastName);
+  return changeUser(userId, { lastName }, () =>
+    changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.LAST_NAME, lastName),
+  );
 }
 
 export async function updateUserEmail(userId, email) {
-  return changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.EMAIL, { email, text: email });
+  return changeUser(userId, { email }, () =>
+    changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.EMAIL, { email, text: email }),
+  );
 }
 
 // Through the server, not the Monday proxy (which refuses this column):
@@ -87,9 +116,11 @@ export async function getUserOpenWork(userId) {
 }
 
 export async function updateUserRole(userId, role) {
-  return changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.ROLE, {
-    label: role,
-  });
+  return changeUser(userId, { role }, () =>
+    changeMondayColumnValue(USERS.BOARD_ID, userId, USERS.COLUMNS.ROLE, {
+      label: role,
+    }),
+  );
 }
 
 // Goes through a dedicated server endpoint, not the generic Monday proxy -

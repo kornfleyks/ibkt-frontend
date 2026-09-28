@@ -27,6 +27,12 @@ function send(res, work) {
 }
 
 export function registerDataRoutes(app, { requireAuth, requireAdmin }) {
+  // For the app (any signed-in user): which boards to read and save through
+  // the database endpoints instead of Monday.
+  app.get("/api/database-boards", requireAuth, (req, res) => {
+    res.json({ boards: databaseBoards() });
+  });
+
   app.get("/api/data/boards", requireAuth, requireAdmin, (req, res) => {
     res.json({ enabled: isDatabaseEnabled(), boards: databaseBoards() });
   });

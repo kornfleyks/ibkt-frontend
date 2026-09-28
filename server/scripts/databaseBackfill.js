@@ -3,12 +3,20 @@
 // request where possible (more pages only for boards over 500 items), plus
 // the Communications threads. Safe to re-run: rows are upserted.
 //
+// Boards switched on in DATABASE_BOARDS are skipped: the database is their
+// store and may hold changes Monday only gets at the nightly sync, which a
+// copy from Monday would undo.
+//
 //   node scripts/databaseBackfill.js
 import "dotenv/config";
 import { mondayDirectRequest } from "../mondayClient.js";
 import { closeDatabase } from "../database/db.js";
 import { loadColumnMap, upsertItems, upsertCommunication, columnValues } from "../database/rows.js";
-import { MIRRORED_BOARDS, COMMUNICATION_BOARD_IDS, readToDb } from "../database/mondaySchema.js";
+import { MIRRORED_BOARDS as ALL_BOARDS, COMMUNICATION_BOARD_IDS, readToDb } from "../database/mondaySchema.js";
+import { databaseBoards } from "../database/switches.js";
+
+const skipped = databaseBoards();
+const MIRRORED_BOARDS = ALL_BOARDS.filter((board) => !skipped.includes(board.table));
 
 const PAGE = 500;
 const ITEM_FIELDS = `id name created_at column_values { id type text value ... on BoardRelationValue { linked_item_ids } }`;
@@ -116,5 +124,9 @@ for (const [index, board] of MIRRORED_BOARDS.entries()) {
 }
 
 console.log(report.join("\n"));
+
+if (skipped.length) {
+  console.log(`Skipped (kept in the database): ${skipped.join(", ")}`);
+}
 console.log(`Monday calls used: ${mondayCalls}`);
 await closeDatabase();
