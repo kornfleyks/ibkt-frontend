@@ -39,8 +39,8 @@ Goal (user, 2026-09-28): move every board and function to the database, then swi
 
 ## Switch-on (after all built and tested)
 - [x] Schema script (new columns) applied
-- [ ] Fresh copy of the boards not yet switched on (1 call) - REQUIRED: fills the new password and file columns, else nobody can sign in once Users is on
-- [ ] Commit + push, DATABASE_BOARDS with every board on both servers, restart
+- [x] Fresh copy (1 call, 2026-09-28, switch overridden for the run): 3/3 users have passwords, file columns filled
+- [x] Pushed 10ad390; DATABASE_BOARDS with every board on Render and locally (user)
 - [ ] Browser check of every page
 
 ## Notes
