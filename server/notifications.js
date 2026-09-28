@@ -257,31 +257,45 @@ function linkedIds(value) {
   return (parseJson(value)?.item_ids ?? []).map(String);
 }
 
-function taskLink(catId) {
-  return catId ? `/cats/${catId}?tab=tasks` : "/tasks";
+// Where a task notification points: the Tasks tab of the cat or
+// application it's on (the cat when it has both), else the Tasks page.
+export function taskLink({ linkedCatId, linkedApplicationId }) {
+  if (linkedCatId) return `/cats/${linkedCatId}?tab=tasks`;
+  if (linkedApplicationId) return `/active-applications/${linkedApplicationId}?tab=tasks`;
+
+  return "/tasks";
 }
 
-async function readTaskCatId(taskId) {
+// { linkedCatId, linkedApplicationId } of a task.
+async function readTaskLinks(taskId) {
+  const first = (ids) => (ids?.[0] ? String(ids[0]) : null);
+
   // From the database copy when it's current (no Monday call).
   if (isCopyTrusted()) {
     try {
       const { field, table } = await boardFields("tasks");
-      const { rows } = await query(`select ${ident(field(TASKS.COLUMNS.LINKED_CAT))} as cats from ${ident(table)} where monday_item_id = $1`, [Number(taskId)]);
+      const { rows } = await query(
+        `select ${ident(field(TASKS.COLUMNS.LINKED_CAT))} as cats, ${ident(field(TASKS.COLUMNS.LINKED_ADOPTION))} as applications
+         from ${ident(table)} where monday_item_id = $1`,
+        [Number(taskId)],
+      );
 
-      if (rows[0]) return rows[0].cats?.[0] ? String(rows[0].cats[0]) : null;
+      if (rows[0]) return { linkedCatId: first(rows[0].cats), linkedApplicationId: first(rows[0].applications) };
     } catch (err) {
-      console.error("Notifications: couldn't read the task's cat from the database.", err.message);
+      console.error("Notifications: couldn't read the task's links from the database.", err.message);
     }
   }
 
   const data = await mondayDirectRequest(
     `query ($ids: [ID!], $columnIds: [String!]) {
-      items(ids: $ids) { column_values(ids: $columnIds) { ... on BoardRelationValue { linked_item_ids } } }
+      items(ids: $ids) { column_values(ids: $columnIds) { id ... on BoardRelationValue { linked_item_ids } } }
     }`,
-    { ids: [taskId], columnIds: [TASKS.COLUMNS.LINKED_CAT] },
+    { ids: [taskId], columnIds: [TASKS.COLUMNS.LINKED_CAT, TASKS.COLUMNS.LINKED_ADOPTION] },
   );
+  const columns = data.items?.[0]?.column_values ?? [];
+  const idsOf = (columnId) => columns.find((column) => column.id === columnId)?.linked_item_ids;
 
-  return data.items?.[0]?.column_values?.[0]?.linked_item_ids?.[0] ?? null;
+  return { linkedCatId: first(idsOf(TASKS.COLUMNS.LINKED_CAT)), linkedApplicationId: first(idsOf(TASKS.COLUMNS.LINKED_ADOPTION)) };
 }
 
 // Hook for successful /api/monday mutations: a task created with an owner,
@@ -300,14 +314,15 @@ export async function notifyFromTaskMutation({ kind, variables, result, actor, p
         return;
       }
 
-      const catId = linkedIds(columnValues[TASKS.COLUMNS.LINKED_CAT])[0] ?? null;
-
       notifyAssignmentChange({
         kind: "task",
         nextIds: ownerIds,
         actor,
         target: { boardId: TASKS.BOARD_ID, itemId: result.data?.create_item?.id ?? "", name: variables.itemName },
-        link: taskLink(catId),
+        link: taskLink({
+          linkedCatId: linkedIds(columnValues[TASKS.COLUMNS.LINKED_CAT])[0] ?? null,
+          linkedApplicationId: linkedIds(columnValues[TASKS.COLUMNS.LINKED_ADOPTION])[0] ?? null,
+        }),
       });
       return;
     }
@@ -319,7 +334,7 @@ export async function notifyFromTaskMutation({ kind, variables, result, actor, p
         nextIds: linkedIds(variables.value),
         actor,
         target: { boardId: TASKS.BOARD_ID, itemId: variables.itemId, name: priorSnapshot?.itemName || "a task" },
-        link: taskLink(await readTaskCatId(variables.itemId)),
+        link: taskLink(await readTaskLinks(variables.itemId)),
       });
     }
   } catch (err) {

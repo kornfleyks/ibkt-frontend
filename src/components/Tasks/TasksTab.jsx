@@ -9,23 +9,30 @@ import {
     CircularProgress
 } from '@mui/material';
 
-import { AddIcon } from '../../../icons';
+import { AddIcon } from '../icons';
 
 import TaskCard from './TaskCard';
 import AddTaskDialog from './AddTaskDialog';
-import { getCatTasks, getTaskTitleOptions } from '../../../../services/TasksService';
-import { getUsers } from '../../../../services/UsersService';
-import MyCasesToggle from '../../../Common/MyCasesToggle';
-import useMyCasesFilter from '../../../../hooks/useMyCasesFilter';
+import { getLinkedTasks, getTaskTitleOptions } from '../../services/TasksService';
+import { getUsers } from '../../services/UsersService';
+import MyCasesToggle from '../Common/MyCasesToggle';
+import useMyCasesFilter from '../../hooks/useMyCasesFilter';
 
-function TasksTab({ cat }) {
+// The tasks on one cat or application. `link` is { catId } or
+// { applicationId } (new tasks are linked to it too), `noun` names it in
+// the empty-list text. `ownTasksOnly`: whether non-Admins see only the
+// tasks assigned to them (a cat's tab) or all of them (an application's
+// tab - only its Case Owner and Admins can open it). Admins always get the
+// "My tasks" toggle, remembered per `pageKey`.
+function TasksTab({ link, noun, pageKey, ownTasksOnly = true }) {
     const [tasks, setTasks] = useState([]);
     const [titleOptions, setTitleOptions] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [addTaskOpen, setAddTaskOpen] = useState(false);
-    const myTasks = useMyCasesFilter('catTasks', 'ownerId');
+    const myTasks = useMyCasesFilter(pageKey, 'ownerId');
+    const { catId, applicationId } = link;
 
     useEffect(() => {
         let cancelled = false;
@@ -35,7 +42,7 @@ function TasksTab({ cat }) {
             setError(null);
 
             try {
-                const data = await getCatTasks(cat.id);
+                const data = await getLinkedTasks({ catId, applicationId });
 
                 if (!cancelled) {
                     setTasks(data);
@@ -59,7 +66,7 @@ function TasksTab({ cat }) {
             cancelled = true;
         };
 
-    }, [cat.id]);
+    }, [catId, applicationId]);
 
     useEffect(() => {
 
@@ -73,9 +80,7 @@ function TasksTab({ cat }) {
 
     }, []);
 
-    // Same owner rule as the Tasks page: non-Admins only see tasks assigned
-    // to them; Admins see all, with a "My tasks" toggle remembered per page.
-    const visibleTasks = myTasks.filter(tasks);
+    const visibleTasks = ownTasksOnly || myTasks.canToggle ? myTasks.filter(tasks) : tasks;
 
     function handleTaskUpdate(taskId, updates) {
         setTasks((current) =>
@@ -127,7 +132,7 @@ function TasksTab({ cat }) {
 
             {!loading && visibleTasks.length === 0 && (
                 <Typography color="text.secondary">
-                    {tasks.length === 0 ? 'No tasks for this cat yet.' : 'No tasks for this cat are assigned to you.'}
+                    {tasks.length === 0 ? `No tasks for this ${noun} yet.` : `No tasks for this ${noun} are assigned to you.`}
                 </Typography>
             )}
 
@@ -143,7 +148,7 @@ function TasksTab({ cat }) {
 
             <AddTaskDialog
                 open={addTaskOpen}
-                catId={cat.id}
+                link={link}
                 onClose={() => setAddTaskOpen(false)}
                 onCreated={handleTaskCreated}
             />

@@ -70,10 +70,17 @@ export async function getTasks() {
 // No server-side filter by linked-item is set up for this board, so this
 // fetches everything and filters client-side - same approach the rest of
 // the app already uses for per-entity lists (e.g. getAvailableCats).
-export async function getCatTasks(catId) {
+//
+// `link`: { catId } or { applicationId } - the tasks on that cat or
+// application.
+export async function getLinkedTasks({ catId, applicationId }) {
   const tasks = await getTasks();
 
-  return tasks.filter((task) => task.linkedCatId === String(catId));
+  if (catId) {
+    return tasks.filter((task) => task.linkedCatId === String(catId));
+  }
+
+  return tasks.filter((task) => task.linkedApplicationId === String(applicationId));
 }
 
 // The Task dropdown's option list lives on the column definition, not on
@@ -99,13 +106,15 @@ export async function getTaskTitleOptions() {
   }
 }
 
-export async function createCatTask(
-  catId,
+// `link`: { catId?, applicationId? } - what the task is on (at least one).
+export async function createTask(
+  { catId, applicationId },
   { title, status, priority, dueDate, ownerId, waitingReason, description },
 ) {
   if (await inDatabase()) {
     return serverPost("/api/tasks", {
-      catId: String(catId),
+      catId: catId ? String(catId) : null,
+      applicationId: applicationId ? String(applicationId) : null,
       title,
       status,
       priority,
@@ -120,9 +129,16 @@ export async function createCatTask(
     [TASKS.COLUMNS.TASK]: { labels: [title] },
     [TASKS.COLUMNS.STATUS]: { label: status },
     [TASKS.COLUMNS.PRIORITY]: { label: priority },
-    [TASKS.COLUMNS.LINKED_CAT]: { item_ids: [Number(catId)] },
     [TASKS.COLUMNS.TASK_DESCRIPTION]: { text: description },
   };
+
+  if (catId) {
+    columnValues[TASKS.COLUMNS.LINKED_CAT] = { item_ids: [Number(catId)] };
+  }
+
+  if (applicationId) {
+    columnValues[TASKS.COLUMNS.LINKED_ADOPTION] = { item_ids: [Number(applicationId)] };
+  }
 
   if (dueDate) {
     columnValues[TASKS.COLUMNS.DUE_DATE] = { date: dueDate };

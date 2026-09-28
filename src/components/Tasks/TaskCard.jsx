@@ -14,7 +14,7 @@ import {
     CircularProgress,
     Alert
 } from '@mui/material';
-import { EditIcon, VisibilityIcon, CheckIcon, CloseIcon, PetsIcon } from '../../../icons';
+import { EditIcon, VisibilityIcon, CheckIcon, CloseIcon, PetsIcon, AssignmentIcon } from '../icons';
 import { Link as RouterLink } from 'react-router-dom';
 
 import {
@@ -25,10 +25,10 @@ import {
     updateTaskDueDate,
     updateTaskOwner,
     updateTaskWaitingReason,
-} from '../../../../services/TasksService';
-import { TASKS_STATUS_OPTIONS } from '../../../../constants/statuses/tasksStatuses';
-import { isTaskOverdue } from '../../../../utils/taskStatus';
-import useDateFormat from '../../../../hooks/useDateFormat';
+} from '../../services/TasksService';
+import { TASKS_STATUS_OPTIONS } from '../../constants/statuses/tasksStatuses';
+import { isTaskOverdue } from '../../utils/taskStatus';
+import useDateFormat from '../../hooks/useDateFormat';
 
 const STATUS_OPTIONS = Object.values(TASKS_STATUS_OPTIONS.STATUS);
 const PRIORITY_OPTIONS = Object.values(TASKS_STATUS_OPTIONS.PRIORITY);
@@ -52,9 +52,10 @@ function getStatusColor(status) {
     }
 }
 
-// showCat / highlightOverdue are for lists spanning many cats (the Tasks
-// page); a cat's own Tasks tab leaves them off.
-function TaskCard({ task, titleOptions, users, onUpdate, showCat = false, highlightOverdue = false }) {
+// showLinks (the task's cat and application as chips) / highlightOverdue
+// are for lists spanning many cats and applications (the Tasks page); a
+// cat's or application's own Tasks tab leaves them off.
+function TaskCard({ task, titleOptions, users, onUpdate, showLinks = false, highlightOverdue = false }) {
     // 'read' - the compact card; 'view' - the full form, read-only; 'edit' - the full form, editable.
     const [mode, setMode] = useState('read');
     const [toggling, setToggling] = useState(false);
@@ -396,17 +397,32 @@ function TaskCard({ task, titleOptions, users, onUpdate, showCat = false, highli
                             </Stack>
                         </Stack>
 
-                        {showCat && task.linkedCatId && (
-                            <Chip
-                                icon={<PetsIcon />}
-                                label={task.linkedCatName || 'Cat'}
-                                size="small"
-                                variant="outlined"
-                                component={RouterLink}
-                                to={`/cats/${task.linkedCatId}`}
-                                clickable
-                                sx={{ mt: 0.5, mb: 0.5 }}
-                            />
+                        {showLinks && (task.linkedCatId || task.linkedApplicationId) && (
+                            <Stack direction="row" spacing={1} sx={{ mt: 0.5, mb: 0.5, flexWrap: 'wrap' }}>
+                                {task.linkedCatId && (
+                                    <Chip
+                                        icon={<PetsIcon />}
+                                        label={task.linkedCatName || 'Cat'}
+                                        size="small"
+                                        variant="outlined"
+                                        component={RouterLink}
+                                        to={`/cats/${task.linkedCatId}`}
+                                        clickable
+                                    />
+                                )}
+
+                                {task.linkedApplicationId && (
+                                    <Chip
+                                        icon={<AssignmentIcon />}
+                                        label={task.linkedApplicationName || 'Application'}
+                                        size="small"
+                                        variant="outlined"
+                                        component={RouterLink}
+                                        to={`/active-applications/${task.linkedApplicationId}`}
+                                        clickable
+                                    />
+                                )}
+                            </Stack>
                         )}
 
                         {task.description && (

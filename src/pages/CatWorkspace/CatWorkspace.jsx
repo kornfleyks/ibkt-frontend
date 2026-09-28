@@ -27,7 +27,7 @@ import DocumentsTab from '../../components/Cats/Workspace/DocumentsTab';
 import InfoRow from '../../components/Common/InfoRow';
 import { workspaceTabs } from '../../config/workspaceTabs';
 import CommunicationsTab from '../../components/Communications/CommunicationsTab';
-import TasksTab from '../../components/Cats/Workspace/Tasks/TasksTab';
+import TasksTab from '../../components/Tasks/TasksTab';
 import ActivityTab from '../../components/ActivityLog/ActivityTab';
 import { CATS_STATUS_OPTIONS } from '../../constants/statuses/catsStatuses';
 import { CATS } from '../../constants/boards/cats';
@@ -148,7 +148,7 @@ function CatWorkspace() {
         medical: <MedicalTab cat={cat} onCatUpdate={handleCatUpdate} />,
         documents: <DocumentsTab cat={cat} onCatUpdate={handleCatUpdate} />,
         communications: <CommunicationsTab boardId={CATS.BOARD_ID} itemId={cat.id} />,
-        tasks: <TasksTab cat={cat} />,
+        tasks: <TasksTab link={{ catId: cat.id }} noun="cat" pageKey="catTasks" />,
         travel: <Typography>Travel Coming Soon</Typography>,
         'post-adoption': <Typography>Post Adoption Coming Soon</Typography>,
         activity: <ActivityTab boardId={CATS.BOARD_ID} itemId={cat.id} />

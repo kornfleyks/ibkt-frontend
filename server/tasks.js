@@ -4,7 +4,7 @@ import { isDatabaseBoard } from "./database/switches.js";
 import { StoreError } from "./database/boardStore.js";
 import * as stored from "./database/tasksStore.js";
 import { logActivity, resolveColumnLabel } from "./activityLog.js";
-import { notifyAssignmentChange } from "./notifications.js";
+import { notifyAssignmentChange, taskLink } from "./notifications.js";
 
 // Tasks kept in the database ("tasks" in DATABASE_BOARDS; database-first
 // plan 4.1). The app switches to these endpoints when the board is on and
@@ -16,7 +16,7 @@ import { notifyAssignmentChange } from "./notifications.js";
 //   GET  /api/tasks                  all tasks
 //   GET  /api/tasks/title-options    the Task dropdown's labels
 //   GET  /api/tasks/:id
-//   POST /api/tasks                  { catId, title, status, priority, dueDate?, ownerId?, waitingReason?, description }
+//   POST /api/tasks                  { catId?, applicationId? (at least one), title, status, priority, dueDate?, ownerId?, waitingReason?, description }
 //   POST /api/tasks/:id              any of { title, status, priority, dueDate, ownerId, waitingReason, description }
 
 const EDITABLE = ["title", "status", "priority", "dueDate", "ownerId", "waitingReason", "description"];
@@ -27,8 +27,28 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 class InputError extends Error {}
 
-function taskLink(catId) {
-  return catId ? `/cats/${catId}?tab=tasks` : "/tasks";
+// A new task's cat and/or application (at least one), checked to exist.
+async function cleanLinks(body) {
+  const links = {};
+
+  for (const [key, field, table, label] of [
+    ["catId", "linkedCatId", "cats", "cat"],
+    ["applicationId", "linkedApplicationId", "applications", "application"],
+  ]) {
+    const value = body[key];
+
+    if (value === undefined || value === null || value === "") continue;
+
+    if (!ID_PATTERN.test(String(value)) || !(await stored.exists(table, value))) {
+      throw new InputError(`Unknown ${label}.`);
+    }
+
+    links[field] = String(value);
+  }
+
+  if (!Object.keys(links).length) throw new InputError("A task needs a cat or an application.");
+
+  return links;
 }
 
 function actorOf(req) {
@@ -145,12 +165,9 @@ export function registerTaskRoutes(app, { requireAuth }) {
       (async () => {
         const body = req.body ?? {};
 
-        if (!ID_PATTERN.test(String(body.catId ?? "")) || !(await stored.exists("cats", body.catId))) {
-          throw new InputError("Unknown cat.");
-        }
-
+        const links = await cleanLinks(body);
         const values = await cleanFields(body, { creating: true });
-        const task = await stored.insertTask({ ...values, linkedCatId: String(body.catId) });
+        const task = await stored.insertTask({ ...values, ...links });
         const actor = actorOf(req);
 
         logActivity({
@@ -162,7 +179,7 @@ export function registerTaskRoutes(app, { requireAuth }) {
           itemName: task.itemName,
           actionType: "Created",
           description: `${actor.name} created "${task.itemName}" on Tasks`,
-          raw: { ...values, catId: String(body.catId) },
+          raw: { ...values, ...links },
         });
 
         if (task.ownerId) {
@@ -171,7 +188,7 @@ export function registerTaskRoutes(app, { requireAuth }) {
             nextIds: [task.ownerId],
             actor,
             target: { boardId: TASKS.BOARD_ID, itemId: task.id, name: task.itemName },
-            link: taskLink(task.linkedCatId),
+            link: taskLink(task),
           });
         }
 
@@ -206,7 +223,7 @@ export function registerTaskRoutes(app, { requireAuth }) {
             nextIds: after.ownerId ? [after.ownerId] : [],
             actor,
             target: { boardId: TASKS.BOARD_ID, itemId: after.id, name: after.itemName || "a task" },
-            link: taskLink(after.linkedCatId),
+            link: taskLink(after),
           });
         }
 

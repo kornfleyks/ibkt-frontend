@@ -11,13 +11,17 @@ import {
   MenuItem,
   Autocomplete,
   Alert,
+  FormHelperText,
 } from "@mui/material";
-import { CloseIcon } from "../../../icons";
+import { CloseIcon } from "../icons";
 
-import { createCatTask, getTaskTitleOptions } from "../../../../services/TasksService";
-import { getUsers } from "../../../../services/UsersService";
-import { getCats } from "../../../../services/CatsService";
-import { TASKS_STATUS_OPTIONS } from "../../../../constants/statuses/tasksStatuses";
+import { createTask, getTaskTitleOptions } from "../../services/TasksService";
+import { getUsers } from "../../services/UsersService";
+import { getCats } from "../../services/CatsService";
+import { getActiveApplications } from "../../services/ActiveApplicationsService";
+import useAuth from "../../hooks/useAuth";
+import { canSeeApplication } from "../../utils/ownership";
+import { TASKS_STATUS_OPTIONS } from "../../constants/statuses/tasksStatuses";
 
 const STATUS_OPTIONS = Object.values(TASKS_STATUS_OPTIONS.STATUS);
 const PRIORITY_OPTIONS = Object.values(TASKS_STATUS_OPTIONS.PRIORITY);
@@ -31,15 +35,21 @@ const initialForm = {
   waitingReason: "",
 };
 
-function AddTaskDialog({ open, catId, onClose, onCreated }) {
-  const requiresCatPicker = !catId;
+// `link`: { catId } or { applicationId } when opened from a cat or an
+// application. Without it the dialog asks for a cat and/or an application
+// (at least one); the application list is the ones you can open.
+function AddTaskDialog({ open, link, onClose, onCreated }) {
+  const { user } = useAuth();
+  const requiresLinkPicker = !link;
 
   const [form, setForm] = useState(initialForm);
   const [owner, setOwner] = useState(null);
   const [selectedCat, setSelectedCat] = useState(null);
+  const [selectedApplication, setSelectedApplication] = useState(null);
   const [titleOptions, setTitleOptions] = useState([]);
   const [users, setUsers] = useState([]);
   const [cats, setCats] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -63,15 +73,22 @@ function AddTaskDialog({ open, catId, onClose, onCreated }) {
         setLoadError((current) => current ?? "Couldn't load the user list - try reopening this dialog.");
       });
 
-    if (requiresCatPicker) {
+    if (requiresLinkPicker) {
       getCats()
         .then(setCats)
         .catch((err) => {
           console.error("Failed to load cats:", err);
           setLoadError((current) => current ?? "Couldn't load the cat list - try reopening this dialog.");
         });
+
+      getActiveApplications()
+        .then((data) => setApplications(data.filter((application) => canSeeApplication(application, user))))
+        .catch((err) => {
+          console.error("Failed to load applications:", err);
+          setLoadError((current) => current ?? "Couldn't load the application list - try reopening this dialog.");
+        });
     }
-  }, [open, requiresCatPicker]);
+  }, [open, requiresLinkPicker, user]);
 
   function setField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -85,14 +102,15 @@ function AddTaskDialog({ open, catId, onClose, onCreated }) {
     setForm(initialForm);
     setOwner(null);
     setSelectedCat(null);
+    setSelectedApplication(null);
     setError(null);
     setLoadError(null);
     onClose();
   }
 
   async function handleSubmit() {
-    if (requiresCatPicker && !selectedCat) {
-      setError("Cat is required.");
+    if (requiresLinkPicker && !selectedCat && !selectedApplication) {
+      setError("Pick a cat or an application.");
       return;
     }
 
@@ -135,7 +153,8 @@ function AddTaskDialog({ open, catId, onClose, onCreated }) {
     setError(null);
 
     try {
-      const task = await createCatTask(catId ?? selectedCat.id, {
+      const taskLink = link ?? { catId: selectedCat?.id, applicationId: selectedApplication?.id };
+      const task = await createTask(taskLink, {
         title: form.title,
         description: form.description,
         status: form.status,
@@ -172,18 +191,36 @@ function AddTaskDialog({ open, catId, onClose, onCreated }) {
         {loadError && <Alert severity="warning">{loadError}</Alert>}
 
         <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
-          {requiresCatPicker && (
-            <Grid size={{ xs: 12 }}>
-              <Autocomplete
-                size="small"
-                options={cats}
-                getOptionLabel={(option) => option.name ?? ""}
-                isOptionEqualToValue={(option, value) => option.id === value.id}
-                value={selectedCat}
-                onChange={(event, value) => setSelectedCat(value)}
-                renderInput={(params) => <TextField {...params} label="Cat" required />}
-              />
-            </Grid>
+          {requiresLinkPicker && (
+            <>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Autocomplete
+                  size="small"
+                  options={cats}
+                  getOptionLabel={(option) => option.name ?? ""}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  value={selectedCat}
+                  onChange={(event, value) => setSelectedCat(value)}
+                  renderInput={(params) => <TextField {...params} label="Cat" />}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Autocomplete
+                  size="small"
+                  options={applications}
+                  getOptionLabel={(option) => option.name ?? ""}
+                  isOptionEqualToValue={(option, value) => option.id === value.id}
+                  value={selectedApplication}
+                  onChange={(event, value) => setSelectedApplication(value)}
+                  renderInput={(params) => <TextField {...params} label="Application" />}
+                />
+              </Grid>
+
+              <Grid size={{ xs: 12 }}>
+                <FormHelperText sx={{ mt: -0.5 }}>Link the task to a cat, an application, or both.</FormHelperText>
+              </Grid>
+            </>
           )}
 
           <Grid size={{ xs: 12 }}>

@@ -11,8 +11,8 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { AddIcon } from '../components/icons';
 import PageHeader from '../components/PageHeader';
-import AddTaskDialog from '../components/Cats/Workspace/Tasks/AddTaskDialog';
-import TaskCard from '../components/Cats/Workspace/Tasks/TaskCard';
+import AddTaskDialog from '../components/Tasks/AddTaskDialog';
+import TaskCard from '../components/Tasks/TaskCard';
 import MyCasesToggle from '../components/Common/MyCasesToggle';
 import { getTasks, getTaskTitleOptions } from '../services/TasksService';
 import { getUsers } from '../services/UsersService';
@@ -36,7 +36,7 @@ function matchesSearch(task, term) {
         return true;
     }
 
-    return [task.title, task.linkedCatName, task.ownerName]
+    return [task.title, task.linkedCatName, task.linkedApplicationName, task.ownerName]
         .some((value) => (value || '').toLowerCase().includes(term));
 }
 
@@ -178,7 +178,7 @@ function Tasks() {
 
                         <TextField
                             size="small"
-                            label="Search by task, cat or owner"
+                            label="Search by task, cat, application or owner"
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                             sx={{ maxWidth: 360 }}
@@ -200,15 +200,15 @@ function Tasks() {
                             titleOptions={titleOptions}
                             users={users}
                             onUpdate={handleTaskUpdate}
-                            showCat
+                            showLinks
                             highlightOverdue
                         />
                     ))}
                 </Stack>
             )}
 
-            {/* No catId, so the dialog shows its own cat picker (same as the
-                Dashboard's Create Task). */}
+            {/* No link, so the dialog shows its own cat / application pickers
+                (same as the Dashboard's Create Task). */}
             <AddTaskDialog
                 open={addTaskOpen}
                 onClose={() => setAddTaskOpen(false)}

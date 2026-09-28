@@ -11,7 +11,7 @@ import Stack from '@mui/material/Stack';
 
 import DashboardCard from '../components/DashboardCard';
 import AddCatDialog from '../components/Cats/AddCatDialog/AddCatDialog';
-import AddTaskDialog from '../components/Cats/Workspace/Tasks/AddTaskDialog';
+import AddTaskDialog from '../components/Tasks/AddTaskDialog';
 
 import { getCats } from '../services/CatsService';
 import { getActiveApplications } from '../services/ActiveApplicationsService';

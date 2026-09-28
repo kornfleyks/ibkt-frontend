@@ -14,6 +14,7 @@ import { canSeeApplication } from "../../utils/ownership";
 import NotAssignedNotice from "../../components/Common/NotAssignedNotice";
 import ActivityTab from "../../components/ActivityLog/ActivityTab";
 import CommunicationsTab from "../../components/Communications/CommunicationsTab";
+import TasksTab from "../../components/Tasks/TasksTab";
 import { ACTIVE_APPLICATIONS } from "../../constants/boards/activeApplications";
 
 function ActiveApplicationWorkspace() {
@@ -89,6 +90,14 @@ function ActiveApplicationWorkspace() {
       )}
       {activeApplicationWorkspaceTabs[tab].slug === "communications" && (
         <CommunicationsTab boardId={ACTIVE_APPLICATIONS.BOARD_ID} itemId={application.id} />
+      )}
+      {activeApplicationWorkspaceTabs[tab].slug === "tasks" && (
+        <TasksTab
+          link={{ applicationId: application.id }}
+          noun="application"
+          pageKey="applicationTasks"
+          ownTasksOnly={false}
+        />
       )}
       {activeApplicationWorkspaceTabs[tab].slug === "activity" && (
         <ActivityTab boardId={ACTIVE_APPLICATIONS.BOARD_ID} itemId={application.id} />

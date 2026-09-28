@@ -4,7 +4,8 @@ import { boardFields, createItem, updateItem } from "./boardStore.js";
 
 // The Tasks board in the database ("tasks" in DATABASE_BOARDS). Tasks are
 // returned in the app's shape (as src/services/mappers/TaskMapper.js makes
-// from Monday), with the owner's and cat's names from their tables.
+// from Monday), with the owner's, cat's and application's names from their
+// tables.
 
 const TABLE = "tasks";
 const COLUMNS = TASKS.COLUMNS;
@@ -17,6 +18,7 @@ export const TASK_COLUMNS = {
   dueDate: COLUMNS.DUE_DATE,
   ownerId: COLUMNS.OWNER,
   linkedCatId: COLUMNS.LINKED_CAT,
+  linkedApplicationId: COLUMNS.LINKED_ADOPTION,
   waitingReason: COLUMNS.WAITING_REASON,
   description: COLUMNS.TASK_DESCRIPTION,
 };
@@ -33,15 +35,18 @@ function selectTasks({ table, names }) {
 
   return `select t.monday_item_id, t.name, ${c.title} as title, ${c.status} as status, ${c.priority} as priority,
             ${c.dueDate} as due_date, ${c.ownerId} as owner, ${c.linkedCatId} as cat,
+            ${c.linkedApplicationId} as application,
             ${c.waitingReason} as waiting_reason, ${c.description} as description,
             (select u.name from users u where u.monday_item_id = (${c.ownerId})[1]) as owner_name,
-            (select k.name from cats k where k.monday_item_id = (${c.linkedCatId})[1]) as cat_name
+            (select k.name from cats k where k.monday_item_id = (${c.linkedCatId})[1]) as cat_name,
+            (select a.name from applications a where a.monday_item_id = (${c.linkedApplicationId})[1]) as application_name
           from ${ident(table)} t`;
 }
 
 function toTask(row) {
   const ownerId = row.owner?.[0] ?? null;
   const catId = row.cat?.[0] ?? null;
+  const applicationId = row.application?.[0] ?? null;
 
   return {
     id: String(row.monday_item_id),
@@ -54,6 +59,8 @@ function toTask(row) {
     ownerName: ownerId === null ? "Unassigned" : row.owner_name || "Unassigned",
     linkedCatId: catId === null ? null : String(catId),
     linkedCatName: row.cat_name ?? "",
+    linkedApplicationId: applicationId === null ? null : String(applicationId),
+    linkedApplicationName: row.application_name ?? "",
     waitingReason: row.waiting_reason ?? "",
     description: row.description ?? "",
   };
@@ -98,6 +105,8 @@ export async function exists(table, id) {
   return rows.length > 0;
 }
 
+const RELATION_KEYS = new Set(["ownerId", "linkedCatId", "linkedApplicationId"]);
+
 // { title, status, ... } (app fields) -> the table's fields.
 async function toFields(values) {
   const { names } = await columns();
@@ -105,7 +114,7 @@ async function toFields(values) {
 
   for (const [key, value] of Object.entries(values)) {
     if (key === "title") fields[names.title] = [value];
-    else if (key === "ownerId" || key === "linkedCatId") fields[names[key]] = value ? [Number(value)] : [];
+    else if (RELATION_KEYS.has(key)) fields[names[key]] = value ? [Number(value)] : [];
     else fields[names[key]] = value;
   }
 

@@ -15,6 +15,8 @@ export function mapTask(item) {
     ownerName: columns[TASKS.COLUMNS.OWNER]?.display_value || "Unassigned",
     linkedCatId: columns[TASKS.COLUMNS.LINKED_CAT]?.linked_items?.[0]?.id ?? null,
     linkedCatName: columns[TASKS.COLUMNS.LINKED_CAT]?.linked_items?.[0]?.name ?? "",
+    linkedApplicationId: columns[TASKS.COLUMNS.LINKED_ADOPTION]?.linked_items?.[0]?.id ?? null,
+    linkedApplicationName: columns[TASKS.COLUMNS.LINKED_ADOPTION]?.linked_items?.[0]?.name ?? "",
     waitingReason: columns[TASKS.COLUMNS.WAITING_REASON]?.text ?? "",
     description: columns[TASKS.COLUMNS.TASK_DESCRIPTION]?.text ?? "",
   };

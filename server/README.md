@@ -126,7 +126,10 @@ a database would need. Optional: without `DATABASE_URL` nothing changes.
   on, Monday otherwise.
   - `tasks` (`tasks.js`, `database/tasksStore.js`): `GET /api/tasks`,
     `/api/tasks/title-options`, `/api/tasks/:id`, `POST /api/tasks`
-    (1 Monday call: the item), `POST /api/tasks/:id` (changes). Logs
+    (1 Monday call: the item; `catId` and/or `applicationId`, at least
+    one, for Linked Cat / Linked Adoption), `POST /api/tasks/:id`
+    (changes). Owner notifications link to the cat's Tasks tab, else the
+    application's. Logs
     changes with old values and notifies owners; hand-over on suspend
     uses the database too.
   - The other boards follow the same pattern: one module per board, with
