@@ -56,6 +56,16 @@ export const ADOPTION_EDITABLE_FIELDS = {
     column: ACTIVE_APPLICATIONS.COLUMNS.DECISION_NOTES,
     type: "long_text",
   },
+  paymentStatus: {
+    column: ACTIVE_APPLICATIONS.COLUMNS.PAYMENT_STATUS,
+    type: "status",
+    options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.PAYMENT_STATUS),
+  },
+  // "YYYY-MM-DD", or "" to clear.
+  paymentDate: {
+    column: ACTIVE_APPLICATIONS.COLUMNS.PAYMENT_DATE,
+    type: "date",
+  },
   internalNotes: {
     column: ACTIVE_APPLICATIONS.COLUMNS.INTERNAL_NOTES,
     type: "long_text",
@@ -227,9 +237,13 @@ export async function updateAdoptionField(id, field, value) {
       ? { label: value }
       : config.type === "long_text"
         ? { text: value }
-        : value;
+        : config.type === "date"
+          ? (value ? { date: value } : {})
+          : value;
+  // The database endpoint takes null for an empty date.
+  const stored = config.type === "date" && !value ? null : value;
 
-  return changeApplication(id, { [field]: value }, () =>
+  return changeApplication(id, { [field]: stored }, () =>
     changeMondayColumnValue(
       ACTIVE_APPLICATIONS.BOARD_ID,
       id,

@@ -102,6 +102,7 @@ export function mapMondayActiveApplication(item) {
 
     paymentRequired: columns[ACTIVE_APPLICATIONS.COLUMNS.PAYMENT_REQUIRED]?.text ?? "",
     paymentStatus: columns[ACTIVE_APPLICATIONS.COLUMNS.PAYMENT_STATUS]?.text ?? "",
+    paymentDate: columns[ACTIVE_APPLICATIONS.COLUMNS.PAYMENT_DATE]?.text ?? "",
 
     internalNotes: columns[ACTIVE_APPLICATIONS.COLUMNS.INTERNAL_NOTES]?.text ?? "",
   };

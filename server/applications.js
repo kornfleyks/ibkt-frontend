@@ -72,7 +72,8 @@ export const APPLICATION_FIELDS = {
   finalContractSent: { column: A.FINAL_CONTRACT_SENT, write: "status" },
   signedContractReceived: { column: A.SIGNED_CONTRACT_RECEIVED, write: "status" },
   paymentRequired: { column: A.PAYMENT_REQUIRED },
-  paymentStatus: { column: A.PAYMENT_STATUS },
+  paymentStatus: { column: A.PAYMENT_STATUS, write: "status" },
+  paymentDate: { column: A.PAYMENT_DATE, write: "date" },
   internalNotes: { column: A.INTERNAL_NOTES, write: "longText" },
 };
 

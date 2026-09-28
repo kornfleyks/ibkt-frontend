@@ -52,6 +52,7 @@ export const ACTIVE_APPLICATIONS = {
     CONTRACT_FILE: "file_mm48vatj", // Contract File | file
     PAYMENT_REQUIRED: "dropdown_mm48ff7r", // Payment Required | dropdown
     PAYMENT_STATUS: "color_mm4g8caj", // Payment Status | status
+    PAYMENT_DATE: "date_mm48c2bk", // Payment Date | date
     TRAVEL_MANAGEMENT: "board_relation_mm482g9z", // Travel Management | board_relation
     TRAVEL_ID: "lookup_mm48j1ja", // Travel ID | mirror
     POST_ADOPTION_RECORD: "board_relation_mm48ynsy", // Post Adoption Record | board_relation
