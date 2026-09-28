@@ -97,3 +97,12 @@ export async function updateUserRole(userId, role) {
 export async function resetUserPassword(userId, newPassword) {
   return serverPost(`/api/admin/users/${userId}/password`, { newPassword });
 }
+
+// { id, name, role, accountStatus, email, phone: { number, country } } -
+// the card shown when an @mention is clicked. Any signed-in user may read
+// it; served from the server's memory, so it costs no Monday call.
+export async function getUserProfileCard(userId) {
+  const { user } = await serverGet(`/api/users/${userId}/profile-card`);
+
+  return user;
+}

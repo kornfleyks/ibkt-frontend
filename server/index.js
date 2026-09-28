@@ -27,8 +27,10 @@ import {
   flushActivityLog,
   CATS_BOARD_ID,
 } from "./activityLog.js";
-import { getLoginMaxAttempts, getLoginLockoutMinutes, loadAppSettings, invalidateSettingsCache } from "./appSettings.js";
+import { loadAppSettings, invalidateSettingsCache } from "./appSettings.js";
+import { checkLockout, recordFailedAttempt, clearAttempts } from "./loginLockout.js";
 import { APP_SETTINGS } from "../src/constants/boards/appSettings.js";
+import { USERS } from "../src/constants/boards/users.js";
 import { registerMondayApiVersionRoutes, startMondayApiVersionChecks } from "./mondayApiVersionCheck.js";
 import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
 import { initAccountState, applyAccountChange, TRACKED_COLUMNS, NAME_COLUMNS } from "./accountState.js";
@@ -37,12 +39,18 @@ import { registerWebhookRoutes } from "./webhooks.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
 import { registerCommunicationRoutes } from "./communications.js";
+import { registerAccountRoutes } from "./account.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch, mondayRetryAfterSeconds } from "./mondayRateLimit.js";
 import { getMondayUsage } from "./mondayUsage.js";
 import { syncMondayUsageFromMonday } from "./mondayUsageSync.js";
 import { registerHealthRoutes, startKeepAlive } from "./serverHealth.js";
-import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER } from "../src/constants/mondayApiUsage.js";
+import { registerDatabaseHealthRoutes } from "./database/databaseHealth.js";
+import { registerDataRoutes } from "./database/dataRoutes.js";
+import { registerSyncRoutes } from "./database/syncRoutes.js";
+import { startSyncSchedule } from "./database/sync.js";
+import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER } from "../src/constants/mondayApiUsage.js";
+import { isDatabaseEnabled, getQueryCount } from "./database/db.js";
 
 const PORT = process.env.PORT || 4000;
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
@@ -69,48 +77,6 @@ const ITEM_ID_PATTERN = /^\d+$/;
 const COLUMN_ID_PATTERN = /^[a-zA-Z0-9_]+$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACTIVE_ACCOUNT_STATUSES = new Set(["Active"]);
-
-// Per-email login lockout state, in memory - resets on server restart, same
-// tradeoff already accepted for mondayCache.js. Keyed by normalized email,
-// not IP: this is account lockout (protecting one account from being
-// brute-forced), not general request throttling.
-const loginAttempts = new Map();
-
-function normalizeEmail(email) {
-  return email.trim().toLowerCase();
-}
-
-async function checkLoginLockout(email) {
-  const entry = loginAttempts.get(normalizeEmail(email));
-
-  if (!entry?.lockedUntil || entry.lockedUntil <= Date.now()) {
-    return null;
-  }
-
-  return Math.ceil((entry.lockedUntil - Date.now()) / 60_000);
-}
-
-async function recordFailedLogin(email) {
-  const key = normalizeEmail(email);
-  const entry = loginAttempts.get(key) ?? { failureCount: 0, lockedUntil: null };
-
-  entry.failureCount += 1;
-
-  const maxAttempts = await getLoginMaxAttempts();
-
-  if (entry.failureCount >= maxAttempts) {
-    const lockoutMinutes = await getLoginLockoutMinutes();
-
-    entry.lockedUntil = Date.now() + lockoutMinutes * 60_000;
-    entry.failureCount = 0;
-  }
-
-  loginAttempts.set(key, entry);
-}
-
-function clearLoginAttempts(email) {
-  loginAttempts.delete(normalizeEmail(email));
-}
 
 // The whole app's mutations funnel through exactly these 4 shapes (verified
 // against every services/*.js file) - matching on the mutation name in the
@@ -241,7 +207,7 @@ function sendRateLimited(res, err) {
 const app = express();
 
 // X-User-Role is set by requireAuth so the app can pick up a role change live.
-app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role", MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER] }));
+app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role", MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER] }));
 app.use(express.json());
 
 // Admins get today's Monday call count on every JSON response (for the
@@ -261,6 +227,10 @@ app.use((req, res, next) => {
       if (blockedFor > 0) {
         res.set(MONDAY_BLOCKED_HEADER, String(blockedFor));
       }
+
+      if (isDatabaseEnabled()) {
+        res.set(DATABASE_USAGE_HEADER, String(getQueryCount()));
+      }
     }
 
     return json(body);
@@ -276,7 +246,7 @@ app.post("/api/login", async (req, res) => {
     return res.status(400).json({ error: "Email and password are required." });
   }
 
-  const lockedMinutesRemaining = await checkLoginLockout(email);
+  const lockedMinutesRemaining = await checkLockout(email);
 
   if (lockedMinutesRemaining !== null) {
     return res.status(429).json({
@@ -296,7 +266,7 @@ app.post("/api/login", async (req, res) => {
     const passwordMatches = await comparePassword(password, user.passwordHash);
 
     if (!passwordMatches) {
-      await recordFailedLogin(email);
+      await recordFailedAttempt(email);
       return res.status(401).json({ error: "Invalid email or password." });
     }
 
@@ -304,7 +274,7 @@ app.post("/api/login", async (req, res) => {
       return res.status(403).json({ error: "This account is not active yet." });
     }
 
-    clearLoginAttempts(email);
+    clearAttempts(email);
 
     // Fire-and-forget: a failed Last Login write must never block a login.
     setUserLastLogin(user.id).catch((err) => console.error("Failed to record last login:", err.message));
@@ -332,6 +302,8 @@ app.post("/api/login", async (req, res) => {
         email: user.email,
         role: user.role,
       },
+      // Sent with the login so the app doesn't spend a Monday call on them.
+      preferences: user.preferences,
     });
   } catch (err) {
     console.error(err);
@@ -454,8 +426,12 @@ registerWebhookRoutes(app);
 registerSessionEventRoutes(app, { requireAuth });
 registerNotificationRoutes(app, { requireAuth });
 registerCommunicationRoutes(app, { requireAuth });
+registerAccountRoutes(app, { requireAuth });
 registerMondayApiVersionRoutes(app, { requireAuth, requireAdmin });
 registerHealthRoutes(app, { requireAuth, requireAdmin });
+registerDatabaseHealthRoutes(app, { requireAuth, requireAdmin });
+registerDataRoutes(app, { requireAuth, requireAdmin });
+registerSyncRoutes(app, { requireAuth, requireAdmin });
 
 // The frontend never talks to Monday directly: it has no way to hold an API
 // token without shipping it in the public JS bundle. Every Monday GraphQL
@@ -577,6 +553,15 @@ app.post("/api/monday", requireAuth, async (req, res) => {
       if (isChangeColumnValue && variables?.boardId === USERS_BOARD_ID && NAME_COLUMNS[variables?.columnId]) {
         try {
           applyAccountChange(variables.itemId, { [NAME_COLUMNS[variables.columnId]]: JSON.parse(variables.value) ?? "" });
+        } catch {
+          // Unparseable value - the state is re-read at the next restart.
+        }
+      }
+
+      // Same for an email change through the Users page (profile cards).
+      if (isChangeColumnValue && variables?.boardId === USERS_BOARD_ID && variables?.columnId === USERS.COLUMNS.EMAIL) {
+        try {
+          applyAccountChange(variables.itemId, { email: JSON.parse(variables.value)?.email ?? "" });
         } catch {
           // Unparseable value - the state is re-read at the next restart.
         }
@@ -767,6 +752,8 @@ app.listen(PORT, () => {
   });
   startMondayApiVersionChecks();
   startKeepAlive();
+  // Nightly database -> Monday sync, only where SYNC_ENABLED=true (Render).
+  startSyncSchedule();
 });
 
 // A normal stop (Render redeploy/sleep, Ctrl+C, node --watch restart)

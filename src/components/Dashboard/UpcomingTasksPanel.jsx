@@ -11,15 +11,16 @@ import ListSubheader from '@mui/material/ListSubheader';
 import Typography from '@mui/material/Typography';
 import DashboardPanel from '../DashboardPanel';
 import { formatDueDate, isTaskOverdue, todayDateString } from '../../utils/taskStatus';
+import useDateFormat from '../../hooks/useDateFormat';
 
 const MAX_ITEMS = 5;
 
-function formatDue(task, today) {
+function formatDue(task, today, dateFormat) {
     if (task.dueDate === today) {
         return 'Due today';
     }
 
-    return `Due ${formatDueDate(task.dueDate)}`;
+    return `Due ${formatDueDate(task.dueDate, dateFormat)}`;
 }
 
 // `tasks` (from selectUpcomingTasks) is null while loading; `error` is set
@@ -28,6 +29,7 @@ function formatDue(task, today) {
 // `showOwner` adds each task's owner - for Admins, who see everyone's tasks.
 function UpcomingTasksPanel({ tasks, days, error = false, showOwner = false }) {
     const today = todayDateString();
+    const { dateFormat } = useDateFormat();
     const visible = tasks?.slice(0, MAX_ITEMS) ?? [];
     const windowCount = tasks?.filter((task) => !task.beyondWindow).length ?? 0;
 
@@ -69,7 +71,7 @@ function UpcomingTasksPanel({ tasks, days, error = false, showOwner = false }) {
                                 >
                                     <ListItemText
                                         primary={task.title}
-                                        secondary={[showOwner && task.ownerName, task.linkedCatName, formatDue(task, today)].filter(Boolean).join(' · ')}
+                                        secondary={[showOwner && task.ownerName, task.linkedCatName, formatDue(task, today, dateFormat)].filter(Boolean).join(' · ')}
                                         slotProps={{
                                             secondary: { color: overdue ? 'error' : 'text.secondary' },
                                         }}

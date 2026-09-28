@@ -54,6 +54,56 @@ directly. It holds the Monday API token server-side and does two things:
   Try again in about 5 hours."). The startup user load retries with backoff
   instead of every 30s.
 
+## Database mirror (Supabase trial, `database/`)
+
+Monday stays the source of truth; a Supabase Postgres database keeps a copy
+of the data (not files) so we can see how much space and how many requests
+a database would need. Optional: without `DATABASE_URL` nothing changes.
+
+- `DATABASE_URL` in `.env` (and on Render): Supabase **pooler** connection
+  string (user `postgres.<ref>`, host `…pooler.supabase.com`). Keep the
+  password letters and numbers only.
+- Structure = Monday's: one table per board, one column per Monday column
+  (snake_case titles), mapped in `monday_columns`; Communications threads go
+  to `communications`. Files, mirror columns and subitems aren't copied, nor
+  the Users password hash / login and reset tokens. Row-level security is
+  on, so only this server's connection can read the tables.
+- `node scripts/databaseSchema.js` creates / updates the tables from Monday's
+  live column lists (1 Monday call; re-run after adding Monday columns).
+- `node scripts/databaseBackfill.js` copies the current data once (1 Monday
+  call for all boards; re-runnable, rows are upserted).
+- Live: every mutation Monday accepts is replayed onto the database from the
+  request itself (`database/mirror.js`, hooked into `mondayFetch`) - no extra
+  Monday calls, covers every server write. Failures are only logged.
+- `GET /api/admin/database-health` (Admin) - size vs 500 MB, rows/space per
+  table, queries today, mirror status - shown on App Settings.
+- Full detail (database-first plan, `docs/database-migration-plan.md`):
+  companion columns keep what Monday needs back (`<date>_time`,
+  `<country>_code`, `<phone>_country`, `<email>_text`); status/dropdown
+  options are in `column_options`. `mondaySchema.js` converts both ways.
+  The schema script saves Monday's column list in `.cache/` (git-ignored),
+  so re-runs need no Monday call; `--refresh` reads Monday again.
+- Store and endpoints (not used by any page yet): `database/boardStore.js`
+  reads/writes any board and queues each change for Monday in
+  `monday_outbox`, in the same transaction. `/api/data/<board>` (list, get,
+  create, update, delete; Admin-only) answers only for boards listed in
+  `DATABASE_BOARDS` (comma-separated, per server, empty by default).
+- Nightly sync to Monday (`database/sync.js`): sends `monday_outbox` to
+  Monday - changes merged per item, 20 per request, marked sent only when
+  Monday confirms, up to 5 tries (then "failed" and one admin
+  notification), deleted records archived. One run at a time across
+  servers (`sync_lock`); a missed night is caught up on start. Its own
+  requests carry `# ibkt-sync` so the mirror doesn't copy them back.
+  - `SYNC_ENABLED=true` turns the schedule on (set it on Render only, so
+    local servers don't also run it); `SYNC_TIME_UTC` (default `00:30`);
+    `SYNC_MAX_CALLS` Monday calls per run (default 50).
+  - New records: the Monday item is created at once (1 call) with a key in
+    its "DB ID" column (`pending_creations`), so an interrupted creation is
+    found by the next sync instead of duplicated. The columns were added by
+    `node scripts/createDbIdColumns.js` (done; re-running costs nothing).
+  - `GET /api/admin/sync` (status, failures) and `POST /api/admin/sync/run`
+    (Admin) - the Monday Sync card on App Settings.
+
 ## Case Owner (`caseOwner.js`)
 
 An application's Case Owner (a relation to the Users board) can only be
@@ -142,7 +192,43 @@ with `{ "text": "..." }`, for boards listed in
 "[Author - Role]" prefix from the session, keeps only mentions of Active
 accounts (tokens `@[Name](userId)`, see `src/utils/mentions.js`) and
 notifies them. `GET /api/users/mentionable` lists the Active accounts
-(id, name, role) for the @ picker, from memory.
+(id, name, role) for the @ picker, from memory. `GET
+/api/users/:id/profile-card` returns one account's name, role, status, email
+and phone for the card shown when an @mention is clicked - any signed-in user
+may read it (agreed), and it's served from memory only (no Monday call;
+unknown ids are 404). The in-memory email/phone stay current for changes made
+through the app; edits made directly on Monday apply at the next restart.
+
+## Own account (`account.js`)
+
+Behind the app's Account page (`/account`, Profile and Settings tabs). Every
+route acts on the signed-in user's own Users-board row (the id comes from
+the session token, never the request), so non-Admins can edit themselves
+even though `/api/monday` refuses their Users-board mutations.
+
+- `GET /api/account` - your name, email, phone, role, status, email
+  verified, latest sign-in and saved preferences.
+- `POST /api/account/profile` with `{ firstName, lastName, phone: { number,
+  country } }` - `number` is national (no country code), `country` an ISO
+  code from `src/constants/countries.js`; an empty number clears the phone.
+- `POST /api/account/email` with `{ newEmail, currentPassword }` - must not
+  belong to another account; the new address is marked Email Verified = No
+  (no email can be sent to confirm it).
+- `POST /api/account/password` with `{ currentPassword, newPassword }` (8+
+  characters). Other sessions stay valid until they expire - tokens are
+  stateless.
+- `POST /api/account/preferences` with `{ preferences }` - replaces the
+  saved set; only keys/values known to `src/constants/preferences.js` are
+  kept. Needs the Users board **Preferences** column (long text), created
+  once with `npm run create:users-preferences-column`; `503` until
+  `USERS.COLUMNS.PREFERENCES` is set.
+
+Wrong current passwords count toward the same per-account lockout as
+`/api/login` (`loginLockout.js`) and answer `400`, never `401` (which the app
+treats as an expired session). Profile and email changes re-issue the session
+token with the same sign-in and expiry times, so the name in Activity Log
+entries stays current without extending the session. `/api/login` also
+returns the saved `preferences`.
 
 ## Monday API version (`mondayApiVersion.js`, `mondayApiVersionCheck.js`)
 
@@ -193,7 +279,8 @@ service). Deploy this folder as its own service - e.g. on Render:
 - Build command: `npm install`
 - Start command: `npm start`
 - Environment variables: `MONDAY_API_TOKEN`, `MONDAY_API_URL`,
-  `ALLOWED_ORIGIN` (Render sets `PORT` itself, already handled)
+  `ALLOWED_ORIGIN` (Render sets `PORT` itself, already handled); for the
+  database and its nightly sync also `DATABASE_URL` and `SYNC_ENABLED=true`
 
 Once deployed, set the frontend's `VITE_SERVER_URL` (a GitHub Actions
 repository *variable*, not a secret - it's just a public URL) to this

@@ -51,6 +51,27 @@ export function startKeepAlive() {
   setInterval(pingSelf, KEEP_ALIVE_INTERVAL_MS).unref();
 }
 
+// Render's free plan: 750 instance hours per workspace per calendar month,
+// shared by every free web service in the workspace.
+const RENDER_FREE_HOURS = 750;
+
+// Awake hours this (UTC) calendar month, as far as this process knows:
+// counted from its start, or from the 1st if it started last month. Kept
+// in memory only (user's choice for now), so it restarts with the server.
+function renderHours(now = new Date()) {
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const nextMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const countingSince = startedAt > monthStart ? startedAt : monthStart;
+
+  return {
+    awakeThisMonth: Math.round(((now - countingSince) / 3_600_000) * 10) / 10,
+    countingSince: countingSince.toISOString(),
+    countedSinceStart: startedAt > monthStart,
+    fullMonthHours: Math.round((nextMonth - monthStart) / 3_600_000),
+    freeHours: RENDER_FREE_HOURS,
+  };
+}
+
 export function registerHealthRoutes(app, { requireAuth, requireAdmin }) {
   app.get("/api/health", (req, res) => {
     lastPingAt = new Date();
@@ -71,6 +92,7 @@ export function registerHealthRoutes(app, { requireAuth, requireAdmin }) {
         intervalMinutes: KEEP_ALIVE_INTERVAL_MS / 60_000,
         ...selfPing,
       },
+      renderHours: renderHours(),
       memoryMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
     });
   });

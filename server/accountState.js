@@ -31,6 +31,17 @@ async function mondayDirectRequest(query, variables = {}) {
   return result.data;
 }
 
+// Monday phone value { phone, countryShortName } -> { number, country }.
+function toPhone(column) {
+  try {
+    const value = JSON.parse(column?.value || "null");
+
+    return { number: value?.phone ?? column?.text ?? "", country: value?.countryShortName ?? "" };
+  } catch {
+    return { number: column?.text ?? "", country: "" };
+  }
+}
+
 function toState(item) {
   const columns = Object.fromEntries(item.column_values.map((column) => [column.id, column]));
 
@@ -39,6 +50,9 @@ function toState(item) {
     accountStatus: columns[USERS.COLUMNS.ACCOUNT_STATUS]?.text ?? "",
     firstName: columns[USERS.COLUMNS.FIRST_NAME]?.text ?? "",
     lastName: columns[USERS.COLUMNS.LAST_NAME]?.text ?? "",
+    // Contact details for the profile card on @mentions (any signed-in user).
+    email: columns[USERS.COLUMNS.EMAIL]?.text ?? "",
+    phone: toPhone(columns[USERS.COLUMNS.PHONE]),
   };
 }
 
@@ -47,6 +61,8 @@ const COLUMN_IDS = [
   USERS.COLUMNS.ACCOUNT_STATUS,
   USERS.COLUMNS.FIRST_NAME,
   USERS.COLUMNS.LAST_NAME,
+  USERS.COLUMNS.EMAIL,
+  USERS.COLUMNS.PHONE,
 ];
 
 async function loadAll() {
@@ -54,7 +70,7 @@ async function loadAll() {
     `query ($boardId: ID!, $columnIds: [String!]) {
       boards(ids: [$boardId]) {
         items_page(limit: 500) {
-          items { id column_values(ids: $columnIds) { id text } }
+          items { id column_values(ids: $columnIds) { id text value } }
         }
       }
     }`,
@@ -73,7 +89,7 @@ async function loadAll() {
 async function loadOne(userId) {
   const data = await mondayDirectRequest(
     `query ($ids: [ID!], $columnIds: [String!]) {
-      items(ids: $ids) { id column_values(ids: $columnIds) { id text } }
+      items(ids: $ids) { id column_values(ids: $columnIds) { id text value } }
     }`,
     { ids: [userId], columnIds: COLUMN_IDS },
   );
@@ -113,7 +129,7 @@ export async function initAccountState() {
   }
 }
 
-// { role, accountStatus, firstName, lastName } or null if the user doesn't exist. Unknown ids
+// { role, accountStatus, firstName, lastName, email, phone } or null if the user doesn't exist. Unknown ids
 // (e.g. an account created after startup) cost one Monday read, once.
 export async function getAccountState(userId) {
   const key = String(userId);
@@ -127,6 +143,12 @@ export async function getAccountState(userId) {
 
 export function isAccountStateReady() {
   return initialized;
+}
+
+// Memory only - never asks Monday, so an arbitrary id from a request can't
+// trigger a read or get cached as an account. Null if unknown.
+export function findKnownAccount(userId) {
+  return accounts.get(String(userId)) ?? null;
 }
 
 const changeListeners = new Set();
@@ -177,8 +199,8 @@ export function listActiveAccounts() {
 }
 
 // First/Last Name column id -> state field, so a rename made through the
-// app keeps the in-memory name current (name edits made directly on
-// Monday are picked up at the next restart).
+// app keeps the in-memory name current (name, email and phone edits made
+// directly on Monday are picked up at the next restart).
 export const NAME_COLUMNS = {
   [USERS.COLUMNS.FIRST_NAME]: "firstName",
   [USERS.COLUMNS.LAST_NAME]: "lastName",

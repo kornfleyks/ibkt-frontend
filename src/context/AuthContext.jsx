@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as AuthService from "../services/AuthService";
 import { serverPost } from "../services/MondayService";
 import { connectSessionEvents } from "../services/sessionEvents";
@@ -67,13 +67,34 @@ function AuthProvider({ children }) {
   }, [token]);
 
   async function login(email, password) {
-    const { token: nextToken, user } = await AuthService.login(email, password);
-    const nextAuth = { token: nextToken, user };
+    const { token: nextToken, user, preferences } = await AuthService.login(email, password);
+    const nextAuth = { token: nextToken, user, preferences: preferences ?? {} };
 
     setAuth(nextAuth);
     setRoleChange(null);
     writeAuth(nextAuth);
   }
+
+  // Merges { token?, user?, preferences? } into the current session - after
+  // a profile/email change (the server re-issues the token) or a
+  // preferences change - so the header, sidebar and route guards update in
+  // place. Reads storage rather than state so back-to-back calls compose.
+  const updateSession = useCallback((changes) => {
+    const current = readAuth();
+
+    if (!current) {
+      return;
+    }
+
+    const nextAuth = {
+      ...current,
+      ...changes,
+      user: changes.user ? { ...current.user, ...changes.user } : current.user,
+    };
+
+    writeAuth(nextAuth);
+    setAuth(nextAuth);
+  }, []);
 
   function logout() {
     // Fire-and-forget: this has to go out while the token is still valid
@@ -88,9 +109,15 @@ function AuthProvider({ children }) {
 
   const value = {
     user: auth?.user ?? null,
+    // The session token itself, for reading its issue/expiry times.
+    token,
+    // Saved per-user preferences; undefined for a session that started
+    // before they were sent with the login (PreferencesProvider loads them).
+    preferences: auth?.preferences,
 
     login,
     logout,
+    updateSession,
 
     isAuthenticated: !!auth,
 

@@ -7,6 +7,7 @@ import { LayoutProvider } from "../context/LayoutContext";
 import { LoadingProvider } from "../context/LoadingContext";
 import { AuthProvider } from "../context/AuthContext";
 import { NotificationsProvider } from "../context/NotificationsContext";
+import { PreferencesProvider } from "../context/PreferencesContext";
 
 import ErrorBoundary from "../components/ErrorBoundary/ErrorBoundary";
 import LoadingRoot from "../components/LoadingOverlay/LoadingRoot";
@@ -30,6 +31,8 @@ function Providers({ children }) {
 
                 <AuthProvider>
 
+                <PreferencesProvider>
+
                 <NotificationsProvider>
 
                     <LoadingProvider>
@@ -45,6 +48,8 @@ function Providers({ children }) {
                     </LoadingProvider>
 
                 </NotificationsProvider>
+
+                </PreferencesProvider>
 
                 </AuthProvider>
 

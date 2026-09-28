@@ -9,7 +9,9 @@ import {
 } from '@mui/material';
 
 import useAuth from '../../hooks/useAuth';
+import useDateFormat from '../../hooks/useDateFormat';
 import { splitMentions } from '../../utils/mentions';
+import MentionLink from './MentionLink';
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
 
@@ -34,26 +36,17 @@ function linkifyText(text) {
 }
 
 
-// Mention tokens (utils/mentions.js) render as "@Name", stronger when it's
-// the signed-in user; the text around them is linkified as before.
+// Mention tokens (utils/mentions.js) render as clickable "@Name" (opens a
+// profile card); the text around them is linkified as before.
 function renderMessage(text, currentUserId) {
     return splitMentions(text).map((part, index) =>
         part.type === 'mention' ? (
-            <Box
+            <MentionLink
                 key={index}
-                component="span"
-                sx={{
-                    fontWeight: 600,
-                    color: 'info.main',
-                    ...(String(part.id) === String(currentUserId) && {
-                        bgcolor: 'action.selected',
-                        borderRadius: 0.5,
-                        px: 0.5,
-                    }),
-                }}
-            >
-                @{part.name}
-            </Box>
+                userId={part.id}
+                name={part.name}
+                isSelf={String(part.id) === String(currentUserId)}
+            />
         ) : (
             <span key={index}>{linkifyText(part.value)}</span>
         )
@@ -64,6 +57,7 @@ function renderMessage(text, currentUserId) {
 function MessageBubble({message}) {
 
     const { user } = useAuth();
+    const { formatDateTime } = useDateFormat();
 
 
     return (
@@ -127,7 +121,7 @@ variant="caption"
 color="text.secondary"
 >
 
-{new Date(message.createdAt).toLocaleString()}
+{formatDateTime(new Date(message.createdAt))}
 
 </Typography>
 

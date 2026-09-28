@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
 const ThemeContext = createContext();
 
@@ -9,19 +9,18 @@ function ThemeProvider({ children }) {
     return storedMode === "true";
   });
 
-  function toggleDarkMode() {
-    setDarkMode((previousMode) => {
-      const newMode = !previousMode;
-
-      localStorage.setItem("darkMode", newMode);
-
-      return newMode;
-    });
-  }
+  // Set from the signed-in user's saved preference (PreferencesProvider;
+  // Settings > Appearance changes that preference). Also cached in
+  // localStorage, so the next load paints in the right mode before the
+  // session is read.
+  const applyDarkMode = useCallback((mode) => {
+    localStorage.setItem("darkMode", mode);
+    setDarkMode(mode);
+  }, []);
 
   const value = {
     darkMode,
-    toggleDarkMode,
+    applyDarkMode,
   };
 
   return (

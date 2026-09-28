@@ -28,6 +28,7 @@ import {
 } from '../../../../services/TasksService';
 import { TASKS_STATUS_OPTIONS } from '../../../../constants/statuses/tasksStatuses';
 import { isTaskOverdue } from '../../../../utils/taskStatus';
+import useDateFormat from '../../../../hooks/useDateFormat';
 
 const STATUS_OPTIONS = Object.values(TASKS_STATUS_OPTIONS.STATUS);
 const PRIORITY_OPTIONS = Object.values(TASKS_STATUS_OPTIONS.PRIORITY);
@@ -59,6 +60,7 @@ function TaskCard({ task, titleOptions, users, onUpdate, showCat = false, highli
     const [toggling, setToggling] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const { formatDateString } = useDateFormat();
 
     const [title, setTitle] = useState(task.title);
     const [description, setDescription] = useState(task.description ?? '');
@@ -422,7 +424,7 @@ function TaskCard({ task, titleOptions, users, onUpdate, showCat = false, highli
                             color={overdue ? 'error' : 'text.secondary'}
                             sx={{ fontWeight: overdue ? 600 : undefined }}
                         >
-                            Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}
+                            Due: {task.dueDate ? formatDateString(task.dueDate) : '—'}
                         </Typography>
 
                         {task.status === TASKS_STATUS_OPTIONS.STATUS.WAITING && task.waitingReason && (

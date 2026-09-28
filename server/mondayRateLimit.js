@@ -1,4 +1,5 @@
 import { recordMondayCall } from "./mondayUsage.js";
+import { mirrorMondayRequest } from "./database/mirror.js";
 
 // Every server request to Monday goes through mondayFetch. When Monday
 // answers 429 (daily call limit, per-minute limit, ...), it says how long
@@ -59,6 +60,8 @@ export async function mondayFetch(url, init) {
   // Answered (successfully or with GraphQL errors) - uses one call of
   // today's allowance.
   recordMondayCall();
+  // Saves are copied to the database mirror (a no-op without DATABASE_URL).
+  mirrorMondayRequest(init?.body, response);
 
   return response;
 }

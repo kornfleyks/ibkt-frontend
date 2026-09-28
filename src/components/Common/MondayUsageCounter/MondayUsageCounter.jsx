@@ -1,23 +1,8 @@
-import { useEffect, useState } from "react";
 import { Box, LinearProgress, Tooltip, Typography } from "@mui/material";
 import useMondayUsage from "../../../hooks/useMondayUsage";
+import useNow from "../../../hooks/useNow";
 import { nextMondayLimitReset } from "../../../constants/mondayApiUsage";
 import { formatDuration } from "../../../utils/formatDuration";
-
-const TICK_MS = 30_000;
-
-// Re-renders every TICK_MS so the countdown stays current.
-function useNow() {
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), TICK_MS);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  return now;
-}
 
 // Today's Monday API usage, updated after every request, and when the
 // allowance resets - midnight UTC normally, or when Monday said a block
@@ -39,13 +24,13 @@ function MondayUsageCounter({ collapsed }) {
   const ratio = usage ? Math.min(count / limit, 1) : 0;
   const color = blocked || ratio >= 0.95 ? "error" : ratio >= 0.8 ? "warning" : "primary";
   const label = usage ? `${count.toLocaleString()} / ${limit.toLocaleString()}` : "-";
-  const tooltip = `Monday API calls used today (UTC). ${
+  const tooltip = `API requests to Monday used today (UTC). ${
     blocked ? "Monday is refusing calls until" : "The allowance resets at"
   } ${resetTime} your time.`;
 
   if (collapsed) {
     return (
-      <Tooltip title={`Monday API: ${label}. ${resetText}. ${tooltip}`} placement="right">
+      <Tooltip title={`API Requests: ${label}. ${resetText}. ${tooltip}`} placement="right">
         <Typography
           variant="caption"
           sx={{ display: "block", textAlign: "center", color: blocked ? "error.main" : "text.secondary", mt: 1 }}
@@ -58,10 +43,10 @@ function MondayUsageCounter({ collapsed }) {
 
   return (
     <Tooltip title={tooltip} placement="right">
-      <Box sx={{ px: "10px", mt: 1 }} aria-label={`Monday API calls today: ${label}. ${resetText}.`}>
+      <Box sx={{ px: "10px", mt: 1 }} aria-label={`API requests today: ${label}. ${resetText}.`}>
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            Monday API
+            API Requests
           </Typography>
           <Typography
             variant="caption"

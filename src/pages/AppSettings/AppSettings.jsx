@@ -22,8 +22,12 @@ import {
 } from '@mui/material';
 import { EditIcon, CheckIcon, CloseIcon, AddIcon } from '../../components/icons';
 import PageHeader from '../../components/PageHeader';
+import useDateFormat from '../../hooks/useDateFormat';
 import MondayUsageCounter from '../../components/Common/MondayUsageCounter';
+import DatabaseUsageCounter from '../../components/Common/DatabaseUsageCounter';
 import ServerHealthStatus from '../../components/Common/ServerHealthStatus';
+import DatabaseStatus from '../../components/Common/DatabaseStatus';
+import SyncStatus from '../../components/Common/SyncStatus';
 import {
     getSettings,
     saveSetting,
@@ -44,6 +48,7 @@ import {
 function MondayApiVersionStatus() {
     const [status, setStatus] = useState(null);
     const [failed, setFailed] = useState(false);
+    const { formatDateTime } = useDateFormat();
 
     useEffect(() => {
         let cancelled = false;
@@ -76,7 +81,7 @@ function MondayApiVersionStatus() {
     }
 
     const { severity, text } = describeMondayApiVersionStatus(status);
-    const checked = status.checkedAt ? ` Last checked ${new Date(status.checkedAt).toLocaleString()}.` : '';
+    const checked = status.checkedAt ? ` Last checked ${formatDateTime(new Date(status.checkedAt))}.` : '';
 
     return severity ? (
         <Alert severity={severity} sx={{ py: 0 }}>
@@ -555,17 +560,30 @@ function AppSettings() {
             )}
 
             {/* Monitoring: the same counter as the development sidebar (at the
-                same width) and the server's health, side by side. */}
+                same width) and the server's health, the database and its Monday sync, side by side. */}
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
                 <Card sx={{ flex: '1 1 260px', maxWidth: 320 }}>
                     <CardContent>
                         <MondayUsageCounter />
+                        <DatabaseUsageCounter />
                     </CardContent>
                 </Card>
 
                 <Card sx={{ flex: '1 1 260px', maxWidth: 320 }}>
                     <CardContent>
                         <ServerHealthStatus />
+                    </CardContent>
+                </Card>
+
+                <Card sx={{ flex: '1 1 260px', maxWidth: 320 }}>
+                    <CardContent>
+                        <DatabaseStatus />
+                    </CardContent>
+                </Card>
+
+                <Card sx={{ flex: '1 1 260px', maxWidth: 320 }}>
+                    <CardContent>
+                        <SyncStatus />
                     </CardContent>
                 </Card>
             </Box>

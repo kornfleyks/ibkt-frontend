@@ -6,6 +6,10 @@ export const MONDAY_DAILY_CALL_LIMIT = 1000;
 // "<used>/<limit>" - sent to Admins only (see server/mondayUsage.js).
 export const MONDAY_USAGE_HEADER = "X-Monday-Usage";
 
+// Today's database (Supabase mirror) request count, sent to Admins the same
+// way when the database is set up. Supabase's free plan has no daily limit.
+export const DATABASE_USAGE_HEADER = "X-Database-Usage";
+
 // Sent alongside it while Monday is refusing calls (429): seconds until
 // Monday said the block ends (its Retry-After).
 export const MONDAY_BLOCKED_HEADER = "X-Monday-Blocked-For";

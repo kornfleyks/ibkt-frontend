@@ -1,3 +1,5 @@
 node_modules
 .env
 .monday-usage.json
+.database-usage.json
+.cache/

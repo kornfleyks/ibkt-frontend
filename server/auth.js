@@ -5,6 +5,7 @@ import { getAccountState } from "./accountState.js";
 import { USERS } from "../src/constants/boards/users.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch as rateLimitedFetch } from "./mondayRateLimit.js";
+import { parsePreferences } from "../src/constants/preferences.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -49,6 +50,7 @@ function mapUserItem(item) {
     passwordHash: columns[USERS_COLUMNS.PASSWORD_HASH]?.text ?? "",
     role: columns[USERS_COLUMNS.ROLE]?.text ?? "",
     accountStatus: columns[USERS_COLUMNS.ACCOUNT_STATUS]?.text ?? "",
+    preferences: parsePreferences(columns[USERS_COLUMNS.PREFERENCES]?.text),
   };
 }
 
@@ -139,6 +141,67 @@ export async function setUserLastLogin(userId) {
   });
 }
 
+function parseJson(rawValue) {
+  try {
+    return JSON.parse(rawValue || "null");
+  } catch {
+    return null;
+  }
+}
+
+// One account's own row, for the Account page (GET /api/account and the
+// self-service updates). Includes the password hash for current-password
+// checks - never send the result to the browser as-is.
+export async function getAccountRow(userId) {
+  const query = `
+    query ($ids: [ID!]) {
+      items(ids: $ids) {
+        id
+        column_values {
+          id
+          text
+          value
+        }
+      }
+    }
+  `;
+
+  const data = await mondayFetch(query, { ids: [userId] });
+  const item = data.items?.[0];
+
+  if (!item) {
+    return null;
+  }
+
+  const columns = Object.fromEntries(item.column_values.map((column) => [column.id, column]));
+  const phone = parseJson(columns[USERS_COLUMNS.PHONE]?.value);
+
+  return {
+    ...mapUserItem(item),
+    phone: {
+      number: phone?.phone ?? columns[USERS_COLUMNS.PHONE]?.text ?? "",
+      country: phone?.countryShortName ?? "",
+    },
+    emailVerified: columns[USERS_COLUMNS.EMAIL_VERIFIED]?.text ?? "",
+    lastLoginRaw: columns[USERS_COLUMNS.LAST_LOGIN]?.value ?? null,
+  };
+}
+
+// columnValues: { [columnId]: value } in Monday's column-value format.
+export async function setUserColumns(userId, columnValues) {
+  const mutation = `
+    mutation ($boardId: ID!, $itemId: ID!, $columnValues: JSON!) {
+      change_multiple_column_values(board_id: $boardId, item_id: $itemId, column_values: $columnValues) { id }
+    }
+  `;
+
+  return mondayFetch(mutation, {
+    boardId: USERS_BOARD_ID,
+    itemId: userId,
+    columnValues: JSON.stringify(columnValues),
+  });
+}
+
 export async function createPendingUser({ firstName, lastName, email, passwordHash }) {
   const columnValues = {
     [USERS_COLUMNS.FIRST_NAME]: firstName,
@@ -185,20 +248,26 @@ export function comparePassword(password, hash) {
   return bcrypt.compare(password, hash);
 }
 
-export async function signToken(user) {
+// `session` (a verified token's own { iat, exp }, seconds since epoch)
+// re-issues a token for the same session, e.g. after a name/email change,
+// without extending it: editing a profile must not keep a session alive
+// forever. Keeping iat means "signed in at" stays the real sign-in time.
+export async function signToken(user, { session } = {}) {
+  const claims = {
+    sub: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    role: user.role,
+  };
+
+  if (session?.exp) {
+    return jwt.sign({ ...claims, iat: session.iat, exp: session.exp }, JWT_SECRET);
+  }
+
   const sessionExpiryHours = await getSessionExpiryHours();
 
-  return jwt.sign(
-    {
-      sub: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-    },
-    JWT_SECRET,
-    { expiresIn: `${sessionExpiryHours}h` },
-  );
+  return jwt.sign(claims, JWT_SECRET, { expiresIn: `${sessionExpiryHours}h` });
 }
 
 export function requireAuth(req, res, next) {

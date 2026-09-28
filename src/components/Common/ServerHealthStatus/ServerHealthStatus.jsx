@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Box, Tooltip, Typography } from "@mui/material";
+import { Box, LinearProgress, Tooltip, Typography } from "@mui/material";
 import { getServerHealth } from "../../../services/ServerHealthService";
 import { formatDuration } from "../../../utils/formatDuration";
 import { formatRelativeTime } from "../../../utils/relativeTime";
@@ -69,6 +69,28 @@ function describeKeepAlive(health) {
   return { text: "off (not on Render)", warn: false };
 }
 
+// Awake hours this month against Render's free 750 (per workspace, shared
+// by all free services). Counted in the server's memory, so after a restart
+// it only covers the time since then - the caption says which.
+function RenderHours({ hours }) {
+  const ratio = Math.min(hours.awakeThisMonth / hours.freeHours, 1);
+  const fullMonthFits = hours.fullMonthHours <= hours.freeHours;
+  const since = new Date(hours.countingSince).toLocaleString([], { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <Box sx={{ mt: 1 }}>
+        <Row label="Render hours" value={`${hours.awakeThisMonth}h / ${hours.freeHours}`} />
+        <LinearProgress variant="determinate" value={ratio * 100} sx={{ height: 4, borderRadius: 2, my: 0.5 }} />
+        <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
+          {hours.countedSinceStart ? `Counted since the last start (${since})` : "This month so far"}
+        </Typography>
+        <Typography variant="caption" sx={{ display: "block", color: fullMonthFits ? "text.secondary" : "warning.main" }}>
+          A fully awake month uses {hours.fullMonthHours}h{fullMonthFits ? " - fits for one free service" : " - more than the free hours"}
+        </Typography>
+    </Box>
+  );
+}
+
 // The app server's health (App Settings, next to the Monday API usage):
 // awake or not, uptime, response time and the keep-alive monitor's last
 // ping. Only talks to our server - never Monday.
@@ -129,7 +151,7 @@ function ServerHealthStatus() {
 
   return (
     <Tooltip
-      title="The app's server. On Render's free plan it sleeps after ~15 min without requests; on Render it pings its own /api/health every 10 min to stay awake."
+      title="The app's server. On Render's free plan it sleeps after ~15 min without requests; on Render it pings its own /api/health every 10 min to stay awake. Render hours: the free plan gives 750 a month per workspace, shared by all free services; if they run out, Render suspends every free service until the 1st."
       placement="right"
     >
       <Box sx={{ px: "10px" }} aria-label={`Server: ${current.text}`}>
@@ -166,6 +188,8 @@ function ServerHealthStatus() {
                 {keepAlive.detail}
               </Typography>
             )}
+
+            {health.renderHours && <RenderHours hours={health.renderHours} />}
           </>
         )}
       </Box>

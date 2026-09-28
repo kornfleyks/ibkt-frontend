@@ -25,6 +25,7 @@ export const USERS = {
     PASSWORD_RESET_TOKEN: "text_mm49pkgb", // Password Reset Token | text
     PASSWORD_RESET_EXPIRY: "date_mm49qrcj", // Password Reset Expiry | date
     NOTES: "long_text_mm49b7d8", // Notes | long_text
+    PREFERENCES: "long_text_mm7k5d27", // Preferences | long_text
   },
   RELATIONS: {
     LINKED_RESCUER: ["5098375508"],

@@ -14,6 +14,7 @@ import Tasks from "../pages/Tasks";
 import Users from "../pages/Users";
 import ActivityLog from "../pages/ActivityLog";
 import AppSettings from "../pages/AppSettings";
+import Account from "../pages/Account";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register";
 import Forbidden from "../pages/Forbidden";
@@ -173,6 +174,19 @@ function AppRoutes() {
             <ProtectedRoute roles={["Admin"]} emails={["billkifonidis@gmail.com"]}>
               <AppLayout>
                 <AppSettings />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute
+              roles={["Admin", "Volunteer", "Rescuer", "Foster", "Adopter"]}
+            >
+              <AppLayout>
+                <Account />
               </AppLayout>
             </ProtectedRoute>
           }

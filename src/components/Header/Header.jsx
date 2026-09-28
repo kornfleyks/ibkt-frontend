@@ -1,5 +1,5 @@
 import { useLayout } from "../../context/LayoutContext";
-import { MenuIcon, DarkModeIcon, LightModeIcon } from '../icons';
+import { MenuIcon } from '../icons';
 import { useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
@@ -10,7 +10,6 @@ import MenuItem from "@mui/material/MenuItem";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
-import { useThemeMode } from "../../context/ThemeContext";
 import GlobalSearch from "./GlobalSearch";
 import NotificationBell from "./NotificationBell";
 
@@ -20,11 +19,6 @@ function Header() {
         setSidebarOpen
     } = useLayout();
 
-    const {
-        darkMode,
-        toggleDarkMode
-    } = useThemeMode();
-    
     const navigate = useNavigate();
     const { user, logout } = useAuth();
 
@@ -40,6 +34,11 @@ function Header() {
         setAnchorEl(null);
     }
 
+
+    function openAccount(tab) {
+        handleProfileClose();
+        navigate(`/account?tab=${tab}`);
+    }
 
     function handleLogout() {
         logout();
@@ -77,17 +76,6 @@ function Header() {
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
-                <IconButton
-                    onClick={toggleDarkMode}
-                    aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-                >
-                    {
-                        darkMode
-                            ? <LightModeIcon fontSize="small" />
-                            : <DarkModeIcon fontSize="small" />
-                    }
-                </IconButton>
-
                 <NotificationBell />
 
                 <IconButton
@@ -111,11 +99,11 @@ function Header() {
                     open={profileMenuOpen}
                     onClose={handleProfileClose}
                 >
-                    <MenuItem onClick={handleProfileClose}>
+                    <MenuItem onClick={() => openAccount('profile')}>
                         Profile
                     </MenuItem>
 
-                    <MenuItem onClick={handleProfileClose}>
+                    <MenuItem onClick={() => openAccount('settings')}>
                         Settings
                     </MenuItem>
 

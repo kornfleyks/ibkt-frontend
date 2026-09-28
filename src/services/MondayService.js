@@ -1,5 +1,5 @@
 import { readAuth, clearAuth, updateStoredRole, setSignOutReason, inactiveAccountReason } from './authStorage';
-import { syncMondayUsageFromResponse } from './mondayUsage';
+import { syncUsageFromResponse } from './mondayUsage';
 
 // All Monday requests go through our own server, which holds the API
 // token. The browser never sees it (see /server/index.js).
@@ -11,7 +11,7 @@ function getAuthToken() {
 
 // requireAuth sends the account's live role on every response, so a role
 // change made by an Admin reaches this browser on its next request. Admins
-// also get today's Monday call count (development usage counter).
+// also get today's Monday and database request counts (usage counters).
 function syncRoleFromResponse(response) {
     const role = response.headers.get('X-User-Role');
 
@@ -19,7 +19,7 @@ function syncRoleFromResponse(response) {
         updateStoredRole(role);
     }
 
-    syncMondayUsageFromResponse(response);
+    syncUsageFromResponse(response);
 }
 
 // This is a plain module, not a component, so it can't read AuthContext -

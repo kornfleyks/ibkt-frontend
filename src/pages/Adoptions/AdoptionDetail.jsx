@@ -14,12 +14,14 @@ import {
 } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
 import useAuth from "../../hooks/useAuth";
+import useDateFormat from "../../hooks/useDateFormat";
 import { canSeeApplication } from "../../utils/ownership";
 import NotAssignedNotice from "../../components/Common/NotAssignedNotice";
 
 function AdoptionDetail() {
   const { id } = useParams();
   const { hasRole, user } = useAuth();
+  const { formatDateString } = useDateFormat();
   const canEdit = hasRole("Admin");
 
   const [adoption, setAdoption] = useState(null);
@@ -126,7 +128,7 @@ function AdoptionDetail() {
             <InfoRow label="City" value={adoption.city} />
             <InfoRow label="Address" value={adoption.address} />
             <InfoRow label="Application ID" value={adoption.applicationId} />
-            <InfoRow label="Created" value={adoption.creationDate} />
+            <InfoRow label="Created" value={formatDateString(adoption.creationDate)} />
           </SectionCard>
         </Grid>
 

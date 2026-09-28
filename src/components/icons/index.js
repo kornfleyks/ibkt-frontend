@@ -28,7 +28,6 @@ import {
   LogOut,
   Mention,
   Menu,
-  Moon,
   MoveArrowRight,
   Notifications,
   Person,
@@ -36,7 +35,6 @@ import {
   Search,
   Settings,
   Show,
-  Sun,
   Team,
   Time,
   Upload,
@@ -73,7 +71,6 @@ export const CheckCircleIcon = fromVibe(Completed, "CheckCircleIcon");
 export const CheckIcon = fromVibe(Check, "CheckIcon");
 export const CheckListIcon = fromVibe(CheckList, "CheckListIcon");
 export const CloseIcon = fromVibe(Close, "CloseIcon");
-export const DarkModeIcon = fromVibe(Moon, "DarkModeIcon");
 export const DashboardIcon = fromVibe(Dashboard, "DashboardIcon");
 export const DeleteIcon = fromVibe(Delete, "DeleteIcon");
 export const EditIcon = fromVibe(Edit, "EditIcon");
@@ -84,7 +81,6 @@ export const GroupIcon = fromVibe(Team, "GroupIcon");
 export const HistoryIcon = fromVibe(Time, "HistoryIcon");
 export const InfoIcon = fromVibe(Info, "InfoIcon");
 export const KeyIcon = fromVibe(Key, "KeyIcon");
-export const LightModeIcon = fromVibe(Sun, "LightModeIcon");
 export const LinkIcon = fromVibe(Link, "LinkIcon");
 export const LockIcon = fromVibe(Locked, "LockIcon");
 export const LoginIcon = fromVibe(LogIn, "LoginIcon");

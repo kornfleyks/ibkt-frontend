@@ -1,7 +1,7 @@
 import { COMMUNICATION_BOARDS } from "../src/constants/communicationBoards.js";
 import { extractMentionIds, keepAllowedMentions } from "../src/utils/mentions.js";
 import { mondayDirectRequest } from "./mondayClient.js";
-import { listActiveAccounts } from "./accountState.js";
+import { listActiveAccounts, findKnownAccount, isAccountStateReady, displayNameOf } from "./accountState.js";
 import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemName } from "./activityLog.js";
 import { notifyMentions } from "./notifications.js";
@@ -22,6 +22,38 @@ export function registerCommunicationRoutes(app, { requireAuth }) {
   // Who can be @mentioned: Active accounts only, id/name/role, from memory.
   app.get("/api/users/mentionable", requireAuth, (req, res) => {
     res.json({ users: listActiveAccounts() });
+  });
+
+  // The card shown when someone clicks an @mention: name, role and contact
+  // details, visible to every signed-in user (agreed 2026-09-27). From
+  // memory only - no Monday call, and unknown ids are simply not found.
+  app.get("/api/users/:id/profile-card", requireAuth, (req, res) => {
+    const { id } = req.params;
+
+    if (!ITEM_ID_PATTERN.test(id)) {
+      return res.status(400).json({ error: "Invalid user id." });
+    }
+
+    if (!isAccountStateReady()) {
+      return res.status(503).json({ error: "User details are still loading. Try again in a moment." });
+    }
+
+    const account = findKnownAccount(id);
+
+    if (!account) {
+      return res.status(404).json({ error: "This user no longer exists." });
+    }
+
+    res.json({
+      user: {
+        id,
+        name: displayNameOf(account, id),
+        role: account.role,
+        accountStatus: account.accountStatus,
+        email: account.email,
+        phone: account.phone,
+      },
+    });
   });
 
   // Body: { text }. Responds with the created update, in the same shape the

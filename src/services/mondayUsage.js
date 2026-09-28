@@ -1,17 +1,24 @@
-import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER } from '../constants/mondayApiUsage';
+import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER } from '../constants/mondayApiUsage';
 
-// Today's Monday API call count as counted by our server, read off the
-// X-Monday-Usage header it sends Admins on every response. Components
-// subscribe through the window event (see hooks/useMondayUsage).
+// Today's request counts as counted by our server, read off the headers it
+// sends Admins on every response: Monday API calls (X-Monday-Usage) and
+// database requests (X-Database-Usage). Components subscribe through the
+// window events (see hooks/useMondayUsage, hooks/useDatabaseUsage).
 export const MONDAY_USAGE_EVENT = 'ibkt:monday-usage';
+export const DATABASE_USAGE_EVENT = 'ibkt:database-usage';
 
 let latest = null;
+let latestDatabase = null;
 
 export function getLatestMondayUsage() {
     return latest;
 }
 
-export function syncMondayUsageFromResponse(response) {
+export function getLatestDatabaseUsage() {
+    return latestDatabase;
+}
+
+function syncMondayUsage(response) {
     const match = /^(\d+)\/(\d+)$/.exec(response.headers.get(MONDAY_USAGE_HEADER) ?? '');
 
     if (!match) {
@@ -36,4 +43,26 @@ export function syncMondayUsageFromResponse(response) {
 
     latest = next;
     window.dispatchEvent(new CustomEvent(MONDAY_USAGE_EVENT, { detail: next }));
+}
+
+function syncDatabaseUsage(response) {
+    const header = response.headers.get(DATABASE_USAGE_HEADER);
+
+    if (header === null || !/^\d+$/.test(header)) {
+        return;
+    }
+
+    const next = { count: Number(header) };
+
+    if (latestDatabase?.count === next.count) {
+        return;
+    }
+
+    latestDatabase = next;
+    window.dispatchEvent(new CustomEvent(DATABASE_USAGE_EVENT, { detail: next }));
+}
+
+export function syncUsageFromResponse(response) {
+    syncMondayUsage(response);
+    syncDatabaseUsage(response);
 }

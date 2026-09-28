@@ -40,6 +40,7 @@ import UserActionsMenu from '../../components/Users/UserActionsMenu';
 import { ACTIONS_BY_STATUS, HANDOVER_STATUSES, USER_STATUS_ACTIONS } from '../../components/Users/userStatusActions';
 import { formatRelativeTime } from '../../utils/relativeTime';
 import useAuth from '../../hooks/useAuth';
+import useDateFormat from '../../hooks/useDateFormat';
 import { visibleScrollbarSx } from '../../utils/scrollbarSx';
 
 const ROLE_OPTIONS = Object.values(USERS_STATUS_OPTIONS.ROLE);
@@ -358,6 +359,7 @@ function PasswordCell({ user }) {
 
 function UserRow({ user, isSelf, onRequestRole, onRequestAction, onOpenDetails, onUpdate }) {
     const isRoleLocked = user.email?.trim().toLowerCase() === ROLE_LOCKED_EMAIL;
+    const { formatDateTime } = useDateFormat();
     // You can't take your own account out of action (the server refuses too).
     const actions = (ACTIONS_BY_STATUS[user.accountStatus] ?? []).filter(
         (action) => !(isSelf && HANDOVER_STATUSES.includes(USER_STATUS_ACTIONS[action].status)),
@@ -401,7 +403,7 @@ function UserRow({ user, isSelf, onRequestRole, onRequestAction, onOpenDetails, 
                 <Chip label={user.accountStatus || 'N/A'} color={getStatusColor(user.accountStatus)} size="small" />
             </TableCell>
 
-            <TableCell sx={{ whiteSpace: 'nowrap' }} title={user.lastLogin ? user.lastLogin.toLocaleString() : undefined}>
+            <TableCell sx={{ whiteSpace: 'nowrap' }} title={user.lastLogin ? formatDateTime(user.lastLogin) : undefined}>
                 {formatRelativeTime(user.lastLogin) ?? 'Never'}
             </TableCell>
 
@@ -515,6 +517,23 @@ function Users() {
             item.status ? users.filter((user) => user.accountStatus === item.status).length : users.length,
         ]),
     );
+
+    // ?user=<id> (e.g. "Open in Users" on an @mention's profile card) opens
+    // that person's details once the list has loaded.
+    const linkedUserId = searchParams.get('user');
+    const shownUser = detailUser ?? (linkedUserId ? users.find((user) => String(user.id) === linkedUserId) ?? null : null);
+
+    function closeDetails() {
+        setDetailUser(null);
+
+        if (linkedUserId) {
+            setSearchParams((current) => {
+                const next = new URLSearchParams(current);
+                next.delete('user');
+                return next;
+            }, { replace: true });
+        }
+    }
 
     // Tab from ?tab=, else All.
     const requestedTab = tabIndex(searchParams.get('tab'));
@@ -645,7 +664,7 @@ function Users() {
                 />
             )}
 
-            <UserDetailDrawer key={detailUser?.id ?? 'closed'} user={detailUser} onClose={() => setDetailUser(null)} />
+            <UserDetailDrawer key={shownUser?.id ?? 'closed'} user={shownUser} onClose={closeDetails} />
         </>
     );
 }

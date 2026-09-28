@@ -1,5 +1,6 @@
 import { TASKS_STATUS_OPTIONS } from "../constants/statuses/tasksStatuses";
 import { canSeeTask } from "./ownership";
+import { formatDate, parseDateOnly } from "./formatDate";
 
 const { STATUS } = TASKS_STATUS_OPTIONS;
 
@@ -46,10 +47,8 @@ export function selectUpcomingTasks(tasks, user, days) {
     .map((task) => ({ ...task, beyondWindow: task.dueDate > lastDay }));
 }
 
-// Due dates are "YYYY-MM-DD"; `new Date(string)` would read that as UTC
-// midnight and can show the previous day west of UTC.
-export function formatDueDate(dueDate) {
-  const [year, month, day] = dueDate.slice(0, 10).split("-").map(Number);
-
-  return new Date(year, month - 1, day).toLocaleDateString();
+// Due dates are "YYYY-MM-DD" (read as a local date - see parseDateOnly),
+// shown in the user's date format.
+export function formatDueDate(dueDate, dateFormat) {
+  return formatDate(parseDateOnly(dueDate), dateFormat);
 }

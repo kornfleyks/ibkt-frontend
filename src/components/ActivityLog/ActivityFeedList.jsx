@@ -2,6 +2,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { Stack, Typography, Avatar, Box, Chip, Link } from '@mui/material';
 import { ArrowForwardIcon } from '../icons';
 import activityTypes, { DEFAULT_ACTIVITY_TYPE } from './activityTypes';
+import useDateFormat from '../../hooks/useDateFormat';
 
 // Board name -> route, for entries that can be jumped to directly. Only
 // Users has a page today; entries for boards without one just render as
@@ -23,6 +24,8 @@ function isLinkableEntry(entry) {
 // Activity feed - `showItemContext` adds a board/item chip, which only the
 // global feed (not scoped to one item already) needs.
 function ActivityFeedList({ entries, showItemContext = false, emptyMessage = 'No activity recorded yet.' }) {
+    const { formatDateTime } = useDateFormat();
+
     if (entries.length === 0) {
         return (
             <Typography color="text.secondary" sx={{ py: 2 }}>
@@ -82,7 +85,9 @@ function ActivityFeedList({ entries, showItemContext = false, emptyMessage = 'No
                             </Stack>
 
                             <Typography variant="body2" color="text.secondary">
-                                {entry.timestamp} • {entry.actorName || 'Unknown'}
+                                {/* occurredAt is the UTC time the server wrote; the raw
+                                    text is in the Monday account's timezone. */}
+                                {formatDateTime(entry.occurredAt) || entry.timestamp} • {entry.actorName || 'Unknown'}
                             </Typography>
                         </Box>
                     </Box>
