@@ -77,6 +77,12 @@ a database would need. Optional: without `DATABASE_URL` nothing changes.
   Monday calls, covers every server write. Failures are only logged.
 - `GET /api/admin/database-health` (Admin) - size vs 500 MB, rows/space per
   table, queries today, mirror status - shown on App Settings.
+- `GET /api/admin/database-tables/:table/rows?limit=&offset=` (Admin,
+  **only where `APP_ENV=development`**, else 404) - a page of a table's rows,
+  newest first, opened by clicking a table on the Database card
+  (`database/tableRows.js`). Password hash and login / reset token columns
+  (and anything named like a password, token or secret) are never sent.
+  Keep `APP_ENV` unset or `production` on Render: it shares the database.
 - Full detail (database-first plan, `docs/database-migration-plan.md`):
   companion columns keep what Monday needs back (`<date>_time`,
   `<country>_code`, `<phone>_country`, `<email>_text`); status/dropdown
@@ -329,6 +335,40 @@ active Admin or the Case Owner, and is notified when made owner or taken
 off. Escalation Required set to Urgent notifies the Case Owner and every
 Admin. Only Admins and the Case Owner may use these routes; `/api/upload`
 and `/api/monday` refuse the photos column.
+
+## Screening (`screening/`) and AI reviews (`aiReview/`)
+
+The application's Screening tab: Call 1, the home video, Call 2. Uploaded
+call transcripts go to the Monday file columns "Call 1 Transcript" / "Call 2
+Transcript" (`scripts/createCallTranscriptColumns.js`) and the video to
+Video, each with uploader details (`itemFiles.js`); pasted transcripts are
+kept only in the database (`call_transcripts`). `/api/upload` and
+`/api/monday` refuse these columns.
+
+- `GET /api/applications/:id/screening`; `POST|DELETE
+  .../screening/calls/:call/files[/:assetId]`, `POST|DELETE
+  .../screening/calls/:call/texts[/:textId]` (`{ text }`, up to 300,000
+  characters; the JSON body limit is 2 MB for this), `POST|DELETE
+  .../screening/video[/:assetId]`.
+
+AI reviews make a **draft** that someone accepts whole (saved into the
+application like any change: logged, sent to Monday) or discards. Kinds and
+fields: `src/constants/aiReviews.js` - the form review (from the form
+answers) and the Call 1 / Call 2 reviews (from that call's transcripts).
+Every run is kept in `ai_runs` with its input and output; a new run
+replaces an open draft. The AI fields are written only by accepting a
+draft (`/api/applications/:id` keeps them read-only).
+
+- `GET /api/applications/:id/ai` - `{ provider, available, mock, draft, runs }`.
+- `POST .../ai/reviews` `{ kind }`, `GET .../ai/reviews/:runId`,
+  `POST .../ai/reviews/:runId/accept`, `POST .../ai/reviews/:runId/discard`.
+
+The provider is chosen by `AI_PROVIDER` (`aiReview/provider.js`); only
+`mock` exists so far (the default): clearly marked sample text from simple
+rules, nothing sent anywhere. A real provider is one module with the same
+`review({ kind, fields, inputs })` and its API key; its answer is always
+checked against the kind's fields (status labels, 0-100 risk score) before
+it becomes a draft. Screening and AI reviews are Admin / Case Owner only.
 
 ## Own account (`account.js`)
 

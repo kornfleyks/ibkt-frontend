@@ -62,7 +62,17 @@ function AuthProvider({ children }) {
 
         updateStoredRole(role);
       },
-      onUnauthorized: () => signOutInactive(null),
+      // An expired session signs out quietly, as any other request's 401
+      // does; only an inactive account gets the explanation.
+      onUnauthorized: ({ inactive }) => {
+        if (inactive) {
+          signOutInactive(null);
+          return;
+        }
+
+        clearAuth();
+        setAuth(null);
+      },
     });
   }, [token]);
 

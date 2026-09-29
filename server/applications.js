@@ -43,6 +43,8 @@ export const APPLICATION_FIELDS = {
   aiSummary: { column: A.AI_SUMMARY },
   aiMissingInformation: { column: A.AI_MISSING_INFORMATION },
   suggestedNextAction: { column: A.SUGGESTED_NEXT_ACTION },
+  // Read-only here: AI fields are written only by accepting an AI draft.
+  aiRiskScore: { column: A.AI_RISK_SCORE },
   // Linked Cat holds a whole bonded group when a pair is matched.
   linkedCats: { column: A.LINKED_CAT, read: "items" },
   linkedCatIds: { column: A.LINKED_CAT, read: "ids", write: "links", shownBy: "linkedCatName", label: "Linked Cat" },
@@ -51,14 +53,18 @@ export const APPLICATION_FIELDS = {
   applicationId: { column: A.APPLICATION_ID },
   creationDate: { column: A.CREATION_DATE },
   address: { column: A.ADDRESS },
-  call1Completed: { column: A.CALL_1_COMPLETED },
-  call1Summary: { column: A.CALL_1_SUMMARY },
-  call1Sentiment: { column: A.CALL_1_SENTIMENT },
-  call2Required: { column: A.CALL_2_REQUIRED },
-  call2Summary: { column: A.CALL_2_SUMMARY },
-  videoSubmitted: { column: A.VIDEO_SUBMITTED },
-  videoReviewNotes: { column: A.VIDEO_REVIEW_NOTES },
-  videoApproved: { column: A.VIDEO_APPROVED },
+  // Screening (the Screening tab edits these; AI call reviews can fill the
+  // summaries and sentiment when accepted - see aiReview/).
+  call1Completed: { column: A.CALL_1_COMPLETED, write: "status" },
+  call1Date: { column: A.CALL_1_DATE, write: "date" },
+  call1Summary: { column: A.CALL_1_SUMMARY, write: "longText" },
+  call1Sentiment: { column: A.CALL_1_SENTIMENT, write: "status" },
+  call2Required: { column: A.CALL_2_REQUIRED, write: "status" },
+  call2Date: { column: A.CALL_2_DATE, write: "date" },
+  call2Summary: { column: A.CALL_2_SUMMARY, write: "longText" },
+  videoSubmitted: { column: A.VIDEO_SUBMITTED, write: "status" },
+  videoReviewNotes: { column: A.VIDEO_REVIEW_NOTES, write: "longText" },
+  videoApproved: { column: A.VIDEO_APPROVED, write: "status" },
   referencesSubmitted: { column: A.REFERENCES_SUBMITTED },
   referee1: { column: A.REFEREE_1 },
   referee2: { column: A.REFEREE_2 },
@@ -75,6 +81,18 @@ export const APPLICATION_FIELDS = {
   paymentStatus: { column: A.PAYMENT_STATUS, write: "status" },
   paymentDate: { column: A.PAYMENT_DATE, write: "date" },
   internalNotes: { column: A.INTERNAL_NOTES, write: "longText" },
+  // Which Jotform form / submission each part came from. Read-only here:
+  // only the Jotform handlers (server/jotform/) set them.
+  jotformApplicationFormId: { column: A.JOTFORM_APPLICATION_FORM_ID },
+  jotformApplicationSubmissionId: { column: A.JOTFORM_APPLICATION_SUBMISSION_ID },
+  jotformAdoptionFormFormId: { column: A.JOTFORM_ADOPTION_FORM_FORM_ID },
+  jotformAdoptionFormSubmissionId: { column: A.JOTFORM_ADOPTION_FORM_SUBMISSION_ID },
+  jotformReferenceFormId: { column: A.JOTFORM_REFERENCE_FORM_ID },
+  jotformReference1SubmissionId: { column: A.JOTFORM_REFERENCE_1_SUBMISSION_ID },
+  jotformReference2SubmissionId: { column: A.JOTFORM_REFERENCE_2_SUBMISSION_ID },
+  jotformReference3SubmissionId: { column: A.JOTFORM_REFERENCE_3_SUBMISSION_ID },
+  jotformContractFormId: { column: A.JOTFORM_CONTRACT_FORM_ID },
+  jotformContractSubmissionId: { column: A.JOTFORM_CONTRACT_SUBMISSION_ID },
 };
 
 export function listApplications() {

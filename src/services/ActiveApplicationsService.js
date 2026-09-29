@@ -66,6 +66,17 @@ export const ADOPTION_EDITABLE_FIELDS = {
     column: ACTIVE_APPLICATIONS.COLUMNS.PAYMENT_DATE,
     type: "date",
   },
+  // Screening tab.
+  call1Completed: { column: ACTIVE_APPLICATIONS.COLUMNS.CALL_1_COMPLETED, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.CALL_1_COMPLETED) },
+  call1Date: { column: ACTIVE_APPLICATIONS.COLUMNS.CALL_1_DATE, type: "date" },
+  call1Summary: { column: ACTIVE_APPLICATIONS.COLUMNS.CALL_1_SUMMARY, type: "long_text" },
+  call1Sentiment: { column: ACTIVE_APPLICATIONS.COLUMNS.CALL_1_SENTIMENT, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.CALL_1_SENTIMENT) },
+  call2Required: { column: ACTIVE_APPLICATIONS.COLUMNS.CALL_2_REQUIRED, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.CALL_2_REQUIRED) },
+  call2Date: { column: ACTIVE_APPLICATIONS.COLUMNS.CALL_2_DATE, type: "date" },
+  call2Summary: { column: ACTIVE_APPLICATIONS.COLUMNS.CALL_2_SUMMARY, type: "long_text" },
+  videoSubmitted: { column: ACTIVE_APPLICATIONS.COLUMNS.VIDEO_SUBMITTED, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.VIDEO_SUBMITTED) },
+  videoReviewNotes: { column: ACTIVE_APPLICATIONS.COLUMNS.VIDEO_REVIEW_NOTES, type: "long_text" },
+  videoApproved: { column: ACTIVE_APPLICATIONS.COLUMNS.VIDEO_APPROVED, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.VIDEO_APPROVED) },
   internalNotes: {
     column: ACTIVE_APPLICATIONS.COLUMNS.INTERNAL_NOTES,
     type: "long_text",
@@ -234,7 +245,7 @@ export async function updateAdoptionField(id, field, value) {
 
   const payload =
     config.type === "status"
-      ? { label: value }
+      ? (value ? { label: value } : {})
       : config.type === "long_text"
         ? { text: value }
         : config.type === "date"

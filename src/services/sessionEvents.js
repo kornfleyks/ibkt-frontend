@@ -36,6 +36,18 @@ function parseBlock(block) {
     }
 }
 
+// Whether a 401 means the account itself is no longer active (the same
+// check MondayService's requests make), rather than an expired session.
+async function isInactiveAccount(response) {
+    try {
+        const body = await response.json();
+
+        return body?.code === 'ACCOUNT_INACTIVE';
+    } catch {
+        return false;
+    }
+}
+
 // Keeps the server's /api/session/events stream open for the signed-in
 // user and reports live account state changes.
 //
@@ -44,7 +56,9 @@ function parseBlock(block) {
 // the token into the URL (and into access logs).
 //
 // onAccount({ role, accountStatus }) - on connect and on every change.
-// onUnauthorized() - the server refused the session (e.g. suspended).
+// onUnauthorized({ inactive }) - the server refused the session: `inactive`
+// when the account is suspended / archived / gone (code ACCOUNT_INACTIVE),
+// otherwise the session simply expired or is invalid.
 // Returns stop(); reconnects with backoff on network drops until stopped.
 export function connectSessionEvents({ onAccount, onUnauthorized }) {
     let stopped = false;
@@ -69,7 +83,7 @@ export function connectSessionEvents({ onAccount, onUnauthorized }) {
 
             if (response.status === 401) {
                 stopped = true;
-                onUnauthorized();
+                onUnauthorized({ inactive: await isInactiveAccount(response) });
                 return;
             }
 

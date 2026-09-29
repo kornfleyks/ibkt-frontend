@@ -56,6 +56,7 @@ export function mapMondayActiveApplication(item) {
       columns[ACTIVE_APPLICATIONS.COLUMNS.SUGGESTED_QUESTIONS]?.text ?? "",
 
     aiSummary: columns[ACTIVE_APPLICATIONS.COLUMNS.AI_SUMMARY]?.text ?? "",
+    aiRiskScore: columns[ACTIVE_APPLICATIONS.COLUMNS.AI_RISK_SCORE]?.text ?? "",
 
     aiMissingInformation:
       columns[ACTIVE_APPLICATIONS.COLUMNS.AI_MISSING_INFORMATION]?.text ?? "",
@@ -75,10 +76,12 @@ export function mapMondayActiveApplication(item) {
     address: columns[ACTIVE_APPLICATIONS.COLUMNS.ADDRESS]?.text ?? "",
 
     call1Completed: columns[ACTIVE_APPLICATIONS.COLUMNS.CALL_1_COMPLETED]?.text ?? "",
+    call1Date: columns[ACTIVE_APPLICATIONS.COLUMNS.CALL_1_DATE]?.text ?? "",
     call1Summary: columns[ACTIVE_APPLICATIONS.COLUMNS.CALL_1_SUMMARY]?.text ?? "",
     call1Sentiment: columns[ACTIVE_APPLICATIONS.COLUMNS.CALL_1_SENTIMENT]?.text ?? "",
     call2Required: columns[ACTIVE_APPLICATIONS.COLUMNS.CALL_2_REQUIRED]?.text ?? "",
     call2Summary: columns[ACTIVE_APPLICATIONS.COLUMNS.CALL_2_SUMMARY]?.text ?? "",
+    call2Date: columns[ACTIVE_APPLICATIONS.COLUMNS.CALL_2_DATE]?.text ?? "",
 
     videoSubmitted: columns[ACTIVE_APPLICATIONS.COLUMNS.VIDEO_SUBMITTED]?.text ?? "",
     videoReviewNotes: columns[ACTIVE_APPLICATIONS.COLUMNS.VIDEO_REVIEW_NOTES]?.text ?? "",

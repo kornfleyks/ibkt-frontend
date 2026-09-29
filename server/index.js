@@ -49,6 +49,7 @@ import { getMondayUsage } from "./mondayUsage.js";
 import { syncMondayUsageFromMonday } from "./mondayUsageSync.js";
 import { registerHealthRoutes, startKeepAlive } from "./serverHealth.js";
 import { registerDatabaseHealthRoutes } from "./database/databaseHealth.js";
+import { registerTableRowsRoutes } from "./database/tableRows.js";
 import { registerDataRoutes } from "./database/dataRoutes.js";
 import { registerSyncRoutes } from "./database/syncRoutes.js";
 import { startSyncSchedule } from "./database/sync.js";
@@ -62,6 +63,8 @@ import { registerApplicationRoutes } from "./applications.js";
 import { registerContractRoutes, CONTRACT_FILE_COLUMN_ID } from "./contracts.js";
 import { registerPostAdoptionRoutes } from "./postAdoption/routes.js";
 import { PHOTOS_COLUMN_ID as POST_ADOPTION_PHOTOS_COLUMN_ID } from "./postAdoption/fields.js";
+import { registerScreeningRoutes, TRANSCRIPT_COLUMNS, VIDEO_COLUMN_ID } from "./screening/routes.js";
+import { registerAiReviewRoutes } from "./aiReview/routes.js";
 import { addFileToColumn } from "./mondayFiles.js";
 import { registerReadOnlyBoardRoutes } from "./readOnlyBoards.js";
 import { registerUserRoutes } from "./users.js";
@@ -90,11 +93,16 @@ if (!REGISTRATION_INVITE_CODE) {
 const ITEM_ID_PATTERN = /^\d+$/;
 
 // File columns only their own routes may change (contracts.js,
-// postAdoption/routes.js): /api/upload and /api/monday refuse them.
+// postAdoption/routes.js, screening/routes.js): /api/upload and /api/monday
+// refuse them.
 const PROTECTED_FILE_COLUMNS = [
   { columnId: CONTRACT_FILE_COLUMN_ID, error: "Contract files can only be changed from the application's Contracts tab." },
   { columnId: POST_ADOPTION_PHOTOS_COLUMN_ID, error: "Post-adoption photos can only be changed from the application's Post Adoption tab." },
+  { columnId: TRANSCRIPT_COLUMNS[1], error: "Call transcripts can only be changed from the application's Screening tab." },
+  { columnId: TRANSCRIPT_COLUMNS[2], error: "Call transcripts can only be changed from the application's Screening tab." },
+  { columnId: VIDEO_COLUMN_ID, error: "The home video can only be changed from the application's Screening tab." },
 ];
+
 const COLUMN_ID_PATTERN = /^[a-zA-Z0-9_]+$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACTIVE_ACCOUNT_STATUSES = new Set(["Active"]);
@@ -249,7 +257,8 @@ const app = express();
 
 // X-User-Role is set by requireAuth so the app can pick up a role change live.
 app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role", MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER] }));
-app.use(express.json());
+// 2 MB: a pasted call transcript (Screening tab) can pass the 100 KB default.
+app.use(express.json({ limit: "2mb" }));
 
 // Admins get today's Monday call count on every JSON response (for the
 // development usage counter in the sidebar). Read at send time, so it
@@ -474,6 +483,8 @@ registerCatRoutes(app, { requireAuth });
 registerApplicationRoutes(app, { requireAuth });
 registerContractRoutes(app, { requireAuth });
 registerPostAdoptionRoutes(app, { requireAuth });
+registerScreeningRoutes(app, { requireAuth });
+registerAiReviewRoutes(app, { requireAuth });
 registerReadOnlyBoardRoutes(app, { requireAuth });
 registerUserRoutes(app, { requireAuth, requireAdmin });
 registerCommunicationRoutes(app, { requireAuth });
@@ -481,6 +492,7 @@ registerAccountRoutes(app, { requireAuth });
 registerMondayApiVersionRoutes(app, { requireAuth, requireAdmin });
 registerHealthRoutes(app, { requireAuth, requireAdmin });
 registerDatabaseHealthRoutes(app, { requireAuth, requireAdmin });
+registerTableRowsRoutes(app, { requireAuth, requireAdmin });
 registerDataRoutes(app, { requireAuth, requireAdmin });
 registerSyncRoutes(app, { requireAuth, requireAdmin });
 
@@ -540,8 +552,8 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "Case Owner can only be changed through the case owner endpoint." });
   }
 
-  // Contract and post-adoption photo files go through their own routes
-  // (access check, uploader details).
+  // Protected file columns go through their own routes (access check,
+  // uploader details).
   const protectedFileColumn = PROTECTED_FILE_COLUMNS.find(
     ({ columnId }) => query.includes(columnId) || JSON.stringify(variables ?? {}).includes(columnId),
   );
@@ -756,8 +768,8 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
     return res.status(400).json({ error: "Invalid itemId or columnId." });
   }
 
-  // Contract and post-adoption photo files have their own routes, which
-  // check access and record who uploaded them.
+  // Protected file columns have their own routes, which check access and
+  // record who uploaded them.
   const protectedFileColumn = PROTECTED_FILE_COLUMNS.find((column) => column.columnId === columnId);
 
   if (protectedFileColumn) {

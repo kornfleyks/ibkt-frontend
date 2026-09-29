@@ -1,6 +1,6 @@
 import { Chip, Divider, Stack, Typography } from "@mui/material";
 import SectionCard from "../../../Common/SectionCard";
-import RecordField from "./RecordField";
+import RecordField from "../../../Common/RecordField";
 import { ESCALATION_COLORS } from "./statusColors";
 import { POST_ADOPTION_STATUS_OPTIONS } from "../../../../constants/statuses/postAdoptionStatuses";
 

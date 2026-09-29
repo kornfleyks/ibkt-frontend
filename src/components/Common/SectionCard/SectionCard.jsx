@@ -4,13 +4,16 @@ import {
     Typography
 } from '@mui/material';
 
+// `sx` styles the card itself, e.g. { height: "100%" } so cards side by side
+// in a grid row are the same height.
 function SectionCard({
         title,
-        children
-    }) 
+        children,
+        sx
+    })
     {
         return (
-            <Card>
+            <Card sx={sx}>
                 <CardContent>
                     {title && (
                         <Typography

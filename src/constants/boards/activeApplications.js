@@ -27,11 +27,17 @@ export const ACTIVE_APPLICATIONS = {
     AI_CONCERNS: "long_text_mm487e1r", // AI Concerns | long_text
     SUGGESTED_QUESTIONS: "long_text_mm48c6qe", // Suggested Questions | long_text
     AI_SUMMARY: "long_text_mm482jhj", // AI Summary | long_text
+    AI_RISK_SCORE: "numeric_mm481h8d", // AI Risk Score | numbers (0-100, higher = riskier)
     CALL_1_COMPLETED: "color_mm4gx5v1", // Call 1 Completed | status
+    CALL_1_DATE: "date_mm4876bw", // Call 1 Date | date
+    // File columns for uploaded transcripts (scripts/createCallTranscriptColumns.js).
+    CALL_1_TRANSCRIPT: "file_mm7m93m8", // Call 1 Transcript | file
     CALL_1_SUMMARY: "long_text_mm48pz6y", // Call 1 Summary | long_text
     CALL_1_SENTIMENT: "color_mm4grk8w", // Call 1 Sentiment | status
     CALL_2_REQUIRED: "color_mm4gwfe", // Call 2 Required | status
     CALL_2_SUMMARY: "long_text_mm487q03", // Call 2 Summary | long_text
+    CALL_2_DATE: "date_mm48jscw", // Call 2 Date | date
+    CALL_2_TRANSCRIPT: "file_mm7mcbhg", // Call 2 Transcript | file
     VIDEO_SUBMITTED: "color_mm4g8c73", // Video Submitted | status
     VIDEO: "file_mm48ah45", // Video | file
     VIDEO_REVIEW_NOTES: "long_text_mm481hjf", // Video Review Notes | long_text
@@ -62,6 +68,18 @@ export const ACTIVE_APPLICATIONS = {
     CASE_HEALTH: "color_mm4gf5qt", // Case Health | status
     LINKED_POST_ADOPTION_MANAGEMENT: "board_relation_mm49xt5w", // Linked Post-Adoption Management | board_relation
     LINKED_POST_ADOPTION_MANAGEMENT_ID: "lookup_mm49fh76", // Linked Post-Adoption Management ID | mirror
+    // Which Jotform form / submission each part of the application came
+    // from (scripts/createJotformColumns.js; filled by server/jotform/).
+    JOTFORM_APPLICATION_FORM_ID: "text_mm7nn4a0", // Jotform Application Form ID | text
+    JOTFORM_APPLICATION_SUBMISSION_ID: "text_mm7n34tx", // Jotform Application Submission ID | text
+    JOTFORM_ADOPTION_FORM_FORM_ID: "text_mm7nj5hd", // Jotform Adoption Form Form ID | text
+    JOTFORM_ADOPTION_FORM_SUBMISSION_ID: "text_mm7n45g8", // Jotform Adoption Form Submission ID | text
+    JOTFORM_REFERENCE_FORM_ID: "text_mm7nmkfh", // Jotform Reference Form ID | text
+    JOTFORM_REFERENCE_1_SUBMISSION_ID: "text_mm7nz7wr", // Jotform Reference 1 Submission ID | text
+    JOTFORM_REFERENCE_2_SUBMISSION_ID: "text_mm7ngv51", // Jotform Reference 2 Submission ID | text
+    JOTFORM_REFERENCE_3_SUBMISSION_ID: "text_mm7n6r58", // Jotform Reference 3 Submission ID | text
+    JOTFORM_CONTRACT_FORM_ID: "text_mm7nkcsd", // Jotform Contract Form ID | text
+    JOTFORM_CONTRACT_SUBMISSION_ID: "text_mm7nphp8", // Jotform Contract Submission ID | text
   },
   RELATIONS: {
     LINKED_CAT: ["5098369241"],

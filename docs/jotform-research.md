@@ -107,6 +107,31 @@ For the integration, this means **the app must match submissions to a person by 
 
 ## 4. Form inventory
 
+### Which forms are really used (checked 2026-09-29)
+
+Submissions received in the last 30, 90 and 365 days:
+
+| Form | 30 days | 90 days | 1 year | Use |
+|---|---|---|---|---|
+| Pre-Adoption Form | 71 | 197 | 599 | **Daily** |
+| Foster Agreement | 25 | 59 | 181 | **Weekly** |
+| Reference Check - IBKT | 15 | 49 | 148 | **Weekly** |
+| Cat Passport | 1 | 11 | 52 | Regular |
+| Adoption Form and References | 3 | 13 | 45 | Regular |
+| Kitty Profile For Rehoming | 4 | 14 | 43 | Regular |
+| UAE Adoption Form & Agreement | 4 | 12 | 31 | Regular |
+| Pet Adoption Contract - Scotland only | 2 | 8 | 26 | Regular |
+| Pet Adoption Contract - England & Wales only | 1 | 4 | 23 | Regular |
+| IBKT Foster Compliance & Safeguarding Form | 1 | 5 | 8 | New (March 2026) |
+| Pet Surrender Form | 0 | 1 | 3 | Rare |
+| Foster Call Back Request | 0 | 0 | 2 | Stopped (last Dec 2025) |
+| Photography Accident Waiver, Welfare Check Form, Pet Adoption Contract - USA only, USA 1 Pet Adoption Contract, USA Adoption Form & Agreement, Clone of Adoption Form and References | 0 | 0 | 0 | Enabled but unused |
+| The 13 disabled forms | 0 | 0 | 0 | Off |
+
+What a year looks like: about 600 Pre-Adoption enquiries lead to about 45 "final stage" applications, about 148 references (roughly 3 per applicant, so about 50 applicants) and about 49 UK contracts (26 Scotland, 23 England & Wales). Separately, about 31 UAE all-in-one applications. So fewer than 1 in 10 enquiries reaches a contract.
+
+The client's website (Wix) loads its form embeds with JavaScript, so which page shows which form couldn't be confirmed from the page source.
+
 ### Active (submissions in 2026)
 
 | Form | ID | Submissions | Last submission | Input fields | Notable |

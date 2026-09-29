@@ -9,3 +9,11 @@ export async function getSyncStatus() {
 export async function runSyncNow() {
   return serverPost("/api/admin/sync/run", {});
 }
+
+// Every change the sync gave up on, explained (board, item, fields and
+// readable values, tries, Monday's error).
+export async function getSyncFailures() {
+  const { failures } = await serverGet("/api/admin/sync/failures");
+
+  return failures;
+}

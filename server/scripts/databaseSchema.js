@@ -201,6 +201,44 @@ await transaction(async (run) => {
   )`);
   await run("create index if not exists file_uploads_item on file_uploads (board_id, monday_item_id, column_id)");
 
+  // Call transcripts pasted as text on an application's Screening tab
+  // (uploaded transcript files go to the Call 1 / Call 2 Transcript columns
+  // on Monday instead). App-only: never sent to Monday.
+  await run(`create table if not exists call_transcripts (
+    id bigserial primary key,
+    monday_item_id bigint not null,
+    call_number smallint not null check (call_number in (1, 2)),
+    body text not null,
+    created_by_id text,
+    created_by_name text,
+    created_by_role text,
+    created_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists call_transcripts_item on call_transcripts (monday_item_id, call_number)");
+
+  // AI reviews of an application (server/aiReview/): each run keeps its
+  // input and the AI's output. A draft becomes the application's values
+  // only when someone accepts it; a newer run supersedes an open draft.
+  await run(`create table if not exists ai_runs (
+    id bigserial primary key,
+    board_id text not null,
+    monday_item_id bigint not null,
+    kind text not null check (kind in ('form_review', 'call_1_review', 'call_2_review')),
+    provider text not null,
+    model text,
+    input jsonb not null,
+    output jsonb not null,
+    status text not null default 'draft' check (status in ('draft', 'accepted', 'discarded', 'superseded')),
+    created_by_id text,
+    created_by_name text,
+    created_by_role text,
+    created_at timestamptz not null default now(),
+    decided_by_id text,
+    decided_by_name text,
+    decided_at timestamptz
+  )`);
+  await run("create index if not exists ai_runs_item on ai_runs (board_id, monday_item_id, created_at desc)");
+
   // Jotform submissions received by the server (server/jotform/): full
   // answers and what was done with them (see jotform/submissionsStore.js
   // for the statuses). App-only: never sent to Monday.

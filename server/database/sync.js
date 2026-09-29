@@ -86,8 +86,29 @@ async function mondayCall(queryText, variables, counter) {
 }
 
 // Monday clears a column when given "" (dbToInput's null means "clear").
-function forMonday(columns) {
-  return Object.fromEntries(Object.entries(columns ?? {}).map(([id, value]) => [id, value === null ? "" : value]));
+// `null` in the outbox means "clear the column". Monday clears most columns
+// with "", but refuses "" for a checkbox ("invalid value") - it takes null
+// there (verified 2026-09-29; one refused value fails every change merged
+// into that item's request). `types`: column id -> Monday type.
+const CLEARED_WITH_NULL = new Set(["checkbox"]);
+
+function forMonday(columns, types) {
+  return Object.fromEntries(
+    Object.entries(columns ?? {}).map(([id, value]) => [id, value === null ? (CLEARED_WITH_NULL.has(types?.get(id)) ? null : "") : value]),
+  );
+}
+
+// Board id -> Map(column id -> Monday type), for forMonday.
+async function columnTypes() {
+  const { rows } = await query("select board_id, column_id, monday_type from monday_columns");
+  const byBoard = new Map();
+
+  for (const row of rows) {
+    if (!byBoard.has(row.board_id)) byBoard.set(row.board_id, new Map());
+    byBoard.get(row.board_id).set(row.column_id, row.monday_type);
+  }
+
+  return byBoard;
 }
 
 // Pending outbox entries -> operations, merged per item, in order of the
@@ -162,7 +183,7 @@ function operationField(operation, index, variables) {
     variables[`board${index}`] = String(operation.boardId);
     variables[`name${index}`] = String(operation.name || "Untitled").slice(0, 255);
     // The key in "DB ID" lets a cut-off run find the item instead of making it twice.
-    variables[`values${index}`] = JSON.stringify({ ...forMonday(operation.columns), [operation.dbIdColumn]: operation.key });
+    variables[`values${index}`] = JSON.stringify({ ...forMonday(operation.columns, operation.columnTypes), [operation.dbIdColumn]: operation.key });
 
     return {
       alias,
@@ -171,7 +192,7 @@ function operationField(operation, index, variables) {
     };
   }
 
-  const values = { ...forMonday(operation.columns), ...(operation.name !== undefined && { name: operation.name }) };
+  const values = { ...forMonday(operation.columns, operation.columnTypes), ...(operation.name !== undefined && { name: operation.name }) };
 
   variables[`board${index}`] = String(operation.boardId);
   variables[`item${index}`] = String(operation.itemId);
@@ -339,9 +360,11 @@ async function run(reason) {
 
     const { rows: entries } = await query("select * from monday_outbox where status = 'pending' order by id limit 2000");
     const operations = planOperations(entries);
+    const typesByBoard = await columnTypes();
 
     for (const operation of operations) {
       if (operation.kind === "create") operation.dbIdColumn = dbIdColumns.get(String(operation.boardId));
+      operation.columnTypes = typesByBoard.get(String(operation.boardId));
     }
 
     for (let start = 0; start < operations.length; start += OPERATIONS_PER_REQUEST) {

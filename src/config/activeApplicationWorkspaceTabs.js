@@ -2,6 +2,7 @@ export const activeApplicationWorkspaceTabs = [
   { label: "Overview", slug: "overview" },
   { label: "Communications", slug: "communications" },
   { label: "Tasks", slug: "tasks" },
+  { label: "Screening", slug: "screening" },
   { label: "References", slug: "references" },
   { label: "Travel", slug: "travel" },
   { label: "Contracts", slug: "contracts" },

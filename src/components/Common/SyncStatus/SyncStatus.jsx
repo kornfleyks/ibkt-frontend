@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Box, Button, CircularProgress, Tooltip, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, Link, Tooltip, Typography } from "@mui/material";
 import { getSyncStatus, runSyncNow } from "../../../services/SyncService";
 import { formatRelativeTime } from "../../../utils/relativeTime";
+import SyncFailuresDialog from "./SyncFailuresDialog";
 
 const REFRESH_MS = 60_000;
 
@@ -43,7 +44,7 @@ function SyncStatus() {
   const [error, setError] = useState(null);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState(null);
-  const [showFailures, setShowFailures] = useState(false);
+  const [failuresOpen, setFailuresOpen] = useState(false);
 
   const refresh = useCallback(() => {
     return getSyncStatus()
@@ -100,6 +101,7 @@ function SyncStatus() {
     : "never";
 
   return (
+    <>
     <Tooltip
       title="Changes saved in the database reach Monday once a night, in a few Monday calls. Failed changes are retried up to 5 times; Admins get a notification when one gives up."
       placement="right"
@@ -145,7 +147,23 @@ function SyncStatus() {
               </Typography>
             )}
             <Row label="Waiting" value={plural(status.waiting, "change")} />
-            <Row label="Failed" value={plural(status.failed, "change")} color={status.failed ? "error.main" : "text.secondary"} />
+            {status.failed > 0 ? (
+              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}>
+                <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                  Failed
+                </Typography>
+                <Link
+                  component="button"
+                  variant="caption"
+                  onClick={() => setFailuresOpen(true)}
+                  sx={{ color: "error.main", fontWeight: 500, textAlign: "right" }}
+                >
+                  {`${plural(status.failed, "change")} (details)`}
+                </Link>
+              </Box>
+            ) : (
+              <Row label="Failed" value={plural(status.failed, "change")} />
+            )}
             <Row label="Next run" value={formatNextRun(status.nextRunAt)} />
 
             {status.blockedForSeconds > 0 && (
@@ -154,21 +172,10 @@ function SyncStatus() {
               </Typography>
             )}
 
-            {status.failures?.length > 0 && (
-              <>
-                <Button size="small" onClick={() => setShowFailures((open) => !open)} sx={{ mt: 0.5, px: 0, minHeight: 0 }}>
-                  {showFailures ? "Hide failures" : `Show failures (${status.failures.length})`}
-                </Button>
-                {showFailures &&
-                  status.failures.map((failure, index) => (
-                    <Typography key={index} variant="caption" sx={{ display: "block", color: "text.secondary", mb: 0.5 }}>
-                      <strong>
-                        {failure.board} {failure.itemId ?? ""} ({failure.action})
-                      </strong>
-                      : {failure.error}
-                    </Typography>
-                  ))}
-              </>
+            {status.failed > 0 && (
+              <Button size="small" onClick={() => setFailuresOpen(true)} sx={{ mt: 0.5, px: 0, minHeight: 0 }}>
+                {`Show failures (${status.failed})`}
+              </Button>
             )}
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
@@ -197,6 +204,9 @@ function SyncStatus() {
         )}
       </Box>
     </Tooltip>
+
+    <SyncFailuresDialog open={failuresOpen} onClose={() => setFailuresOpen(false)} />
+    </>
   );
 }
 

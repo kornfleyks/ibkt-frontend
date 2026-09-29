@@ -5,6 +5,7 @@ import EditableInfoRow from "../../Common/EditableInfoRow";
 import SectionCard from "../../Common/SectionCard";
 import LinkedCatChips from "../../Common/LinkedCatChips";
 import UserPicker from "../../Common/UserPicker";
+import AiReviewCard from "./AiReview/AiReviewCard";
 import useCanAssignCaseOwner from "../../../hooks/useCanAssignCaseOwner";
 import { assignCaseOwner, getAssignableUsers } from "../../../services/ActiveApplicationsService";
 
@@ -55,7 +56,7 @@ function OverviewTab({ application, onApplicationChange }) {
           md: 6,
         }}
       >
-        <SectionCard title="Applicant Information">
+        <SectionCard title="Applicant Information" sx={{ height: "100%" }}>
           <InfoRow label="Name" value={application.name} />
 
           <InfoRow label="Email" value={application.email} />
@@ -74,7 +75,7 @@ function OverviewTab({ application, onApplicationChange }) {
           md: 6,
         }}
       >
-        <SectionCard title="Case Information">
+        <SectionCard title="Case Information" sx={{ height: "100%" }}>
           <InfoRow label="Adoption Stage" value={application.adoptionStage} />
 
           <InfoRow label="Priority" value={application.priority} />
@@ -126,31 +127,7 @@ function OverviewTab({ application, onApplicationChange }) {
           xs: 12,
         }}
       >
-        <SectionCard title="AI Review">
-          <InfoRow
-            label="Recommendation"
-            value={application.aiRecommendation || "—"}
-          />
-
-          <InfoRow label="Summary" value={application.aiSummary || "—"} />
-
-          <InfoRow label="Concerns" value={application.aiConcerns || "—"} />
-
-          <InfoRow
-            label="Missing Information"
-            value={application.aiMissingInformation || "—"}
-          />
-
-          <InfoRow
-            label="Suggested Next Action"
-            value={application.suggestedNextAction || "—"}
-          />
-
-          <InfoRow
-            label="Suggested Questions"
-            value={application.suggestedQuestions || "—"}
-          />
-        </SectionCard>
+        <AiReviewCard application={application} onApplicationChange={onApplicationChange} />
       </Grid>
     </Grid>
   );

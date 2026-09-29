@@ -5,7 +5,7 @@ import InfoRow from "../../../Common/InfoRow";
 import EditableInfoRow from "../../../Common/EditableInfoRow";
 import UserPicker from "../../../Common/UserPicker";
 import LinkedCatChips from "../../../Common/LinkedCatChips";
-import RecordField from "./RecordField";
+import RecordField from "../../../Common/RecordField";
 import { RECORD_STATUS_COLORS, ESCALATION_COLORS, AI_FLAG_COLORS } from "./statusColors";
 import { nextCheckIn, overdueCount, dueText } from "./checkInProgress";
 import { getPostAdoptionOwnerOptions } from "../../../../services/PostAdoptionService";

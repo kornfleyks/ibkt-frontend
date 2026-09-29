@@ -1,11 +1,11 @@
 import { MenuItem, TextField, Typography } from "@mui/material";
-import EditableInfoRow from "../../../Common/EditableInfoRow";
-import InfoRow from "../../../Common/InfoRow";
-import useDateFormat from "../../../../hooks/useDateFormat";
+import EditableInfoRow from "../EditableInfoRow";
+import InfoRow from "../InfoRow";
+import useDateFormat from "../../../hooks/useDateFormat";
 
 const LABEL_WIDTH = 190;
 
-// One editable field of the post-adoption record. `kind`: "select"
+// One editable field of a record (post-adoption, application screening). `kind`: "select"
 // (`options`), "date", "text" or "longText". `onSave(value)` saves it
 // (the tab's save of { [field]: value }); an empty value clears the field.
 // `renderValue` overrides how the saved value is shown.
