@@ -6,9 +6,6 @@ import { formatBytes } from "../../../utils/formatBytes";
 import TableRowsDialog from "./TableRowsDialog";
 
 const REFRESH_MS = 60_000;
-// Table rows can be opened only in development, and only when the server
-// allows it too (its own APP_ENV: local and Render share the database).
-const IS_DEVELOPMENT = import.meta.env.APP_ENV === "development";
 
 const tableButton = {
   display: "block",
@@ -138,24 +135,18 @@ function DatabaseStatus() {
               </Button>
 
               {showTables &&
-                health.tables.map((table) => {
-                  const row = <Row label={table.name} value={`${table.rows.toLocaleString()} rows · ${formatBytes(table.bytes)}`} />;
-
-                  return IS_DEVELOPMENT && health.canBrowseRows ? (
-                    <Box
-                      key={table.name}
-                      component="button"
-                      type="button"
-                      onClick={() => setOpenTable(table.name)}
-                      aria-label={`Show the rows of ${table.name}`}
-                      sx={tableButton}
-                    >
-                      {row}
-                    </Box>
-                  ) : (
-                    <Box key={table.name}>{row}</Box>
-                  );
-                })}
+                health.tables.map((table) => (
+                  <Box
+                    key={table.name}
+                    component="button"
+                    type="button"
+                    onClick={() => setOpenTable(table.name)}
+                    aria-label={`Show the rows of ${table.name}`}
+                    sx={tableButton}
+                  >
+                    <Row label={table.name} value={`${table.rows.toLocaleString()} rows · ${formatBytes(table.bytes)}`} />
+                  </Box>
+                ))}
             </>
           )}
         </Box>

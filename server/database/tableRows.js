@@ -3,8 +3,6 @@ import { SECRET_COLUMN_IDS } from "./mondaySchema.js";
 
 // GET /api/admin/database-tables/:table/rows?limit=50&offset=0 (Admin):
 // a page of one table's rows, for the Database card on App Settings.
-// Development only: local and Render share the database, so the check is
-// this server's APP_ENV, and anywhere else the route answers 404.
 //
 // Secret columns never leave the server: the Users password hash and
 // login / reset tokens (SECRET_COLUMN_IDS, with their companion columns),
@@ -15,10 +13,6 @@ const PAGE_DEFAULT = 50;
 const PAGE_MAX = 100;
 const VALUE_MAX_CHARS = 500;
 const SECRET_NAME = /password|token|secret/i;
-
-export function isDevelopmentServer() {
-  return process.env.APP_ENV === "development";
-}
 
 async function publicTableExists(table) {
   const { rows } = await query("select 1 from pg_stat_user_tables where schemaname = 'public' and relname = $1", [table]);
@@ -91,8 +85,6 @@ function pageNumber(value, fallback, max) {
 
 export function registerTableRowsRoutes(app, { requireAuth, requireAdmin }) {
   app.get("/api/admin/database-tables/:table/rows", requireAuth, requireAdmin, async (req, res) => {
-    if (!isDevelopmentServer()) return res.status(404).end();
-
     try {
       const page = await readTableRows(req.params.table, {
         limit: pageNumber(req.query.limit, PAGE_DEFAULT, PAGE_MAX) || PAGE_DEFAULT,

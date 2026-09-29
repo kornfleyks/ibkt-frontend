@@ -77,12 +77,11 @@ a database would need. Optional: without `DATABASE_URL` nothing changes.
   Monday calls, covers every server write. Failures are only logged.
 - `GET /api/admin/database-health` (Admin) - size vs 500 MB, rows/space per
   table, queries today, mirror status - shown on App Settings.
-- `GET /api/admin/database-tables/:table/rows?limit=&offset=` (Admin,
-  **only where `APP_ENV=development`**, else 404) - a page of a table's rows,
-  newest first, opened by clicking a table on the Database card
-  (`database/tableRows.js`). Password hash and login / reset token columns
-  (and anything named like a password, token or secret) are never sent.
-  Keep `APP_ENV` unset or `production` on Render: it shares the database.
+- `GET /api/admin/database-tables/:table/rows?limit=&offset=` (Admin) - a
+  page of a table's rows, newest first, opened by clicking a table on the
+  Database card (`database/tableRows.js`). Password hash and login / reset
+  token columns (and anything named like a password, token or secret) are
+  never sent.
 - Full detail (database-first plan, `docs/database-migration-plan.md`):
   companion columns keep what Monday needs back (`<date>_time`,
   `<country>_code`, `<phone>_country`, `<email>_text`); status/dropdown

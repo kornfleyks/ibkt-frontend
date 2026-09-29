@@ -23,8 +23,8 @@ import { visibleScrollbarSx } from "../../../utils/scrollbarSx";
 const ROWS_PER_PAGE = [25, 50, 100];
 const cell = { whiteSpace: "nowrap", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", fontSize: "0.75rem", py: 0.5 };
 
-// Development only: one database table's rows (newest first), opened from
-// the Database card. Read-only; secret columns never reach the browser.
+// One database table's rows (newest first), opened from the Database card
+// (Admin). Read-only; secret columns never reach the browser.
 // The parent keys this dialog by table, so each table starts at page 1.
 function TableRowsDialog({ table, onClose }) {
   const [page, setPage] = useState(0);

@@ -1,6 +1,5 @@
 import { isDatabaseEnabled, query, getQueryCount } from "./db.js";
 import { getMirrorStatus } from "./mirror.js";
-import { isDevelopmentServer } from "./tableRows.js";
 
 // GET /api/admin/database-health (Admin): what the database mirror costs -
 // size against Supabase's free 500 MB, rows and space per table, queries
@@ -33,8 +32,6 @@ export function registerDatabaseHealthRoutes(app, { requireAuth, requireAdmin })
         tables: tables.rows.map((row) => ({ name: row.name, rows: Number(row.rows), bytes: Number(row.bytes) })),
         queriesToday: getQueryCount(),
         mirror: getMirrorStatus(),
-        // Whether this server shows table rows (tableRows.js, development only).
-        canBrowseRows: isDevelopmentServer(),
       });
     } catch (err) {
       res.json({ enabled: true, connected: false, error: err.message, queriesToday: getQueryCount(), mirror: getMirrorStatus() });
