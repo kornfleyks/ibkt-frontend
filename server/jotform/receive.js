@@ -17,24 +17,28 @@ const HANDLERS = {};
 // not endlessly.
 const MAX_ROUNDS = 3;
 
+// Answers { status: "saved", submission } or { status: "ignored", reason };
+// throws when Jotform or the database fails.
 export async function receiveSubmission(submissionId, { via, expectedFormId = null }) {
   const submission = await getSubmission(submissionId);
 
   if (!submission) {
-    console.warn(`Jotform: submission ${submissionId} not found in this account (or JOTFORM_API_KEY is wrong) - ignored.`);
-    return null;
+    const reason = `Submission ${submissionId} not found in this Jotform account (or JOTFORM_API_KEY is wrong).`;
+    console.warn(`Jotform: ${reason} Ignored.`);
+    return { status: "ignored", reason };
   }
 
   if (expectedFormId && String(submission.form_id) !== String(expectedFormId)) {
-    console.warn(`Jotform: submission ${submissionId} belongs to form ${submission.form_id}, not ${expectedFormId} - ignored.`);
-    return null;
+    const reason = `Submission ${submissionId} belongs to form ${submission.form_id}, not ${expectedFormId}.`;
+    console.warn(`Jotform: ${reason} Ignored.`);
+    return { status: "ignored", reason };
   }
 
   const saved = await saveSubmission({ submission, formKind: formKindOf(submission.form_id), via });
 
   await processSubmission(saved);
 
-  return saved;
+  return { status: "saved", submission: saved };
 }
 
 // Runs the handler for a "received" submission, if its kind has one.

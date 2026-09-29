@@ -263,6 +263,22 @@ await transaction(async (run) => {
   await run("create index if not exists jotform_submissions_status on jotform_submissions (status)");
   await run("create index if not exists jotform_submissions_form on jotform_submissions (form_id, first_received_at desc)");
 
+  // Every request that reached the Jotform webhook with the right secret,
+  // stored as it arrived and before anything else, with its outcome
+  // (jotform/webhookEventsStore.js). App-only: never sent to Monday.
+  await run(`create table if not exists jotform_webhook_events (
+    id bigserial primary key,
+    received_at timestamptz not null default now(),
+    form_id text,
+    submission_id text,
+    payload jsonb not null,
+    status text not null default 'received' check (status in ('received', 'saved', 'ignored', 'failed')),
+    error text,
+    finished_at timestamptz
+  )`);
+  await run("create index if not exists jotform_webhook_events_received on jotform_webhook_events (received_at desc)");
+  await run("create index if not exists jotform_webhook_events_submission on jotform_webhook_events (submission_id)");
+
   const existing = (await run("select board_id, column_id, column_name, extra_column from monday_columns")).rows;
   const existingTypes = new Map(
     (await run(`select table_name, column_name, data_type from information_schema.columns where table_schema = 'public'`)).rows.map(

@@ -236,6 +236,13 @@ the server receives their submissions. Research, form ids and fields:
   applications); foster and cat forms are kept as `log_only`.
 - The same submission arriving twice is saved once; an edited one (a
   contract being signed) is handled again with the new answers.
+- Every request with the right secret is first stored as it arrived in
+  `jotform_webhook_events` (the full payload, `rawRequest` as JSON), then
+  marked `saved`, `ignored` or `failed` with the reason, so a failed save
+  can be reviewed (App Settings > Database > the table) and replayed from
+  the payload. `received` with no finish time = the server stopped mid-way.
+  Nothing is retried automatically yet; every submission also stays in
+  Jotform.
 
 ## Notifications (`notifications.js`) and Communications (`communications.js`)
 

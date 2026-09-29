@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Box, Button, LinearProgress, Tooltip, Typography } from "@mui/material";
+import { Box, Button, InputAdornment, LinearProgress, TextField, Tooltip, Typography } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import { getDatabaseHealth } from "../../../services/DatabaseHealthService";
 import { formatRelativeTime } from "../../../utils/relativeTime";
 import { formatBytes } from "../../../utils/formatBytes";
@@ -43,6 +44,7 @@ function DatabaseStatus() {
   const [error, setError] = useState(null);
   const [showTables, setShowTables] = useState(false);
   const [openTable, setOpenTable] = useState(null);
+  const [tableSearch, setTableSearch] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +83,13 @@ function DatabaseStatus() {
   const barColor = ratio >= 0.9 ? "error" : ratio >= 0.75 ? "warning" : "primary";
   const mirror = health?.mirror;
   const lastCopy = mirror?.lastAt ? formatRelativeTime(new Date(mirror.lastAt), new Date(health.checkedAt)) : "none yet";
+  const search = tableSearch.trim().toLowerCase();
+  const shownTables = (health?.tables ?? []).filter((table) => table.name.toLowerCase().includes(search));
+
+  function toggleTables() {
+    setShowTables((open) => !open);
+    setTableSearch("");
+  }
 
   return (
     <>
@@ -130,12 +139,39 @@ function DatabaseStatus() {
                 </Typography>
               )}
 
-              <Button size="small" onClick={() => setShowTables((open) => !open)} sx={{ mt: 0.5, px: 0, minHeight: 0 }}>
+              <Button size="small" onClick={toggleTables} sx={{ mt: 0.5, px: 0, minHeight: 0 }}>
                 {showTables ? "Hide tables" : `Show tables (${health.tables.length})`}
               </Button>
 
+              {showTables && (
+                <TextField
+                  size="small"
+                  fullWidth
+                  placeholder="Search tables"
+                  value={tableSearch}
+                  onChange={(event) => setTableSearch(event.target.value)}
+                  slotProps={{
+                    htmlInput: { "aria-label": "Search tables" },
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                  sx={{ my: 0.5, "& .MuiInputBase-input": { py: 0.5, fontSize: "0.75rem" } }}
+                />
+              )}
+
+              {showTables && shownTables.length === 0 && (
+                <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
+                  No tables match &quot;{tableSearch.trim()}&quot;.
+                </Typography>
+              )}
+
               {showTables &&
-                health.tables.map((table) => (
+                shownTables.map((table) => (
                   <Box
                     key={table.name}
                     component="button"
