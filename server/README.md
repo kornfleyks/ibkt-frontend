@@ -212,6 +212,26 @@ npm run register:users-webhooks -- https://your-public-server.example.com
 
 Until then, edits made directly on Monday are picked up at the next restart.
 
+## Jotform submissions (`jotform/`)
+
+The client's forms stay in Jotform (which keeps sending its own emails);
+the server receives their submissions. Research, form ids and fields:
+`docs/jotform-research.md`.
+
+- Webhook: `POST /api/webhooks/jotform/<JOTFORM_WEBHOOK_SECRET>`, added per
+  form in Jotform (Form > Settings > Integrations > WebHooks) with the
+  Render URL, e.g. `https://ibkt-frontend-server.onrender.com/api/webhooks/jotform/<secret>`.
+  A wrong secret gets a 404. The server answers at once, then fetches the
+  submission from the Jotform API by id (so a forged request changes
+  nothing) and saves it in `jotform_submissions`.
+- Needs `JOTFORM_API_KEY` (Read Access), `JOTFORM_WEBHOOK_SECRET` and
+  `DATABASE_URL`. The table comes from `node scripts/databaseSchema.js`.
+- `jotform/forms.js` says what each form is for. Adoption forms wait as
+  `received` until their handlers exist (creating / updating
+  applications); foster and cat forms are kept as `log_only`.
+- The same submission arriving twice is saved once; an edited one (a
+  contract being signed) is handled again with the new answers.
+
 ## Notifications (`notifications.js`) and Communications (`communications.js`)
 
 In-app notifications are rows on the Monday **Notifications** board

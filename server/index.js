@@ -37,6 +37,7 @@ import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
 import { initAccountState, applyAccountChange, TRACKED_COLUMNS, NAME_COLUMNS } from "./accountState.js";
 import { registerUserAdminRoutes } from "./userAdmin.js";
 import { registerWebhookRoutes } from "./webhooks.js";
+import { registerJotformRoutes } from "./jotform/routes.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
 import { registerCommunicationRoutes, communicationBoardOfItem } from "./communications.js";
@@ -463,6 +464,7 @@ app.post("/api/admin/users/:id/password", requireAuth, requireAdmin, async (req,
 registerCaseOwnerRoutes(app, { requireAuth });
 registerUserAdminRoutes(app, { requireAuth, requireAdmin });
 registerWebhookRoutes(app);
+registerJotformRoutes(app);
 registerSessionEventRoutes(app, { requireAuth });
 registerNotificationRoutes(app, { requireAuth });
 registerSettingsRoutes(app, { requireAuth, requireAdmin });

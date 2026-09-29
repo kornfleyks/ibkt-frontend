@@ -1,8 +1,8 @@
-import crypto from "node:crypto";
 import { USERS } from "../src/constants/boards/users.js";
 import { applyAccountChange, TRACKED_COLUMNS } from "./accountState.js";
 import { isDatabaseBoard } from "./database/switches.js";
 import { clearCache } from "./mondayCache.js";
+import { secretMatches } from "./secretMatch.js";
 
 // Receives Monday webhooks for the Users board's Status and Role columns,
 // so an edit made directly on Monday reaches the in-memory account state
@@ -14,21 +14,10 @@ import { clearCache } from "./mondayCache.js";
 
 const WEBHOOK_SECRET = process.env.MONDAY_WEBHOOK_SECRET;
 
-function secretMatches(candidate) {
-  if (!WEBHOOK_SECRET || typeof candidate !== "string") {
-    return false;
-  }
-
-  const expected = Buffer.from(WEBHOOK_SECRET);
-  const given = Buffer.from(candidate);
-
-  return expected.length === given.length && crypto.timingSafeEqual(expected, given);
-}
-
 export function registerWebhookRoutes(app) {
   app.post("/api/webhooks/monday/:secret", (req, res) => {
     // 404 rather than 401: don't reveal the endpoint exists.
-    if (!secretMatches(req.params.secret)) {
+    if (!secretMatches(WEBHOOK_SECRET, req.params.secret)) {
       return res.status(404).end();
     }
 

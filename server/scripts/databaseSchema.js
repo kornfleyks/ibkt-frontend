@@ -201,6 +201,30 @@ await transaction(async (run) => {
   )`);
   await run("create index if not exists file_uploads_item on file_uploads (board_id, monday_item_id, column_id)");
 
+  // Jotform submissions received by the server (server/jotform/): full
+  // answers and what was done with them (see jotform/submissionsStore.js
+  // for the statuses). App-only: never sent to Monday.
+  await run(`create table if not exists jotform_submissions (
+    submission_id text primary key,
+    form_id text not null,
+    form_kind text not null,
+    status text not null default 'received'
+      check (status in ('received', 'processing', 'processed', 'unmatched', 'failed', 'log_only')),
+    answers jsonb not null,
+    jotform_created_at text,
+    jotform_updated_at text,
+    application_id bigint,
+    error text,
+    attempts integer not null default 0,
+    received_via text not null,
+    receive_count integer not null default 1,
+    first_received_at timestamptz not null default now(),
+    last_received_at timestamptz not null default now(),
+    processed_at timestamptz
+  )`);
+  await run("create index if not exists jotform_submissions_status on jotform_submissions (status)");
+  await run("create index if not exists jotform_submissions_form on jotform_submissions (form_id, first_received_at desc)");
+
   const existing = (await run("select board_id, column_id, column_name, extra_column from monday_columns")).rows;
   const existingTypes = new Map(
     (await run(`select table_name, column_name, data_type from information_schema.columns where table_schema = 'public'`)).rows.map(
