@@ -40,6 +40,7 @@ import { passwordStampOf } from "./passwordStamp.js";
 import { registerUserAdminRoutes } from "./userAdmin.js";
 import { registerWebhookRoutes } from "./webhooks.js";
 import { registerJotformRoutes } from "./jotform/routes.js";
+import { processWaitingSubmissions } from "./jotform/receive.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
 import { registerCommunicationRoutes, communicationBoardOfItem } from "./communications.js";
@@ -850,6 +851,14 @@ app.listen(PORT, () => {
     initAccountState();
     // One call: the real daily limit and today's official usage.
     syncMondayUsageFromMonday();
+    // Jotform submissions stored but not yet handled (e.g. arrived while the
+    // server was down mid-way). Safe with several servers: each submission
+    // is claimed by one.
+    if (isDatabaseEnabled()) {
+      processWaitingSubmissions()
+        .then((handled) => handled && console.log(`Jotform: handled ${handled} waiting submission(s).`))
+        .catch((err) => console.error("Jotform: handling waiting submissions failed.", err));
+    }
   });
   startMondayApiVersionChecks();
   startKeepAlive();

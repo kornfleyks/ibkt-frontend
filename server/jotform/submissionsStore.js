@@ -68,6 +68,21 @@ export async function saveSubmission({ submission, formKind, via }) {
   return toSubmission(rows[0]);
 }
 
+// [{ submissionId, formId }] still "received", oldest first.
+export async function waitingSubmissions() {
+  const { rows } = await query("select submission_id, form_id from jotform_submissions where status = 'received' order by first_received_at");
+
+  return rows.map((row) => ({ submissionId: row.submission_id, formId: row.form_id }));
+}
+
+// Sends "failed" submissions back to "received" (after the cause is fixed),
+// so processWaitingSubmissions tries them again. Answers how many.
+export async function retryFailedSubmissions() {
+  const { rowCount } = await query("update jotform_submissions set status = 'received', error = null where status = 'failed'");
+
+  return rowCount;
+}
+
 // Moves a "received" submission to "processing" and answers it, or null
 // when it isn't waiting (already handled, or another request claimed it
 // first). Keeps two deliveries of one submission from both applying it.

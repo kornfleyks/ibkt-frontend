@@ -1,7 +1,8 @@
 // The client's Jotform forms the app knows about, by Jotform form id (see
 // docs/jotform-research.md). "kind" picks what happens to a submission:
 //
-//   new_application     creates an application
+//   pre_adoption        creates an application (handlers/preAdoption.js)
+//   new_application     creates an application (UAE form: no handler yet)
 //   adoption_references updates the applicant's application (by email)
 //   reference_check     updates the candidate's application (by name)
 //   contract            contract sent / signed on the adopter's application
@@ -10,7 +11,7 @@
 // A submission from a form not listed here is kept as log_only too.
 
 export const JOTFORM_FORMS = {
-  "203096212272447": { kind: "new_application", name: "Pre-Adoption Form" },
+  "203096212272447": { kind: "pre_adoption", name: "Pre-Adoption Form" },
   "202981102716450": { kind: "new_application", name: "UAE Adoption Form & Agreement" },
   "211304838746458": { kind: "adoption_references", name: "Adoption Form and References" },
   "220642582493458": { kind: "reference_check", name: "Reference Check - IBKT" },

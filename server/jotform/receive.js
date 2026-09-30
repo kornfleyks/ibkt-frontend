@@ -1,6 +1,7 @@
 import { getSubmission } from "./client.js";
 import { formKindOf } from "./forms.js";
-import { saveSubmission, claimSubmission, setSubmissionStatus } from "./submissionsStore.js";
+import { saveSubmission, claimSubmission, setSubmissionStatus, waitingSubmissions } from "./submissionsStore.js";
+import { handlePreAdoption } from "./handlers/preAdoption.js";
 
 // What happens to a submission the server hears about (from the webhook,
 // or later a scheduled check): fetch it from Jotform - so a forged request
@@ -9,9 +10,12 @@ import { saveSubmission, claimSubmission, setSubmissionStatus } from "./submissi
 //
 // A handler gets the claimed submission and answers { status, applicationId? }
 // with status "processed" or "unmatched"; throwing marks it "failed".
-// None are registered yet: submissions of the adoption forms stay
-// "received" until their handlers exist, then get processed from the table.
-const HANDLERS = {};
+// Kinds without one (the other adoption forms, for now) stay "received"
+// until theirs exists, then get processed from the table
+// (processWaitingSubmissions).
+const HANDLERS = {
+  pre_adoption: handlePreAdoption,
+};
 
 // A submission edited again while its handler ran is handled again, but
 // not endlessly.
@@ -66,4 +70,25 @@ export async function processSubmission({ submissionId, formKind }) {
 
     if (status !== "received") return;
   }
+}
+
+// Handles every submission still "received" whose form now has a handler:
+// ones stored before it existed, or while it failed to run (e.g. the
+// server restarted mid-way). Oldest first, one at a time. Answers how many
+// were handled. Called at server start and by
+// scripts/processJotformSubmissions.js.
+export async function processWaitingSubmissions() {
+  let handled = 0;
+
+  for (const { submissionId, formId } of await waitingSubmissions()) {
+    // The form's kind now, not when it was stored (kinds can change).
+    const formKind = formKindOf(formId);
+
+    if (!HANDLERS[formKind]) continue;
+
+    await processSubmission({ submissionId, formKind });
+    handled += 1;
+  }
+
+  return handled;
 }
