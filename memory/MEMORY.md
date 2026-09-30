@@ -1,0 +1,1 @@
+- [Forgot password via Jotform](forgot-password-via-jotform.md) - reset emails sent by a hidden Jotform form's autoresponder; 15 min codes; JOTFORM_RESET_API_KEY

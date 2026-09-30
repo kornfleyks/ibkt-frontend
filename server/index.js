@@ -43,6 +43,7 @@ import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD
 import { registerCommunicationRoutes, communicationBoardOfItem } from "./communications.js";
 import { registerTaskRoutes } from "./tasks.js";
 import { registerAccountRoutes } from "./account.js";
+import { registerPasswordResetRoutes } from "./passwordReset/routes.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch, mondayRetryAfterSeconds } from "./mondayRateLimit.js";
 import { getMondayUsage } from "./mondayUsage.js";
@@ -489,6 +490,7 @@ registerReadOnlyBoardRoutes(app, { requireAuth });
 registerUserRoutes(app, { requireAuth, requireAdmin });
 registerCommunicationRoutes(app, { requireAuth });
 registerAccountRoutes(app, { requireAuth });
+registerPasswordResetRoutes(app);
 registerMondayApiVersionRoutes(app, { requireAuth, requireAdmin });
 registerHealthRoutes(app, { requireAuth, requireAdmin });
 registerDatabaseHealthRoutes(app, { requireAuth, requireAdmin });

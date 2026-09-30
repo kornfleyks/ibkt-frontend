@@ -23,6 +23,7 @@ const COLUMNS = {
   emailVerified: U.EMAIL_VERIFIED,
   lastLogin: U.LAST_LOGIN,
   preferences: U.PREFERENCES,
+  passwordResetToken: U.PASSWORD_RESET_TOKEN,
 };
 
 async function select(where = "", params = []) {
@@ -50,6 +51,7 @@ async function select(where = "", params = []) {
     lastLoginRaw: row.lastLogin ? JSON.stringify({ date: row.lastLogin, time: row.lastLoginTime ?? null }) : null,
     lastLoginIso: row.lastLogin ? `${row.lastLogin}T${row.lastLoginTime || "00:00:00"}Z` : null,
     preferencesText: row.preferences ?? "",
+    passwordResetToken: row.passwordResetToken ?? "",
   }));
 }
 

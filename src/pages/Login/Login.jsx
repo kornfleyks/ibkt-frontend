@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 
 import {
     Box,
-    Card,
-    CardContent,
-    Typography,
     TextField,
     Button,
     Alert,
     Link
 } from '@mui/material';
 
+import AuthLayout from '../../layouts/AuthLayout/AuthLayout';
+import PasswordField from '../../components/Common/PasswordField';
 import useAuth from '../../hooks/useAuth';
 import { readSignOutReason, clearSignOutReason } from '../../services/authStorage';
 
@@ -20,6 +19,8 @@ function Login() {
 
     const { login } = useAuth();
     const navigate = useNavigate();
+    // e.g. "Your password has been reset" from the Reset Password page.
+    const notice = useLocation().state?.notice;
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -27,6 +28,7 @@ function Login() {
     const [loggingIn, setLoggingIn] = useState(false);
     // Why the previous session ended (e.g. account suspended), shown once.
     const [signOutReason] = useState(readSignOutReason);
+    const bothFilled = Boolean(email.trim() && password);
 
     useEffect(() => {
         clearSignOutReason();
@@ -35,7 +37,7 @@ function Login() {
 
     async function handleLogin() {
 
-        if (!email.trim() || !password) {
+        if (!bothFilled) {
             setError('Email and password are required.');
             return;
         }
@@ -64,71 +66,13 @@ function Login() {
 
     return (
 
-        <Box
-
-            sx={{
-
-                minHeight: '100vh',
-
-                display: 'flex',
-
-                justifyContent: 'center',
-
-                alignItems: 'center'
-
-            }}
-
-        >
-
-            <Card
-
-                sx={{
-
-                    width: 400
-
-                }}
-
-            >
-
-                <CardContent>
-
-
-                    <Typography
-
-                        variant="h4"
-
-                        textAlign="center"
-
-                        fontWeight={600}
-
-                    >
-
-                        IBKT
-
-                    </Typography>
-
-
-
-                    <Typography
-
-                        textAlign="center"
-
-                        color="text.secondary"
-
-                        sx={{ mb: 4 }}
-
-                    >
-
-                        International Boarding of Kitties Team
-
-                    </Typography>
-
-
-
+        <AuthLayout title="Sign In">
 
                     <TextField
 
                         fullWidth
+
+                        required
 
                         label="Email"
 
@@ -145,11 +89,11 @@ function Login() {
 
 
 
-                    <TextField
+                    <PasswordField
 
                         fullWidth
 
-                        type="password"
+                        required
 
                         label="Password"
 
@@ -159,9 +103,24 @@ function Login() {
 
                         onChange={(e)=>setPassword(e.target.value)}
 
-                        sx={{ mb:3 }}
+                        sx={{ mb:1 }}
 
                     />
+
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                        <Link component={RouterLink} to="/register" variant="body2" sx={{ color: 'info.main' }}>
+                            Create an account
+                        </Link>
+                        <Link component={RouterLink} to="/forgot-password" variant="body2" sx={{ color: 'info.main' }}>
+                            Forgot password?
+                        </Link>
+                    </Box>
+
+                    {notice && !error && (
+                        <Alert severity="success" sx={{ mb: 3 }}>
+                            {notice}
+                        </Alert>
+                    )}
 
                     {signOutReason && !error && (
                         <Alert severity="warning" sx={{ mb: 3 }}>
@@ -184,7 +143,7 @@ function Login() {
 
                         onClick={handleLogin}
 
-                        disabled={loggingIn}
+                        disabled={loggingIn || !bothFilled}
 
                     >
 
@@ -192,18 +151,7 @@ function Login() {
 
                     </Button>
 
-                    <Typography textAlign="center" sx={{ mt: 3 }}>
-                        <Link component={RouterLink} to="/register" sx={{ color: 'info.main' }}>
-                            Create an account
-                        </Link>
-                    </Typography>
-
-
-                </CardContent>
-
-            </Card>
-
-        </Box>
+        </AuthLayout>
 
     );
 

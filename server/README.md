@@ -407,6 +407,33 @@ token with the same sign-in and expiry times, so the name in Activity Log
 entries stays current without extending the session. `/api/login` also
 returns the saved `preferences`.
 
+## Password reset (`passwordReset/`)
+
+"Forgot password?" on the login page. The server can't send email, so the
+reset link goes out through the client's hidden Jotform form **IBKT Reset
+Password** (fields Email + Reset Code, owner Notification disabled), whose
+Autoresponder emails `https://kornfleyks.github.io/ibkt-frontend/reset-password?code={resetCode}`.
+Set `JOTFORM_RESET_FORM_ID` to its id (here and on Render).
+
+- `POST /api/password-reset/request` with `{ email }` - always `{ ok: true }`
+  (whether or not the email has an account), and the work happens after the
+  answer so its timing doesn't tell either. Only **Active** accounts get an
+  email, at most one per 15 minutes: a new one is only sent once the
+  previous code has expired. `503` without `JOTFORM_RESET_FORM_ID`.
+- `POST /api/password-reset/confirm` with `{ code, newPassword }` (8+
+  characters) - sets the password, removes the code (single use), clears the
+  login lockout and logs a "Password Reset" activity. Invalid, used or
+  expired codes answer `400`. Other sessions stay valid until they expire.
+
+The Users board's **Password Reset Token** keeps `<sha256 of code>.<expiry
+ms>` (never the code itself); **Password Reset Expiry** shows the same
+expiry in UTC for people reading the board. `sender.js` posts to the form's
+public submit URL like a browser: submissions made through the Jotform API
+are stored but send no emails. That isn't an official API, so a captcha or
+other spam protection added to the form would stop resets (failures are
+logged as "Password reset: request failed."). Submissions stay in the
+client's Jotform inbox. Moving to an email service only replaces `sender.js`.
+
 ## Monday API version (`mondayApiVersion.js`, `mondayApiVersionCheck.js`)
 
 Every Monday request the server makes carries an `API-Version` header, so

@@ -26,3 +26,11 @@ export function login(email, password) {
 export function register({ firstName, lastName, email, password, inviteCode }) {
   return postJson("/api/register", { firstName, lastName, email, password, inviteCode });
 }
+
+export function requestPasswordReset(email) {
+  return postJson("/api/password-reset/request", { email });
+}
+
+export function confirmPasswordReset(code, newPassword) {
+  return postJson("/api/password-reset/confirm", { code, newPassword });
+}

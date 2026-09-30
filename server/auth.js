@@ -42,6 +42,7 @@ function fromStore(user) {
     role: user.role,
     accountStatus: user.accountStatus,
     preferences: parsePreferences(user.preferencesText),
+    passwordResetToken: user.passwordResetToken,
   };
 }
 async function mondayFetch(query, variables = {}) {
@@ -72,6 +73,7 @@ function mapUserItem(item) {
     role: columns[USERS_COLUMNS.ROLE]?.text ?? "",
     accountStatus: columns[USERS_COLUMNS.ACCOUNT_STATUS]?.text ?? "",
     preferences: parsePreferences(columns[USERS_COLUMNS.PREFERENCES]?.text),
+    passwordResetToken: columns[USERS_COLUMNS.PASSWORD_RESET_TOKEN]?.text ?? "",
   };
 }
 
@@ -123,6 +125,14 @@ export async function findUserByEmail(email) {
   const normalized = email.trim().toLowerCase();
 
   return users.find((user) => user.email.trim().toLowerCase() === normalized) ?? null;
+}
+
+// The user whose stored Password Reset Token `matches` accepts
+// (passwordReset/tokens.js) - the reset link carries only the code.
+export async function findUserByResetToken(matches) {
+  const users = await getAllAuthUsers();
+
+  return users.find((user) => user.passwordResetToken && matches(user.passwordResetToken)) ?? null;
 }
 
 export async function setUserPasswordHash(userId, passwordHash) {
