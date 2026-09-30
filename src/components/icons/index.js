@@ -17,6 +17,7 @@ import {
   Form,
   Globe,
   Heart,
+  Hide,
   Home,
   Info,
   Invite,
@@ -98,6 +99,7 @@ export const SearchIcon = fromVibe(Search, "SearchIcon");
 export const SettingsIcon = fromVibe(Settings, "SettingsIcon");
 export const UploadIcon = fromVibe(Upload, "UploadIcon");
 export const VisibilityIcon = fromVibe(Show, "VisibilityIcon");
+export const VisibilityOffIcon = fromVibe(Hide, "VisibilityOffIcon");
 export const VolunteerActivismIcon = fromVibe(Home, "VolunteerActivismIcon");
 
 // Vibe has no animal icons, so the cat paw stays MUI's.

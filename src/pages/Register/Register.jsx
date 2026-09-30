@@ -2,9 +2,6 @@ import { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 
 import {
-    Box,
-    Card,
-    CardContent,
     Typography,
     TextField,
     Button,
@@ -12,6 +9,7 @@ import {
     Link
 } from '@mui/material';
 
+import AuthLayout from '../../layouts/AuthLayout/AuthLayout';
 import { register } from '../../services/AuthService';
 
 const initialForm = {
@@ -29,6 +27,11 @@ function Register() {
     const [error, setError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    // Every field is required; passwords count as typed (spaces included).
+    const allFilled = Boolean(
+        form.firstName.trim() && form.lastName.trim() && form.email.trim()
+        && form.password && form.confirmPassword && form.inviteCode.trim()
+    );
 
     function setField(field, value) {
         setForm((current) => ({ ...current, [field]: value }));
@@ -36,7 +39,7 @@ function Register() {
 
     async function handleSubmit() {
 
-        if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.password) {
+        if (!allFilled) {
             setError('All fields are required.');
             return;
         }
@@ -48,11 +51,6 @@ function Register() {
 
         if (form.password !== form.confirmPassword) {
             setError('Passwords do not match.');
-            return;
-        }
-
-        if (!form.inviteCode.trim()) {
-            setError('An invite code is required.');
             return;
         }
 
@@ -85,26 +83,7 @@ function Register() {
 
     return (
 
-        <Box
-            sx={{
-                minHeight: '100vh',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center'
-            }}
-        >
-
-            <Card sx={{ width: 420 }}>
-
-                <CardContent>
-
-                    <Typography variant="h4" textAlign="center" fontWeight={600}>
-                        IBKT
-                    </Typography>
-
-                    <Typography textAlign="center" color="text.secondary" sx={{ mb: 4 }}>
-                        Create an account
-                    </Typography>
+        <AuthLayout title="Create Account" width={420}>
 
                     {submitted ? (
                         <>
@@ -122,6 +101,7 @@ function Register() {
                         <>
                             <TextField
                                 fullWidth
+                                required
                                 label="First Name"
                                 value={form.firstName}
                                 disabled={submitting}
@@ -131,6 +111,7 @@ function Register() {
 
                             <TextField
                                 fullWidth
+                                required
                                 label="Last Name"
                                 value={form.lastName}
                                 disabled={submitting}
@@ -140,6 +121,7 @@ function Register() {
 
                             <TextField
                                 fullWidth
+                                required
                                 label="Email"
                                 value={form.email}
                                 disabled={submitting}
@@ -149,6 +131,7 @@ function Register() {
 
                             <TextField
                                 fullWidth
+                                required
                                 type="password"
                                 label="Password"
                                 value={form.password}
@@ -159,6 +142,7 @@ function Register() {
 
                             <TextField
                                 fullWidth
+                                required
                                 type="password"
                                 label="Confirm Password"
                                 value={form.confirmPassword}
@@ -169,6 +153,7 @@ function Register() {
 
                             <TextField
                                 fullWidth
+                                required
                                 label="Invite Code"
                                 value={form.inviteCode}
                                 disabled={submitting}
@@ -186,7 +171,7 @@ function Register() {
                                 fullWidth
                                 variant="contained"
                                 onClick={handleSubmit}
-                                disabled={submitting}
+                                disabled={submitting || !allFilled}
                             >
                                 {submitting ? 'Creating Account...' : 'Create Account'}
                             </Button>
@@ -199,11 +184,7 @@ function Register() {
                         </>
                     )}
 
-                </CardContent>
-
-            </Card>
-
-        </Box>
+        </AuthLayout>
 
     );
 
