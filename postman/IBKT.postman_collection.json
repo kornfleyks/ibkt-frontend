@@ -1,0 +1,2595 @@
+{
+  "info": {
+    "name": "IBKT",
+    "_postman_id": "3f1f6a2e-6c1b-4f0e-9a51-2b7d6f0c9e11",
+    "description": "IBKT frontend Express server (server/). Pick the IBKT Local or IBKT Render environment, run Auth > Login first (saves {{token}}), then any request. Webhooks, the raw Monday proxy and the Admin /api/data CRUD are deliberately left out (see postman/README.md). When a server endpoint is added or changed, update this collection in the same commit.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Sign in, register, sign out and password reset. Run Login first: it saves {{token}}.",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "login"
+              ]
+            },
+            "description": "Signs in and returns { token, user, preferences }. Public. 400 missing fields, 401 wrong email/password, 403 account not Active, 429 too many failed attempts (lockout). The test script saves the token to {{token}}.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "if (json.token) {",
+                  "  pm.environment.set(\"token\", json.token);",
+                  "}",
+                  "if (json.user && json.user.id) {",
+                  "  pm.environment.set(\"userId\", String(json.user.id));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "register"
+              ]
+            },
+            "description": "Creates a Pending account (role Adopter) that an Admin must activate. Public, needs the registration invite code. 400 missing/invalid fields or password under 8 chars, 403 wrong invite code, 409 email already registered.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"ChangeMe123!\",\n  \"inviteCode\": \"{{inviteCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "logout"
+              ]
+            },
+            "description": "Records a Logout entry in the Activity Log (sessions are stateless JWTs, nothing is revoked). Any signed-in user. The test script clears {{token}}."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.environment.set(\"token\", \"\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Password reset - request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/password-reset/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "password-reset",
+                "request"
+              ]
+            },
+            "description": "Asks for a reset code by email. Public. Always answers { ok: true } for a valid email (never says whether it has an account); 400 invalid email, 503 when the reset sender is not configured.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Password reset - confirm",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/password-reset/confirm",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "password-reset",
+                "confirm"
+              ]
+            },
+            "description": "Sets a new password with the code from the reset email and signs the account out everywhere. Public. 400 invalid/expired code or password under 8 chars, 429 Monday rate limit.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"reset-code-from-email\",\n  \"newPassword\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Account",
+      "description": "The caller's own account (the id always comes from the token).",
+      "item": [
+        {
+          "name": "Get my account",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/account",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "account"
+              ]
+            },
+            "description": "The signed-in user's account: { account: { id, firstName, lastName, email, role, phone, accountStatus, emailVerified, lastLogin, preferences } }. Any signed-in user. 404 account not found."
+          },
+          "response": []
+        },
+        {
+          "name": "Update my profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/account/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "account",
+                "profile"
+              ]
+            },
+            "description": "Changes own first/last name and phone ({ number without country code, country ISO code }; empty number clears it). Any signed-in user. Returns { token, user, phone } with a re-issued token (same expiry), saved to {{token}}. 400 invalid input, 429 Monday rate limit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"phone\": {\n    \"number\": \"501234567\",\n    \"country\": \"AE\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                  "const value = json.token;",
+                  "if (value !== undefined && value !== null && value !== \"\") {",
+                  "  pm.environment.set(\"token\", String(value));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change my email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/account/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "account",
+                "email"
+              ]
+            },
+            "description": "Changes own email (marked unverified) after checking the current password. Any signed-in user. Returns { token, user, account }, token saved to {{token}}. 400 invalid email or wrong current password, 409 email taken, 429 lockout or Monday rate limit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newEmail\": \"jane.new@example.com\",\n  \"currentPassword\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                  "const value = json.token;",
+                  "if (value !== undefined && value !== null && value !== \"\") {",
+                  "  pm.environment.set(\"token\", String(value));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change my password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/account/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "account",
+                "password"
+              ]
+            },
+            "description": "Changes own password; other devices are signed out, this session continues on a re-issued token ({ ok, token }), saved to {{token}}. Any signed-in user. 400 short/unchanged password or wrong current password, 429 lockout or Monday rate limit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                  "const value = json.token;",
+                  "if (value !== undefined && value !== null && value !== \"\") {",
+                  "  pm.environment.set(\"token\", String(value));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Save my preferences",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/account/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "account",
+                "preferences"
+              ]
+            },
+            "description": "Replaces own preferences with the sanitized set (darkMode boolean, dateFormat one of MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD; unknown keys dropped). Any signed-in user. 503 when the Preferences column is not set up.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"preferences\": {\n    \"darkMode\": true,\n    \"dateFormat\": \"DD/MM/YYYY\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users & Admin users",
+      "description": "User pickers for everyone, account management for Admins.",
+      "item": [
+        {
+          "name": "User names",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/names",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "names"
+              ]
+            },
+            "description": "[{ id, name }] of every user (e.g. the task Owner picker). Any signed-in user. 409 when Users is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Assignable users (case owners)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/assignable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "assignable"
+              ]
+            },
+            "description": "{ users } who can be made Case Owner. Only roles in the CASE_OWNER_ASSIGNER_ROLES setting (403 otherwise)."
+          },
+          "response": []
+        },
+        {
+          "name": "Mentionable users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/mentionable",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "mentionable"
+              ]
+            },
+            "description": "{ users } that can be @mentioned: Active accounts (id, name, role), from memory. Any signed-in user."
+          },
+          "response": []
+        },
+        {
+          "name": "User profile card",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}/profile-card",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}",
+                "profile-card"
+              ]
+            },
+            "description": "{ user: { id, name, role, accountStatus, email, phone } } for the @mention card. Any signed-in user. 400 invalid id, 404 unknown user, 503 while account state is still loading."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - list users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users"
+              ]
+            },
+            "description": "[{ id, firstName, lastName, email, role, accountStatus, lastLogin }]. Admin only. 409 when Users is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - edit user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "Changes any of { firstName, lastName, email, role } (send only what changes; role must be an existing Role label). Admin only. 400 invalid input or email taken, 404 unknown user. 409 when Users is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"role\": \"Volunteer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - set user password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{userId}}",
+                "password"
+              ]
+            },
+            "description": "Sets a user's password and signs them out everywhere (including an Admin setting their own). Admin only. 400 invalid id or password under 8 chars.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"NewPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - user open work",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}/open-work",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{userId}}",
+                "open-work"
+              ]
+            },
+            "description": "{ cases, tasks } the user still owns (open cases and New/In Progress/Waiting tasks). Admin only. 400 invalid id."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - set account status",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/{{userId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "users",
+                "{{userId}}",
+                "status"
+              ]
+            },
+            "description": "Sets Account Status (Pending, Active, Suspended, Archived, Blocked). Suspended/Archived first hand the user's open cases and tasks to the acting Admin. Admin only. 400 invalid status or changing your own status, 502 when the hand-over partly failed (status not changed).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "description": "Active Applications: list, read, edit, Case Owner, and Add Application (Pre-Adoption Form).",
+      "item": [
+        {
+          "name": "List applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications"
+              ]
+            },
+            "description": "All applications. Any signed-in user. 409 when Applications is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Linked Cat allows multiple",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/linked-cat-multiple",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "linked-cat-multiple"
+              ]
+            },
+            "description": "{ allowed }: whether Linked Cat takes several cats (Monday column setting). Any signed-in user. 409 when Applications is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get application",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}"
+              ]
+            },
+            "description": "One application. Any signed-in user. 404 not found. 409 when Applications is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Update application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}"
+              ]
+            },
+            "description": "Changes writable fields ({ field: value }, e.g. adoptionStage, priority, caseHealth, call1Date, teamDecision, internalNotes, linkedCatIds). Case Owner is refused here (use the case owner request). Any signed-in user. 400 invalid field/value, 404 not found. 409 when Applications is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"adoptionStage\": \"Active Application\",\n  \"priority\": \"High\",\n  \"internalNotes\": \"Called the applicant, follow up next week.\",\n  \"linkedCatIds\": [\n    \"{{catId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Set case owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/case-owner",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "case-owner"
+              ]
+            },
+            "description": "Sets the Case Owner ({ userId }, or null to clear) and notifies them. Only roles in the CASE_OWNER_ASSIGNER_ROLES setting (403 otherwise). 400 invalid id or user not assignable. Returns { caseOwner }.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add application (Pre-Adoption Form)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications"
+              ]
+            },
+            "description": "Creates an application from the in-app Pre-Adoption Form; the caller becomes Case Owner. Admin/Volunteer only (403). Returns { id, name }; id saved to {{applicationId}}. 400 invalid answers ({ fields }), 409 open application for this email ({ existingId }) or Applications still on Monday, 503 Pre-Adoption columns not set up, 429 rate limit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {\n    \"howHeard\": \"Website Enquiry\",\n    \"catsInterestedIn\": \"Luna - we love her calm personality.\",\n    \"fullName\": {\n      \"first\": \"Jane\",\n      \"last\": \"Doe\"\n    },\n    \"email\": \"jane.doe@example.com\",\n    \"address\": {\n      \"line1\": \"12 Palm Street\",\n      \"line2\": \"\",\n      \"city\": \"Dubai\",\n      \"state\": \"\",\n      \"postal\": \"\",\n      \"country\": \"AE\"\n    },\n    \"timeAtAddress\": \"3 years\",\n    \"phone\": {\n      \"country\": \"AE\",\n      \"number\": \"501234567\"\n    },\n    \"homeTenure\": \"Rented\",\n    \"accommodationType\": \"Apartment\",\n    \"privateGarden\": \"No\",\n    \"activityLevel\": [\n      \"Somewhere in between\"\n    ],\n    \"householdMembers\": \"Jane Doe (34), John Doe (36, partner)\",\n    \"familyInAgreement\": \"Yes\",\n    \"petOwnerExperience\": [\n      \"Have had 1 or 2\"\n    ],\n    \"adoptionReasons\": [\n      \"Companion\"\n    ],\n    \"currentPets\": \"\",\n    \"whyAdopt\": \"We want to give a rescued cat a home.\",\n    \"hoursAlone\": 6,\n    \"allergies\": \"No\",\n    \"chiefCarer\": \"Myself\",\n    \"petLostBefore\": \"No\",\n    \"agePreference\": [\n      \"Adult\"\n    ],\n    \"catPreferences\": [\n      \"Any of the above\"\n    ],\n    \"lifetimeCommitment\": \"Yes\",\n    \"outdoorAccess\": \"Indoors only\",\n    \"typicalDay\": \"We both work from home three days a week.\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                  "const value = json.id;",
+                  "if (value !== undefined && value !== null && value !== \"\") {",
+                  "  pm.environment.set(\"applicationId\", String(value));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pre-adoption answers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/pre-adoption-answers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "pre-adoption-answers"
+              ]
+            },
+            "description": "The saved Pre-Adoption answers { answers, createdAt } for Preview. Admin/Volunteer only (403). 404 when the application has none."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Application tabs",
+      "description": "Per-application tabs. All need Admin or the application's Case Owner.",
+      "item": [
+        {
+          "name": "Contracts",
+          "description": "Contracts tab. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id).",
+          "item": [
+            {
+              "name": "List contracts",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/contracts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "contracts"
+                  ]
+                },
+                "description": "{ contracts }: the contract files, newest first, with uploader and document type. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            },
+            {
+              "name": "Upload contract",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/contracts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "contracts"
+                  ]
+                },
+                "description": "Uploads a contract (multipart). DRAFT/FINAL/SIGNED also set that contract status to Yes. Returns { contract, statusChanges }; contract.assetId saved to {{assetId}}. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 400 missing file/type or file over 20MB.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "The contract file (max 20MB)."
+                    },
+                    {
+                      "key": "documentType",
+                      "value": "DRAFT",
+                      "type": "text",
+                      "description": "DRAFT, FINAL, SIGNED or OTHER."
+                    },
+                    {
+                      "key": "note",
+                      "value": "Draft sent for review.",
+                      "type": "text",
+                      "description": "Optional note."
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                      "let json = {};",
+                      "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                      "const value = json.contract && json.contract.assetId;",
+                      "if (value !== undefined && value !== null && value !== \"\") {",
+                      "  pm.environment.set(\"assetId\", String(value));",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete contract",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/contracts/{{assetId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "contracts",
+                    "{{assetId}}"
+                  ]
+                },
+                "description": "Deletes one contract file. Returns { deleted }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Screening",
+          "description": "Screening tab: call transcripts (files and pasted text) and the home video. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id).",
+          "item": [
+            {
+              "name": "Get screening",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/screening",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "screening"
+                  ]
+                },
+                "description": "{ calls: { 1: { files, texts }, 2: { files, texts } }, video }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            },
+            {
+              "name": "Upload call transcript file",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/screening/calls/{{call}}/files",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "screening",
+                    "calls",
+                    "{{call}}",
+                    "files"
+                  ]
+                },
+                "description": "Uploads a transcript file for call {{call}} (1 or 2). Returns { file }; file.assetId saved to {{assetId}}. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 400 bad call number or missing file.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Transcript file (max 20MB)."
+                    },
+                    {
+                      "key": "note",
+                      "value": "Call 1 notes",
+                      "type": "text",
+                      "description": "Optional note (max 500 chars)."
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                      "let json = {};",
+                      "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                      "const value = json.file && json.file.assetId;",
+                      "if (value !== undefined && value !== null && value !== \"\") {",
+                      "  pm.environment.set(\"assetId\", String(value));",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete call transcript file",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/screening/calls/{{call}}/files/{{assetId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "screening",
+                    "calls",
+                    "{{call}}",
+                    "files",
+                    "{{assetId}}"
+                  ]
+                },
+                "description": "Deletes a transcript file from call {{call}}. Returns { deleted }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            },
+            {
+              "name": "Add pasted transcript",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/screening/calls/{{call}}/texts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "screening",
+                    "calls",
+                    "{{call}}",
+                    "texts"
+                  ]
+                },
+                "description": "Saves pasted transcript text (max 300,000 chars) for call {{call}}. Returns { transcript }; transcript.id saved to {{textId}}. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 503 when the database is not set up.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"text\": \"Interviewer: Tell us about your home.\\nApplicant: We live in a two-bedroom apartment...\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                      "let json = {};",
+                      "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                      "const value = json.transcript && json.transcript.id;",
+                      "if (value !== undefined && value !== null && value !== \"\") {",
+                      "  pm.environment.set(\"textId\", String(value));",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete pasted transcript",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/screening/calls/{{call}}/texts/{{textId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "screening",
+                    "calls",
+                    "{{call}}",
+                    "texts",
+                    "{{textId}}"
+                  ]
+                },
+                "description": "Deletes a pasted transcript. Returns { deleted }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 404 not on this call, 503 no database."
+              },
+              "response": []
+            },
+            {
+              "name": "Upload home video",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/screening/video",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "screening",
+                    "video"
+                  ]
+                },
+                "description": "Uploads the home video. Returns { file }; file.assetId saved to {{assetId}}. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id).",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Video file (max 20MB)."
+                    },
+                    {
+                      "key": "note",
+                      "value": "Home tour video",
+                      "type": "text",
+                      "description": "Optional note (max 500 chars)."
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                      "let json = {};",
+                      "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                      "const value = json.file && json.file.assetId;",
+                      "if (value !== undefined && value !== null && value !== \"\") {",
+                      "  pm.environment.set(\"assetId\", String(value));",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete home video",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/screening/video/{{assetId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "screening",
+                    "video",
+                    "{{assetId}}"
+                  ]
+                },
+                "description": "Deletes a home video file. Returns { deleted }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "AI review",
+          "description": "AI reviews of an application (Overview card and Screening tab). Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id).",
+          "item": [
+            {
+              "name": "AI review state",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/ai",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "ai"
+                  ]
+                },
+                "description": "{ provider, available, mock, draft | null, runs }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            },
+            {
+              "name": "Start AI review",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/ai/reviews",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "ai",
+                    "reviews"
+                  ]
+                },
+                "description": "Runs an AI review (kind: form_review, call_1_review or call_2_review) and returns { run } as a draft; run.id saved to {{runId}}. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 400 unknown kind.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"kind\": \"form_review\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                      "let json = {};",
+                      "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                      "const value = json.run && json.run.id;",
+                      "if (value !== undefined && value !== null && value !== \"\") {",
+                      "  pm.environment.set(\"runId\", String(value));",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get AI review",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/ai/reviews/{{runId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "ai",
+                    "reviews",
+                    "{{runId}}"
+                  ]
+                },
+                "description": "{ run } with its input. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 400 non-numeric run id."
+              },
+              "response": []
+            },
+            {
+              "name": "Accept AI review",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/ai/reviews/{{runId}}/accept",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "ai",
+                    "reviews",
+                    "{{runId}}",
+                    "accept"
+                  ]
+                },
+                "description": "Accepts the draft and writes its values to the application. Returns { run, values }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            },
+            {
+              "name": "Discard AI review",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/ai/reviews/{{runId}}/discard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "ai",
+                    "reviews",
+                    "{{runId}}",
+                    "discard"
+                  ]
+                },
+                "description": "Discards the draft. Returns { run }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Post adoption",
+          "description": "Post Adoption tab: one record per application. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id).",
+          "item": [
+            {
+              "name": "Get post-adoption",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/post-adoption",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "post-adoption"
+                  ]
+                },
+                "description": "{ record | null, photos }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            },
+            {
+              "name": "Owner options",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/post-adoption/owner-options",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "post-adoption",
+                    "owner-options"
+                  ]
+                },
+                "description": "{ users } who may be the post-adoption owner (active Admins and the Case Owner). Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            },
+            {
+              "name": "Start post-adoption",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/post-adoption",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "post-adoption"
+                  ]
+                },
+                "description": "Creates the post-adoption record (adoptionDate required, arrivalDate optional). Returns { record, photos }; record.id saved to {{recordId}}. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 400 no adoption date, 409 record already exists.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"adoptionDate\": \"2026-09-15\",\n  \"arrivalDate\": \"2026-09-20\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                      "let json = {};",
+                      "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                      "const value = json.record && json.record.id;",
+                      "if (value !== undefined && value !== null && value !== \"\") {",
+                      "  pm.environment.set(\"recordId\", String(value));",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update post-adoption",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/post-adoption/{{recordId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "post-adoption",
+                    "{{recordId}}"
+                  ]
+                },
+                "description": "Changes writable fields (e.g. status, ownerId, city, dates, chaseCount, stopChasing, escalationRequired, escalationNotes, updates, check-in fields). Owner must be an active Admin or the Case Owner; Urgent escalation notifies Admins and the Case Owner. Returns { record }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 400 unknown field, 404 record not on this application.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ownerId\": \"{{userId}}\",\n  \"generalUpdate\": \"Settling in well.\",\n  \"escalationRequired\": \"No\",\n  \"chaseCount\": 0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Upload post-adoption photo",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/post-adoption/{{recordId}}/photos",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "post-adoption",
+                    "{{recordId}}",
+                    "photos"
+                  ]
+                },
+                "description": "Uploads a photo/video to the record. Returns { photo }; photo.assetId saved to {{assetId}}. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id). 404 record not on this application.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": [],
+                      "description": "Photo or video (max 20MB)."
+                    },
+                    {
+                      "key": "note",
+                      "value": "First week at home",
+                      "type": "text",
+                      "description": "Optional note (max 500 chars)."
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                      "let json = {};",
+                      "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                      "const value = json.photo && json.photo.assetId;",
+                      "if (value !== undefined && value !== null && value !== \"\") {",
+                      "  pm.environment.set(\"assetId\", String(value));",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete post-adoption photo",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/post-adoption/{{recordId}}/photos/{{assetId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "post-adoption",
+                    "{{recordId}}",
+                    "photos",
+                    "{{assetId}}"
+                  ]
+                },
+                "description": "Deletes one photo/video from the record. Returns { deleted }. Admins and the application's Case Owner only (403 otherwise; 400 for a non-numeric id)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Adoption Form",
+          "item": [
+            {
+              "name": "Get adoption form state",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/adoption-form",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "adoption-form"
+                  ]
+                },
+                "description": "{ suggested: { key, reason }, forms: [{ key, name, link }], canSend, blockedReason, invites }: the pre-filled links to the UAE and UK/US Adoption Forms (suggested from the application country) and every recorded send, newest first. Admins and the application Case Owner only (403 otherwise; 400 for a non-numeric id). 404 unknown application, 409 when applications are still on Monday."
+              },
+              "response": []
+            },
+            {
+              "name": "Record adoption form send",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/adoption-form/sends",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "adoption-form",
+                    "sends"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"formKey\": \"standard\",\n  \"method\": \"copy_link\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Records that the Adoption Form link was sent (the app sends no email yet) and logs it on the Activity tab. formKey: standard | uae. method: copy_link | email_client. Answers { invite }. Admins and the Case Owner only; 409 unless the application is Active Application; 400 for an unknown formKey or method."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cats",
+      "description": "Cats kept in the database. 409 when Cats is still kept on Monday on this server (not in DATABASE_BOARDS).",
+      "item": [
+        {
+          "name": "List cats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats"
+              ]
+            },
+            "description": "All cats. Any signed-in user. 409 when Cats is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Cat options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                "options"
+              ]
+            },
+            "description": "{ breed, colour } dropdown labels. Any signed-in user. 409 when Cats is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get cat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/{{catId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                "{{catId}}"
+              ]
+            },
+            "description": "One cat. Any signed-in user. 404 not found. 409 when Cats is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create cat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats"
+              ]
+            },
+            "description": "Creates a cat (name required; status starts at Intake; optional fields from the Add Cat form, rescuerId must exist). Any signed-in user. Returns the cat; id saved to {{catId}}. 400 no name/unknown rescuer. 409 when Cats is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Luna\",\n  \"gender\": \"Female\",\n  \"age\": 3,\n  \"breed\": \"Domestic Shorthair\",\n  \"colour\": \"Tabby\",\n  \"energyLevel\": \"Medium\",\n  \"vaccinated\": \"Yes\",\n  \"sterilized\": \"Yes\",\n  \"personalitySummary\": \"Calm and affectionate.\",\n  \"fosterLocation\": \"Dubai Marina\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                  "const value = json.id;",
+                  "if (value !== undefined && value !== null && value !== \"\") {",
+                  "  pm.environment.set(\"catId\", String(value));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update cat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/{{catId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                "{{catId}}"
+              ]
+            },
+            "description": "Changes fields ({ field: value }). Any signed-in user. 400 invalid value/unknown rescuer, 404 not found. 409 when Cats is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Adoption Ready\",\n  \"specialNotes\": \"Prefers a quiet home.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Link bonded cats",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/bonded",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                "bonded"
+              ]
+            },
+            "description": "Links every cat in catIds as bonded with the others. Any signed-in user. Returns { linked }. 400 invalid/unknown cat ids. 409 when Cats is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"catIds\": [\n    \"{{catId}}\",\n    \"1234567890\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "description": "Tasks kept in the database. 409 when Tasks is still kept on Monday on this server (not in DATABASE_BOARDS).",
+      "item": [
+        {
+          "name": "List tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ]
+            },
+            "description": "All tasks. Any signed-in user. 409 when Tasks is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Task title options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/title-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "title-options"
+              ]
+            },
+            "description": "The Task dropdown's labels. Any signed-in user. 409 when Tasks is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get task",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}"
+              ]
+            },
+            "description": "One task. Any signed-in user. 400 invalid id, 404 not found. 409 when Tasks is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks"
+              ]
+            },
+            "description": "Creates a task (catId and/or applicationId, at least one; title required; status New/In Progress/Waiting/Completed/Cancelled; priority Low/Medium/High/Urgent; dueDate YYYY-MM-DD). Notifies the owner. Any signed-in user. Returns the task; id saved to {{taskId}}. 409 when Tasks is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"catId\": \"{{catId}}\",\n  \"applicationId\": \"{{applicationId}}\",\n  \"title\": \"Home check\",\n  \"status\": \"New\",\n  \"priority\": \"Medium\",\n  \"dueDate\": \"2026-10-15\",\n  \"ownerId\": \"{{userId}}\",\n  \"waitingReason\": \"\",\n  \"description\": \"Arrange the home check visit.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", function () { pm.response.to.have.status(200); });",
+                  "let json = {};",
+                  "try { json = pm.response.json(); } catch (e) { json = {}; }",
+                  "const value = json.id;",
+                  "if (value !== undefined && value !== null && value !== \"\") {",
+                  "  pm.environment.set(\"taskId\", String(value));",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tasks",
+                "{{taskId}}"
+              ]
+            },
+            "description": "Changes any of { title, status, priority, dueDate, ownerId, waitingReason, description }; owner changes notify old and new owners. Any signed-in user. 400 invalid value or nothing to change, 404 not found. 409 when Tasks is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"In Progress\",\n  \"priority\": \"High\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Communications",
+      "description": "An item's Communications thread. boardId must be the Cats (5098369241) or Active Applications (5098444415) board.",
+      "item": [
+        {
+          "name": "Get thread",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/communications/{{boardId}}/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "communications",
+                "{{boardId}}",
+                "{{itemId}}"
+              ]
+            },
+            "description": "{ updates }, newest first (max 200). Any signed-in user; Active Applications threads need Admin or Case Owner (403). 400 board without threads, 409 board still kept on Monday (the app reads Monday then)."
+          },
+          "response": []
+        },
+        {
+          "name": "Post message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/communications/{{boardId}}/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "communications",
+                "{{boardId}}",
+                "{{itemId}}"
+              ]
+            },
+            "description": "Posts a message (1-5000 chars; @mentions kept only for Active accounts, who are notified). Returns { update }. Any signed-in user; Active Applications threads need Admin or Case Owner (403). 502 post failed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Spoke with the adopter today, all good.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "The caller's own notifications.",
+      "item": [
+        {
+          "name": "List notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ]
+            },
+            "description": "The caller's recent notifications. Any signed-in user."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark notification read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "{{notificationId}}",
+                "read"
+              ]
+            },
+            "description": "Marks one of the caller's notifications read. Returns { ok }. Any signed-in user. 400 invalid id, 404 not the caller's."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark all read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "read-all"
+              ]
+            },
+            "description": "Marks all the caller's unread notifications read. Returns { marked }. Any signed-in user."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activity",
+      "description": "Activity Log entries.",
+      "item": [
+        {
+          "name": "List activity",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/activity",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "activity"
+              ],
+              "query": [
+                {
+                  "key": "boardId",
+                  "value": "{{boardId}}",
+                  "description": "Optional; give together with itemId for one item's entries.",
+                  "disabled": true
+                },
+                {
+                  "key": "itemId",
+                  "value": "{{itemId}}",
+                  "description": "Optional; give together with boardId.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Activity Log entries, newest first (capped by the page-size setting); boardId + itemId (both numeric) filter to one item. Any signed-in user. 400 only one of them given, 429 Monday rate limit."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "description": "App Settings.",
+      "item": [
+        {
+          "name": "List settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "settings"
+              ]
+            },
+            "description": "[{ id, name, key, value, description }] from memory. Any signed-in user."
+          },
+          "response": []
+        },
+        {
+          "name": "Admin - save setting",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "settings"
+              ]
+            },
+            "description": "Changes a setting's value by key, or adds it (name/description used for a new row). key: capitals, digits and _. Admin only. Returns all settings. 400 invalid key/value, 429 rate limit.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"SESSION_EXPIRY_HOURS\",\n  \"value\": \"12\",\n  \"name\": \"Session Expiry Hours\",\n  \"description\": \"How long a sign-in lasts.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin / Server",
+      "description": "Health, sync, database and Monday API checks.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "{ ok: true }. Public (used by keep-alive and monitors).",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Server health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/server-health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "server-health"
+              ]
+            },
+            "description": "Uptime, last ping, keep-alive state, Render hours this month and memory. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Sync status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sync"
+              ]
+            },
+            "description": "Nightly Monday sync status (last run, waiting/failed changes, next run), or { enabled: false } without a database. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Sync failures",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sync/failures",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sync",
+                "failures"
+              ]
+            },
+            "description": "{ failures }: every failed change, explained. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Run sync now",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/sync/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "sync",
+                "run"
+              ]
+            },
+            "description": "Runs the database to Monday sync now (one at a time). Admin only. 503 when the database is not set up."
+          },
+          "response": []
+        },
+        {
+          "name": "Database health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/database-health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "database-health"
+              ]
+            },
+            "description": "Database size vs the free 500 MB, rows/space per table, queries today and mirror status; { enabled: false } without a database. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Database table rows",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/database-tables/{{table}}/rows",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "database-tables",
+                "{{table}}",
+                "rows"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Optional page size (default 50, max 100).",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "0",
+                  "description": "Optional offset (default 0).",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "A page of one public table's rows, newest first; password/token/secret columns hidden, long values cut. Admin only. 404 unknown table."
+          },
+          "response": []
+        },
+        {
+          "name": "Monday API version",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/monday-api-version",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "monday-api-version"
+              ]
+            },
+            "description": "Pinned Monday API version status vs the current versions, with checkedAt and checkError. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Database boards",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/database-boards",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "database-boards"
+              ]
+            },
+            "description": "{ boards }: which boards are served from the database (DATABASE_BOARDS). Any signed-in user."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Read-only boards",
+      "description": "Boards the app only lists (readOnlyBoards.js). Each answers 409 when its board is still kept on Monday.",
+      "item": [
+        {
+          "name": "List travel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/travel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "travel"
+              ]
+            },
+            "description": "[{ id, name, status }]. Any signed-in user. 409 when Travel is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "List post-adoption records",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/post-adoption",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "post-adoption"
+              ]
+            },
+            "description": "[{ id, name, status, escalationRequired }] of every post-adoption record. Any signed-in user. 409 when Post-Adoption is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        },
+        {
+          "name": "List rescuers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuers"
+              ]
+            },
+            "description": "[{ id, name }]. Any signed-in user. 409 when Rescuers is still kept on Monday on this server (not in DATABASE_BOARDS)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "description": "Generic file upload to a Monday file column.",
+      "item": [
+        {
+          "name": "Upload file",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "upload"
+              ]
+            },
+            "description": "Uploads a file to an item's file column on Monday (used for Cats files and Application Photos). Any signed-in user. Returns { id } (asset id). 400 missing/invalid itemId, columnId or file, 403 protected columns (contracts, transcripts, video, post-adoption photos: use their own tab requests), 502 Monday refused, 429 rate limit.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "The file to upload."
+                },
+                {
+                  "key": "itemId",
+                  "value": "{{itemId}}",
+                  "type": "text",
+                  "description": "Monday item id (numeric), e.g. a cat id."
+                },
+                {
+                  "key": "columnId",
+                  "value": "file_mm47aj59",
+                  "type": "text",
+                  "description": "File column id (letters, digits, _). file_mm47aj59 is Cats Photos."
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Session",
+      "description": "Live session events.",
+      "item": [
+        {
+          "name": "Session events (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "text/event-stream"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/session/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "session",
+                "events"
+              ]
+            },
+            "description": "Server-Sent Events stream for the caller's session: an 'account' event at once, 'session-ended' when the password changes elsewhere, ': ping' heartbeats. Authenticates with the normal Authorization: Bearer header (inherited from the collection), no query token. Postman shows a stream that stays open: cancel it to stop. 401 when the account is not Active."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
