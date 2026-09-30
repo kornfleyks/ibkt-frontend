@@ -273,6 +273,21 @@ await transaction(async (run) => {
     primary key (application_id, form_id)
   )`);
 
+  // Each time the Adoption Form link was sent to an applicant ("Send
+  // Adoption Form", server/adoptionForm/). App-only: never sent to Monday.
+  await run(`create table if not exists adoption_form_invites (
+    id bigserial primary key,
+    application_id bigint not null,
+    form_key text not null,
+    form_id text not null,
+    method text not null,
+    link text not null,
+    sent_by_id text,
+    sent_by_name text,
+    sent_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists adoption_form_invites_application on adoption_form_invites (application_id, sent_at desc)");
+
   await run("create index if not exists jotform_submissions_status on jotform_submissions (status)");
   await run("create index if not exists jotform_submissions_form on jotform_submissions (form_id, first_received_at desc)");
 
@@ -390,7 +405,7 @@ await transaction(async (run) => {
 
   // Reachable only by this server's connection; Supabase's public API
   // (anon / authenticated keys) gets nothing without policies.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });

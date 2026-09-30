@@ -11,7 +11,9 @@ import {
   Completed,
   Dashboard,
   Delete,
+  Duplicate,
   Edit,
+  Email,
   ExternalPage,
   Folder,
   Form,
@@ -72,9 +74,11 @@ export const CheckCircleIcon = fromVibe(Completed, "CheckCircleIcon");
 export const CheckIcon = fromVibe(Check, "CheckIcon");
 export const CheckListIcon = fromVibe(CheckList, "CheckListIcon");
 export const CloseIcon = fromVibe(Close, "CloseIcon");
+export const ContentCopyIcon = fromVibe(Duplicate, "ContentCopyIcon");
 export const DashboardIcon = fromVibe(Dashboard, "DashboardIcon");
 export const DeleteIcon = fromVibe(Delete, "DeleteIcon");
 export const EditIcon = fromVibe(Edit, "EditIcon");
+export const EmailIcon = fromVibe(Email, "EmailIcon");
 export const FavoriteIcon = fromVibe(Heart, "FavoriteIcon");
 export const FlightTakeoffIcon = fromVibe(Globe, "FlightTakeoffIcon");
 export const FolderSharedIcon = fromVibe(Folder, "FolderSharedIcon");

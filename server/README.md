@@ -312,6 +312,25 @@ Only Admins and the application's Case Owner may use them
 (`applicationAccess.js`, shared with Communications). `/api/upload` and
 `/api/monday` refuse the Contract File column so this can't be skipped.
 
+## Send Adoption Form (`adoptionForm/`)
+
+The pre-filled link to the second-stage Jotform form: **UAE Adoption Form
+& Agreement** when the application's country is the UAE, else **Adoption
+Form and References** (forms and pre-fill field names in
+`src/constants/forms/adoptionForms.js`). The app sends no email yet: the
+volunteer copies the link or opens it in their email app, and the app
+records each send in `adoption_form_invites` (created by
+`scripts/databaseSchema.js`; app-only, never sent to Monday) and on the
+Activity tab. See `docs/send-adoption-form.md`.
+
+- `GET /api/applications/:id/adoption-form` - `{ suggested, forms, canSend,
+  blockedReason, invites }`.
+- `POST /api/applications/:id/adoption-form/sends` - `{ formKey: "standard" |
+  "uae", method: "copy_link" | "email_client" }`; 409 unless the
+  application is Active Application. Answers `{ invite }`.
+
+Only Admins and the application's Case Owner (`applicationAccess.js`).
+
 ## Post-adoption (`postAdoption/`)
 
 An application's post-adoption record (the Post Adoption tab). The rules

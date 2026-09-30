@@ -9,6 +9,8 @@ import { getActiveApplication } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
 import { Box, Stack, Tabs, Tab } from "@mui/material";
 import PreviewApplicationButton from "../../components/ActiveApplications/PreviewApplication/PreviewApplicationButton";
+import SendAdoptionFormButton from "../../components/ActiveApplications/SendAdoptionForm/SendAdoptionFormButton";
+import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../constants/statuses/activeApplicationsStatuses";
 import { activeApplicationWorkspaceTabs } from "../../config/activeApplicationWorkspaceTabs";
 import DecisionActions from "../../components/ActiveApplications/DecisionActions";
 import { APPLICATION_STAGE_ACTIONS } from "../../config/applicationStageActions";
@@ -64,6 +66,15 @@ function ActiveApplicationWorkspace() {
         actions={
           <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap" }}>
             <PreviewApplicationButton key={application.id} applicationId={application.id} applicationName={application.name} />
+
+            {application.adoptionStage === ACTIVE_APPLICATIONS_STATUS_OPTIONS.ADOPTION_STAGE.ACTIVE_APPLICATION && (
+              <SendAdoptionFormButton
+                key={`send-${application.id}`}
+                applicationId={application.id}
+                applicationName={application.name}
+                applicantEmail={application.email}
+              />
+            )}
 
             {stageActions && (
               <DecisionActions
