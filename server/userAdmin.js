@@ -27,7 +27,9 @@ const CLOSED_CASE_STAGES = [STAGES.REJECTED_APPLICATION, STAGES.ARCHIVED_APPLICA
 const OPEN_TASK_STATUSES = [TASK_STATUS.NEW, TASK_STATUS.IN_PROGRESS, TASK_STATUS.WAITING];
 
 // Statuses that take someone out of action - their open work is handed to
-// the Admin making the change so nothing is left without an owner.
+// the Admin making the change so nothing is left without an owner. Blocked
+// isn't one: it's a temporary lock (signed out, can't sign in) that leaves
+// their cases and tasks where they are.
 const HANDOVER_STATUSES = [ACCOUNT_STATUS.SUSPENDED, ACCOUNT_STATUS.ARCHIVED];
 
 // Boards a status change (and its hand-over) writes to.
@@ -115,10 +117,12 @@ export async function getOpenWork(userId) {
   return { cases, tasks };
 }
 
+// create_labels_if_missing: a status label the app added (e.g. Blocked) is
+// created on Monday the first time it's written.
 async function changeColumnValue(boardId, itemId, columnId, value) {
   await mondayDirectRequest(
     `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $value: JSON!) {
-      change_column_value(board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value) { id }
+      change_column_value(board_id: $boardId, item_id: $itemId, column_id: $columnId, value: $value, create_labels_if_missing: true) { id }
     }`,
     { boardId, itemId, columnId, value: JSON.stringify(value) },
   );

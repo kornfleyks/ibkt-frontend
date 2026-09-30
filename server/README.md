@@ -200,7 +200,11 @@ Admin endpoints (`userAdmin.js`):
 - `POST /api/admin/users/:id/status` with `{ "status": "..." }` - Suspend and
   Archive first reassign that open work to the acting Admin (each move is
   activity-logged); you can't change your own status. `/api/monday` refuses
-  direct writes to Account Status so this can't be skipped.
+  direct writes to Account Status so this can't be skipped. **Blocked** is a
+  temporary lock: like Suspended the user is signed out and can't sign in
+  (anything but Active is refused), but their open work stays with them;
+  Unblock sets Active again. The label was added by the app - the first
+  Block creates it on Monday (`create_labels_if_missing`).
 
 Signed-in tabs hold `GET /api/session/events` open (server-sent events,
 auth in the header). Every change applied to the account state is pushed

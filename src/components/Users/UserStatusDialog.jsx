@@ -24,6 +24,8 @@ function describeEffect(status) {
             return 'They will be able to sign in.';
         case ACCOUNT_STATUS.PENDING:
             return "They go back into the approval queue and can't sign in until approved.";
+        case ACCOUNT_STATUS.BLOCKED:
+            return "They are signed out straight away and can't sign in until unblocked. Their open cases and tasks stay assigned to them.";
         case ACCOUNT_STATUS.SUSPENDED:
             return "They are signed out on their next action and can't sign in until reactivated.";
         case ACCOUNT_STATUS.ARCHIVED:

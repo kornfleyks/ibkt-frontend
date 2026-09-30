@@ -73,6 +73,8 @@ export const PASSWORD_CHANGED_REASON =
 
 export function inactiveAccountReason(accountStatus) {
   switch (accountStatus) {
+    case "Blocked":
+      return "Your account was blocked, so you've been signed out. Contact an Admin if you think this is a mistake.";
     case "Suspended":
       return "Your account was suspended, so you've been signed out. Contact an Admin if you think this is a mistake.";
     case "Archived":

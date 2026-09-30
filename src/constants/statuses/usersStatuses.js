@@ -18,6 +18,9 @@ export const USERS_STATUS_OPTIONS = {
     ACTIVE: "Active",
     SUSPENDED: "Suspended",
     ARCHIVED: "Archived",
+    // Added by the app (not yet on Monday when this was written): the first
+    // Block creates the label there (create_labels_if_missing).
+    BLOCKED: "Blocked",
   },
   EMAIL_VERIFIED: {
     YES: "Yes",

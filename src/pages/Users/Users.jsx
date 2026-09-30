@@ -58,6 +58,7 @@ function getStatusColor(status) {
         case ACCOUNT_STATUS.PENDING:
             return 'warning';
 
+        case ACCOUNT_STATUS.BLOCKED:
         case ACCOUNT_STATUS.SUSPENDED:
         case ACCOUNT_STATUS.ARCHIVED:
             return 'error';
@@ -360,9 +361,10 @@ function PasswordCell({ user }) {
 function UserRow({ user, isSelf, onRequestRole, onRequestAction, onOpenDetails, onUpdate }) {
     const isRoleLocked = user.email?.trim().toLowerCase() === ROLE_LOCKED_EMAIL;
     const { formatDateTime } = useDateFormat();
-    // You can't take your own account out of action (the server refuses too).
+    // You can't take your own account out of action - block, suspend or
+    // archive (the server refuses any status but Active for yourself).
     const actions = (ACTIONS_BY_STATUS[user.accountStatus] ?? []).filter(
-        (action) => !(isSelf && HANDOVER_STATUSES.includes(USER_STATUS_ACTIONS[action].status)),
+        (action) => !(isSelf && [ACCOUNT_STATUS.BLOCKED, ...HANDOVER_STATUSES].includes(USER_STATUS_ACTIONS[action].status)),
     );
 
     return (
@@ -427,6 +429,7 @@ const TABS = [
     { label: 'All', slug: 'all', status: null },
     { label: 'Active', slug: 'active', status: ACCOUNT_STATUS.ACTIVE },
     { label: 'Pending', slug: 'pending', status: ACCOUNT_STATUS.PENDING },
+    { label: 'Blocked', slug: 'blocked', status: ACCOUNT_STATUS.BLOCKED },
     { label: 'Suspended', slug: 'suspended', status: ACCOUNT_STATUS.SUSPENDED },
     { label: 'Archived', slug: 'archived', status: ACCOUNT_STATUS.ARCHIVED },
 ];
