@@ -11,6 +11,8 @@ export const NOTIFICATIONS_STATUS_OPTIONS = {
     // Created on the board the first time one is sent (create_labels_if_missing).
     VOLUNTEER_ASSIGNED: "Volunteer Assigned",
     VOLUNTEER_UNASSIGNED: "Volunteer Unassigned",
+    // A Jotform submission no application could be found for (Admins).
+    UNMATCHED_SUBMISSION: "Unmatched Submission",
     ESCALATION: "Escalation",
     // Created on the board the first time one is sent (create_labels_if_missing).
     API_VERSION: "API Version",

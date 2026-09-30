@@ -41,7 +41,7 @@ export function countryCodeOf(name) {
 // number }: the address country, and the national number without a
 // typed country code or trunk 0. Anything else is kept as typed, so it
 // shows in Preview (and the Phone column stays empty - it won't convert).
-function phoneOf(raw, addressCountry) {
+export function phoneOf(raw, addressCountry) {
   const typed = [raw?.area, raw?.phone].filter(Boolean).join(" ").trim();
   let digits = typed.replace(/\D/g, "");
   const international = typed.startsWith("+") || digits.startsWith("00");

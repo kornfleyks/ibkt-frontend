@@ -2,3 +2,4 @@
 - [Postman collection upkeep](postman-collection-upkeep.md) - update postman/ collection whenever a server endpoint is added or changed; app endpoints only, no secrets
 - [Send Adoption Form](send-adoption-form.md) - IN PROGRESS: button + UAE/UK-US link, copy/mailto, adoption_form_invites; table CREATED 2026-09-30; not tested yet; email service later
 - [Assigned Volunteer](assigned-volunteer.md) - BUILT 2026-09-30: Users link column, Active Volunteers only, Admin + Case Owner, notification; real assignment not tried yet
+- [Adoption Form import](adoption-form-import.md) - BUILT 2026-09-30: every Adoption Form and References answer in its own column (36 new), handler in jotform/adoptionReferences; ID copy + unmatched untested

@@ -255,6 +255,14 @@ the server receives their submissions. Research, form ids and fields:
 - `jotform/forms.js` says what each form is for. Adoption forms wait as
   `received` until their handlers exist (creating / updating
   applications); foster and cat forms are kept as `log_only`.
+- Handlers so far: **Pre-Adoption Form** (`handlers/preAdoption.js`,
+  creates the application; `docs/jotform-pre-adoption-import.md`) and
+  **Adoption Form and References** (`adoptionReferences/`, applies every
+  answer to the applicant's application, one column each, plus summary
+  lines and ID files; found by the Send Adoption Form link's hidden id,
+  then email, then name; no match = `unmatched` + Admin bell;
+  `docs/jotform-adoption-form-import.md`). Its columns come from
+  `scripts/createAdoptionFormColumns.js [--apply]`.
 - The same submission arriving twice is saved once; an edited one (a
   contract being signed) is handled again with the new answers.
 - Every request with the right secret is first stored as it arrived in

@@ -59,6 +59,7 @@ import { registerDataRoutes } from "./database/dataRoutes.js";
 import { registerSyncRoutes } from "./database/syncRoutes.js";
 import { startSyncSchedule } from "./database/sync.js";
 import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER } from "../src/constants/mondayApiUsage.js";
+import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
 import { isDatabaseEnabled, getQueryCount } from "./database/db.js";
 import { isDatabaseBoardId, databaseBoards } from "./database/switches.js";
 import { refreshFileCopy } from "./database/fileCopies.js";
@@ -108,6 +109,7 @@ const PROTECTED_FILE_COLUMNS = [
   { columnId: TRANSCRIPT_COLUMNS[1], error: "Call transcripts can only be changed from the application's Screening tab." },
   { columnId: TRANSCRIPT_COLUMNS[2], error: "Call transcripts can only be changed from the application's Screening tab." },
   { columnId: VIDEO_COLUMN_ID, error: "The home video can only be changed from the application's Screening tab." },
+  { columnId: ACTIVE_APPLICATIONS.COLUMNS.AF_ID_DOCUMENTS, error: "ID documents come only from the applicant's Adoption Form (Jotform)." },
 ];
 
 const COLUMN_ID_PATTERN = /^[a-zA-Z0-9_]+$/;

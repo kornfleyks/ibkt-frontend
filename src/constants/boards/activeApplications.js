@@ -109,6 +109,44 @@ export const ACTIVE_APPLICATIONS = {
     TYPICAL_DAY: "long_text_mm7pr9bx", // Typical Day | long_text
     APPLICATION_PHOTOS: "file_mm7pmcm3", // Application Photos | file
     CONTACT_CONSENT: "text_mm7pkfw5", // Contact Consent | text
+    // Adoption Form and References answers (Jotform import,
+    // server/scripts/createAdoptionFormColumns.js).
+    AF_FULL_NAME: "text_mm7p2k9t", // Adoption Form Name | text
+    AF_EMAIL: "text_mm7p2h2t", // Adoption Form Email | text
+    AF_ADDRESS: "long_text_mm7paa8s", // Adoption Form Address | long_text
+    AF_TIME_AT_ADDRESS: "text_mm7ps5w7", // Adoption Form Time At Address | text
+    AF_CAT_APPLYING_FOR: "text_mm7p3tyq", // Cat Applying For | text
+    AF_HOME_PHONE: "text_mm7p7gpd", // Home Phone | text
+    AF_MOBILE_PHONE: "text_mm7p1nqr", // Mobile Phone | text
+    AF_EMPLOYER: "long_text_mm7pbe4z", // Employer | long_text
+    AF_WORK_PHONE: "text_mm7pgv8m", // Work Phone | text
+    AF_LATEST_CALL_TIME: "text_mm7p812w", // Latest Call Time | text
+    AF_ID_DOCUMENTS: "file_mm7pgrjp", // ID Documents | file
+    AF_NEAREST_AIRPORTS: "text_mm7pc987", // Nearest Airports | text
+    AF_CAN_AFFORD_FEE: "color_mm7pp92n", // Can Afford Fee | status
+    AF_PLANS_TO_DECLAW: "color_mm7pmsvt", // Plans To Declaw | status
+    AF_CURRENT_CATS_DECLAWED: "color_mm7pc464", // Current Cats Declawed | status
+    AF_CHIEF_RESPONSIBILITY: "long_text_mm7pr216", // Chief Responsibility | long_text
+    AF_PETS_VACCINATED: "color_mm7p65g7", // Pets Vaccinated | status
+    AF_VACCINATION_NOTES: "long_text_mm7pmc8d", // Vaccination Notes | long_text
+    AF_MEDICAL_BUDGET: "long_text_mm7pa742", // Medical Budget | long_text
+    AF_HOLIDAY_PLANS: "long_text_mm7pww0p", // Holiday Plans | long_text
+    AF_FLEA_PREVENTION: "color_mm7p36h2", // Flea Prevention | status
+    AF_VETERINARIAN: "long_text_mm7ptzrm", // Veterinarian | long_text
+    AF_BEHAVIOUR_PLAN: "long_text_mm7pztq2", // Behaviour Plan | long_text
+    AF_LITTER_PROBLEM_PLAN: "long_text_mm7ptg4h", // Litter Problem Plan | long_text
+    AF_CAT_FOOD: "long_text_mm7pz256", // Cat Food | long_text
+    AF_HOME_VISITS_ALLOWED: "color_mm7pn2tx", // Home Visits Allowed | status
+    AF_CRUELTY_CHARGE: "color_mm7pqrjp", // Cruelty Charge | status
+    AF_CRUELTY_DETAILS: "long_text_mm7p35z8", // Cruelty Details | long_text
+    AF_ADOPTED_BEFORE: "color_mm7p50ct", // Adopted Before | status
+    AF_PREVIOUS_RESCUE: "text_mm7pa2qg", // Previous Rescue | text
+    AF_CAT_LIVING_AREA: "color_mm7ppb3z", // Cat Living Area | status
+    AF_OUTDOOR_SUPERVISED: "color_mm7pf4z7", // Outdoor Supervised | status
+    AF_WHERE_CAT_EATS: "long_text_mm7pdhbc", // Where Cat Eats | long_text
+    AF_WHERE_CAT_SLEEPS: "long_text_mm7p97km", // Where Cat Sleeps | long_text
+    REFEREE_3: "text_mm7pfv0x", // Referee 3 | text
+    AF_ANYTHING_ELSE: "long_text_mm7pcpmh", // Anything Else | long_text
   },
   RELATIONS: {
     LINKED_CAT: ["5098369241"],

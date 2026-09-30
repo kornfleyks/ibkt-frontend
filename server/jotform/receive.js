@@ -2,6 +2,7 @@ import { getSubmission } from "./client.js";
 import { formKindOf } from "./forms.js";
 import { saveSubmission, claimSubmission, setSubmissionStatus, waitingSubmissions } from "./submissionsStore.js";
 import { handlePreAdoption } from "./handlers/preAdoption.js";
+import { handleAdoptionReferences } from "./adoptionReferences/handler.js";
 
 // What happens to a submission the server hears about (from the webhook,
 // or later a scheduled check): fetch it from Jotform - so a forged request
@@ -10,11 +11,12 @@ import { handlePreAdoption } from "./handlers/preAdoption.js";
 //
 // A handler gets the claimed submission and answers { status, applicationId? }
 // with status "processed" or "unmatched"; throwing marks it "failed".
-// Kinds without one (the other adoption forms, for now) stay "received"
+// Kinds without one (the UAE form, references, contracts, for now) stay "received"
 // until theirs exists, then get processed from the table
 // (processWaitingSubmissions).
 const HANDLERS = {
   pre_adoption: handlePreAdoption,
+  adoption_references: handleAdoptionReferences,
 };
 
 // A submission edited again while its handler ran is handled again, but

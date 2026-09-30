@@ -3,13 +3,12 @@ import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../../src/constants/statu
 import { PRE_ADOPTION_FORM_ID } from "../../../src/constants/forms/preAdoptionForm.js";
 import { isDatabaseBoard } from "../../database/switches.js";
 import { createItem, updateItem, getItem, fieldsFromMondayValues } from "../../database/boardStore.js";
-import { refreshFileCopy } from "../../database/fileCopies.js";
-import { addFileToColumn } from "../../mondayFiles.js";
 import { clearCache } from "../../mondayCache.js";
 import { logActivity } from "../../activityLog.js";
 import { toApplication, preAdoptionColumnsReady } from "../../preAdoption/toApplication.js";
 import { saveFormAnswers, getFormAnswers } from "../../preAdoption/answersStore.js";
 import { fromJotform } from "../preAdoptionFromJotform.js";
+import { copyUploads } from "../uploads.js";
 
 // Handler for Pre-Adoption Form submissions (docs/jotform-pre-adoption-import.md):
 // a new submission creates an application exactly as Add Application does
@@ -22,41 +21,6 @@ const A = ACTIVE_APPLICATIONS.COLUMNS;
 const TABLE = "applications";
 const BOARD_NAME = "Active Applications";
 const JOTFORM_ACTOR = { id: "", name: "Jotform" };
-const API_KEY = process.env.JOTFORM_API_KEY;
-
-// A Jotform-hosted upload -> { buffer, mimetype, originalname } for Monday.
-// Jotform may ask for the API key before it serves an account's uploads.
-async function downloadUpload(url) {
-  const res = await fetch(url, { headers: API_KEY ? { APIKEY: API_KEY } : {} });
-  const type = res.headers.get("content-type") ?? "application/octet-stream";
-
-  // A login page instead of the file means Jotform refused it.
-  if (!res.ok || type.startsWith("text/html")) throw new Error(`Jotform answered ${res.status} (${type}).`);
-
-  const name = decodeURIComponent(new URL(url).pathname.split("/").pop() || "photo");
-
-  return { buffer: Buffer.from(await res.arrayBuffer()), mimetype: type, originalname: name };
-}
-
-// Copies each upload to Application Photos; one failure doesn't stop the
-// rest or the import. Answers the URLs copied.
-async function copyPhotos(applicationId, urls) {
-  const copied = [];
-
-  for (const url of urls) {
-    try {
-      await addFileToColumn(applicationId, A.APPLICATION_PHOTOS, await downloadUpload(url));
-      copied.push(url);
-    } catch (err) {
-      console.error(`Jotform import: couldn't copy a photo to application ${applicationId}.`, err.message);
-    }
-  }
-
-  if (copied.length > 0) await refreshFileCopy(applicationId, A.APPLICATION_PHOTOS);
-
-  return copied;
-}
-
 function logImport(applicationId, name, created) {
   logActivity({
     actorId: JOTFORM_ACTOR.id,
@@ -122,7 +86,7 @@ export async function handlePreAdoption(submission) {
   // would create it a second time. Failures are only logged.
   try {
     // Only photos this submission hasn't had copied before (an edit may add some).
-    const copied = await copyPhotos(applicationId, photoUrls.filter((url) => !previousPhotoUrls.includes(url)));
+    const copied = await copyUploads(applicationId, A.APPLICATION_PHOTOS, photoUrls.filter((url) => !previousPhotoUrls.includes(url)));
 
     // The answers as converted, for Preview (phone as typed if it didn't convert).
     await saveFormAnswers({
