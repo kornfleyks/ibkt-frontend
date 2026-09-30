@@ -76,6 +76,13 @@ export const ADOPTION_EDITABLE_FIELDS = {
   videoSubmitted: { column: ACTIVE_APPLICATIONS.COLUMNS.VIDEO_SUBMITTED, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.VIDEO_SUBMITTED) },
   videoReviewNotes: { column: ACTIVE_APPLICATIONS.COLUMNS.VIDEO_REVIEW_NOTES, type: "long_text" },
   videoApproved: { column: ACTIVE_APPLICATIONS.COLUMNS.VIDEO_APPROVED, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.VIDEO_APPROVED) },
+  // References tab.
+  referencesSubmitted: { column: ACTIVE_APPLICATIONS.COLUMNS.REFERENCES_SUBMITTED, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.REFERENCES_SUBMITTED) },
+  referenceOutcome: { column: ACTIVE_APPLICATIONS.COLUMNS.REFERENCE_OUTCOME, type: "status", options: Object.values(ACTIVE_APPLICATIONS_STATUS_OPTIONS.REFERENCE_OUTCOME) },
+  referenceNotes: { column: ACTIVE_APPLICATIONS.COLUMNS.REFERENCE_NOTES, type: "long_text" },
+  referee1: { column: ACTIVE_APPLICATIONS.COLUMNS.REFEREE_1, type: "text" },
+  referee2: { column: ACTIVE_APPLICATIONS.COLUMNS.REFEREE_2, type: "text" },
+  referee3: { column: ACTIVE_APPLICATIONS.COLUMNS.REFEREE_3, type: "text" },
   internalNotes: {
     column: ACTIVE_APPLICATIONS.COLUMNS.INTERNAL_NOTES,
     type: "long_text",

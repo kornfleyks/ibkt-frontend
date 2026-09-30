@@ -91,6 +91,7 @@ export function mapMondayActiveApplication(item) {
     referencesSubmitted: columns[ACTIVE_APPLICATIONS.COLUMNS.REFERENCES_SUBMITTED]?.text ?? "",
     referee1: columns[ACTIVE_APPLICATIONS.COLUMNS.REFEREE_1]?.text ?? "",
     referee2: columns[ACTIVE_APPLICATIONS.COLUMNS.REFEREE_2]?.text ?? "",
+    referee3: columns[ACTIVE_APPLICATIONS.COLUMNS.REFEREE_3]?.text ?? "",
     referenceOutcome: columns[ACTIVE_APPLICATIONS.COLUMNS.REFERENCE_OUTCOME]?.text ?? "",
     referenceNotes: columns[ACTIVE_APPLICATIONS.COLUMNS.REFERENCE_NOTES]?.text ?? "",
 

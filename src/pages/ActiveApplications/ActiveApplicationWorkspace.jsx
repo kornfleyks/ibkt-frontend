@@ -22,6 +22,7 @@ import ActivityTab from "../../components/ActivityLog/ActivityTab";
 import CommunicationsTab from "../../components/Communications/CommunicationsTab";
 import TasksTab from "../../components/Tasks/TasksTab";
 import ScreeningTab from "../../components/ActiveApplications/Workspace/Screening/ScreeningTab";
+import ReferencesTab from "../../components/ActiveApplications/Workspace/References/ReferencesTab";
 import { ACTIVE_APPLICATIONS } from "../../constants/boards/activeApplications";
 
 function ActiveApplicationWorkspace() {
@@ -121,6 +122,12 @@ function ActiveApplicationWorkspace() {
       )}
       {activeApplicationWorkspaceTabs[tab].slug === "screening" && (
         <ScreeningTab
+          application={application}
+          onApplicationChange={(updates) => setApplication((current) => ({ ...current, ...updates }))}
+        />
+      )}
+      {activeApplicationWorkspaceTabs[tab].slug === "references" && (
+        <ReferencesTab
           application={application}
           onApplicationChange={(updates) => setApplication((current) => ({ ...current, ...updates }))}
         />
