@@ -74,7 +74,9 @@ export async function serverPost(path, body) {
 
     if (!response.ok || result.error) {
         console.error(result.error);
-        throw new Error(result.error || 'Request failed.');
+        // status and the whole answer ride along for callers that need more
+        // than the message (e.g. field errors, a conflicting record's id).
+        throw Object.assign(new Error(result.error || 'Request failed.'), { status: response.status, details: result });
     }
 
     return result;
@@ -99,7 +101,9 @@ export async function serverGet(path) {
 
     if (!response.ok || result.error) {
         console.error(result.error);
-        throw new Error(result.error || 'Request failed.');
+        // status and the whole answer ride along for callers that need more
+        // than the message (e.g. field errors, a conflicting record's id).
+        throw Object.assign(new Error(result.error || 'Request failed.'), { status: response.status, details: result });
     }
 
     return result;

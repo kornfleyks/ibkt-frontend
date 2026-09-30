@@ -80,6 +80,32 @@ export const ACTIVE_APPLICATIONS = {
     JOTFORM_REFERENCE_3_SUBMISSION_ID: "text_mm7n6r58", // Jotform Reference 3 Submission ID | text
     JOTFORM_CONTRACT_FORM_ID: "text_mm7nkcsd", // Jotform Contract Form ID | text
     JOTFORM_CONTRACT_SUBMISSION_ID: "text_mm7nphp8", // Jotform Contract Submission ID | text
+    // Pre-Adoption Form answers, one per question (server/scripts/createPreAdoptionColumns.js).
+    HOW_HEARD: "text_mm7pqyg3", // How Heard | text
+    CATS_INTERESTED_IN: "long_text_mm7pm8ev", // Cats Interested In | long_text
+    TIME_AT_ADDRESS: "text_mm7pp6wd", // Time At Address | text
+    HOME_TENURE: "color_mm7pdczq", // Home Tenure | status
+    ACCOMMODATION_TYPE: "color_mm7p5ysa", // Accommodation Type | status
+    PRIVATE_GARDEN: "color_mm7pd1g0", // Private Garden | status
+    HOUSEHOLD_ACTIVITY_LEVEL: "text_mm7pvzza", // Household Activity Level | text
+    HOUSEHOLD_MEMBERS: "long_text_mm7px44y", // Household Members | long_text
+    FAMILY_IN_AGREEMENT: "color_mm7pwshr", // Family In Agreement | status
+    FAMILY_AGREEMENT_NOTES: "long_text_mm7pjejw", // Family Agreement Notes | long_text
+    PET_OWNER_EXPERIENCE: "text_mm7p72qj", // Pet Owner Experience | text
+    CURRENT_PETS: "long_text_mm7pdj40", // Current Pets | long_text
+    CURRENT_PETS_STERILISED: "color_mm7pprz1", // Current Pets Sterilised | status
+    HOURS_ALONE: "numeric_mm7pzm35", // Hours Alone | numbers
+    HOUSEHOLD_ALLERGIES: "color_mm7pm0ya", // Household Allergies | status
+    ALLERGY_DETAILS: "long_text_mm7pr32w", // Allergy Details | long_text
+    CHIEF_CARER: "text_mm7pvvn1", // Chief Carer | text
+    PET_LOST_BEFORE: "color_mm7p7rx7", // Pet Lost Before | status
+    AGE_PREFERENCE: "text_mm7p60q8", // Age Preference | text
+    CAT_PREFERENCES: "text_mm7pph1j", // Cat Preferences | text
+    LIFETIME_COMMITMENT: "color_mm7p1pk5", // Lifetime Commitment | status
+    OUTDOOR_ACCESS: "color_mm7ptxn1", // Outdoor Access | status
+    TYPICAL_DAY: "long_text_mm7pr9bx", // Typical Day | long_text
+    APPLICATION_PHOTOS: "file_mm7pmcm3", // Application Photos | file
+    CONTACT_CONSENT: "text_mm7pkfw5", // Contact Consent | text
   },
   RELATIONS: {
     LINKED_CAT: ["5098369241"],

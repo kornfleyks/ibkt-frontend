@@ -16,6 +16,7 @@ import useTabParam from "../hooks/useTabParam";
 import useMyCasesFilter from "../hooks/useMyCasesFilter";
 import MyCasesToggle from "../components/Common/MyCasesToggle";
 import Stack from "@mui/material/Stack";
+import AddApplicationDialog from "../components/ActiveApplications/AddApplicationDialog/AddApplicationDialog";
 
 const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
@@ -30,6 +31,7 @@ function ActiveApplications() {
   const [tab, setTab] = useTabParam(TABS);
   const { showLoading, hideLoading } = useLoading();
   const myCases = useMyCasesFilter("activeApplications");
+  const [addOpen, setAddOpen] = useState(false);
 
   async function loadActiveApplications() {
     showLoading("Loading active applications...");
@@ -62,6 +64,7 @@ function ActiveApplications() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
+              onClick={() => setAddOpen(true)}
               sx={{
                 minWidth: 140,
               }}
@@ -107,6 +110,16 @@ function ActiveApplications() {
           ))}
         </Grid>
       )}
+
+      <AddApplicationDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        // New applications start as New Application - show that tab.
+        onCreated={() => {
+          setTab(TABS.findIndex((item) => item.stage === ADOPTION_STAGE.NEW_APPLICATION));
+          loadActiveApplications();
+        }}
+      />
     </>
   );
 }

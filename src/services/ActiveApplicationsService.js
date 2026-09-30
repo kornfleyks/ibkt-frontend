@@ -4,6 +4,7 @@ import {
   getColumnSettings,
   serverGet,
   serverPost,
+  uploadMondayFile,
 } from "./MondayService";
 import { ACTIVE_APPLICATIONS } from "../constants/boards/activeApplications";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../constants/statuses/activeApplicationsStatuses";
@@ -262,6 +263,36 @@ export async function updateAdoptionField(id, field, value) {
       payload,
     ),
   );
+}
+
+// Add Application: the Pre-Adoption Form's answers (keys of
+// constants/forms/preAdoptionForm.js) create an application owned by the
+// caller; `photos` then go to Application Photos, each allowed to fail on
+// its own (the application exists by then). Resolves { id, name,
+// failedPhotos: [file names] }. A duplicate open application for the email
+// rejects with err.details.existingId.
+export async function createApplication(answers, photos = []) {
+  const { id, name } = await serverPost("/api/applications", { answers });
+
+  const results = await Promise.allSettled(
+    photos.map((file) => uploadMondayFile(id, ACTIVE_APPLICATIONS.COLUMNS.APPLICATION_PHOTOS, file)),
+  );
+
+  const failedPhotos = results.flatMap((result, index) => (result.status === "rejected" ? [photos[index].name] : []));
+
+  return { id, name, failedPhotos };
+}
+
+// The Pre-Adoption answers an application was created with (Add
+// Application), for Preview: { answers, createdAt }, or null when it has
+// none (created before Add Application existed).
+export async function getPreAdoptionAnswers(applicationId) {
+  try {
+    return await serverGet(`/api/applications/${applicationId}/pre-adoption-answers`);
+  } catch (err) {
+    if (err.status === 404) return null;
+    throw err;
+  }
 }
 
 // Case Owner is written only through the server endpoint (it enforces the

@@ -260,6 +260,19 @@ await transaction(async (run) => {
     last_received_at timestamptz not null default now(),
     processed_at timestamptz
   )`);
+  // The exact answers an application was created with in the app (Add
+  // Application: the Pre-Adoption Form copy), for the application page's
+  // Preview. One row per application and form. App-only: never sent to
+  // Monday (the answers also sit in the application's own columns).
+  await run(`create table if not exists application_form_answers (
+    application_id bigint not null,
+    form_id text not null,
+    answers jsonb not null,
+    created_by bigint,
+    created_at timestamptz not null default now(),
+    primary key (application_id, form_id)
+  )`);
+
   await run("create index if not exists jotform_submissions_status on jotform_submissions (status)");
   await run("create index if not exists jotform_submissions_form on jotform_submissions (form_id, first_received_at desc)");
 
@@ -377,7 +390,7 @@ await transaction(async (run) => {
 
   // Reachable only by this server's connection; Supabase's public API
   // (anon / authenticated keys) gets nothing without policies.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });

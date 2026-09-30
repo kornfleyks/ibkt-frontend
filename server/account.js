@@ -1,7 +1,7 @@
 import { USERS } from "../src/constants/boards/users.js";
 import { USERS_STATUS_OPTIONS } from "../src/constants/statuses/usersStatuses.js";
 import { sanitizePreferences } from "../src/constants/preferences.js";
-import { dialCodeOf } from "../src/constants/countries.js";
+import { toPhoneValue } from "./phoneValue.js";
 import {
   getAccountRow,
   setUserColumns,
@@ -27,8 +27,6 @@ const COLUMNS = USERS.COLUMNS;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_NAME_LENGTH = 100;
 const MIN_PASSWORD_LENGTH = 8;
-// E.164 allows at most 15 digits including the country code.
-const MAX_PHONE_DIGITS = 15;
 
 // Never 401 for a wrong current password: the frontend treats any 401 as an
 // expired session and signs the user out.
@@ -83,28 +81,6 @@ function logOwnChange(req, row, actionType, description) {
     actionType,
     description: `${actorName} ${description}`,
   });
-}
-
-// { phone, countryShortName } for Monday, or { error }. An empty number
-// clears the column.
-function toPhoneValue(phone) {
-  const number = String(phone?.number ?? "").replace(/[\s\-().]/g, "");
-
-  if (!number) {
-    return { value: { phone: "", countryShortName: "" } };
-  }
-
-  const dialCode = dialCodeOf(phone?.country);
-
-  if (!dialCode) {
-    return { error: "Choose the phone number's country." };
-  }
-
-  if (!/^\d+$/.test(number) || dialCode.length + number.length > MAX_PHONE_DIGITS || number.length < 4) {
-    return { error: "Enter a valid phone number (digits only, without the country code)." };
-  }
-
-  return { value: { phone: `+${dialCode}${number}`, countryShortName: phone.country } };
 }
 
 function cleanName(name) {

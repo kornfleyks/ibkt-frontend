@@ -7,7 +7,8 @@ import PostAdoptionTab from "../../components/ActiveApplications/Workspace/PostA
 import PageHeader from "../../components/PageHeader";
 import { getActiveApplication } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
-import { Box, Tabs, Tab } from "@mui/material";
+import { Box, Stack, Tabs, Tab } from "@mui/material";
+import PreviewApplicationButton from "../../components/ActiveApplications/PreviewApplication/PreviewApplicationButton";
 import { activeApplicationWorkspaceTabs } from "../../config/activeApplicationWorkspaceTabs";
 import DecisionActions from "../../components/ActiveApplications/DecisionActions";
 import { APPLICATION_STAGE_ACTIONS } from "../../config/applicationStageActions";
@@ -61,17 +62,21 @@ function ActiveApplicationWorkspace() {
         title={application.name}
         subtitle={application.adoptionStage}
         actions={
-          stageActions && (
-            <DecisionActions
-              applicationId={application.id}
-              applicationName={application.name}
-              actions={stageActions.actions}
-              disabledReason={stageActions.blockedReason(application)}
-              onDecision={(newStage) =>
-                setApplication((current) => ({ ...current, adoptionStage: newStage }))
-              }
-            />
-          )
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+            <PreviewApplicationButton key={application.id} applicationId={application.id} applicationName={application.name} />
+
+            {stageActions && (
+              <DecisionActions
+                applicationId={application.id}
+                applicationName={application.name}
+                actions={stageActions.actions}
+                disabledReason={stageActions.blockedReason(application)}
+                onDecision={(newStage) =>
+                  setApplication((current) => ({ ...current, adoptionStage: newStage }))
+                }
+              />
+            )}
+          </Stack>
         }
       />
       <Box sx={{ mb: 3 }}>
