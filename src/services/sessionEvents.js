@@ -36,15 +36,16 @@ function parseBlock(block) {
     }
 }
 
-// Whether a 401 means the account itself is no longer active (the same
-// check MondayService's requests make), rather than an expired session.
-async function isInactiveAccount(response) {
+// Why a 401 refused the session (the same codes MondayService's requests
+// read): ACCOUNT_INACTIVE, PASSWORD_CHANGED, or null for a plain expired /
+// invalid session.
+async function unauthorizedCode(response) {
     try {
         const body = await response.json();
 
-        return body?.code === 'ACCOUNT_INACTIVE';
+        return body?.code ?? null;
     } catch {
-        return false;
+        return null;
     }
 }
 
@@ -56,9 +57,10 @@ async function isInactiveAccount(response) {
 // the token into the URL (and into access logs).
 //
 // onAccount({ role, accountStatus }) - on connect and on every change.
-// onUnauthorized({ inactive }) - the server refused the session: `inactive`
-// when the account is suspended / archived / gone (code ACCOUNT_INACTIVE),
-// otherwise the session simply expired or is invalid.
+// onUnauthorized({ code }) - the server refused or ended the session:
+// ACCOUNT_INACTIVE when the account is suspended / archived / gone,
+// PASSWORD_CHANGED after a password change on another device or a reset,
+// null when the session simply expired or is invalid.
 // Returns stop(); reconnects with backoff on network drops until stopped.
 export function connectSessionEvents({ onAccount, onUnauthorized }) {
     let stopped = false;
@@ -83,7 +85,7 @@ export function connectSessionEvents({ onAccount, onUnauthorized }) {
 
             if (response.status === 401) {
                 stopped = true;
-                onUnauthorized({ inactive: await isInactiveAccount(response) });
+                onUnauthorized({ code: await unauthorizedCode(response) });
                 return;
             }
 
@@ -117,6 +119,11 @@ export function connectSessionEvents({ onAccount, onUnauthorized }) {
 
                     if (parsed?.event === 'account') {
                         onAccount(parsed.data);
+                    } else if (parsed?.event === 'session-ended') {
+                        // The server closes the stream right after this.
+                        stopped = true;
+                        onUnauthorized({ code: parsed.data?.code ?? null });
+                        return;
                     } else if (parsed?.event === 'notification') {
                         window.dispatchEvent(new CustomEvent(NOTIFICATION_RECEIVED_EVENT, { detail: parsed.data }));
                     }

@@ -10,6 +10,7 @@ import {
   findUserByEmail,
   createPendingUser,
   setUserPasswordHash,
+  recordPasswordChange,
   setUserLastLogin,
   hashPassword,
   comparePassword,
@@ -35,6 +36,7 @@ import { USERS } from "../src/constants/boards/users.js";
 import { registerMondayApiVersionRoutes, startMondayApiVersionChecks } from "./mondayApiVersionCheck.js";
 import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
 import { initAccountState, applyAccountChange, TRACKED_COLUMNS, NAME_COLUMNS } from "./accountState.js";
+import { passwordStampOf } from "./passwordStamp.js";
 import { registerUserAdminRoutes } from "./userAdmin.js";
 import { registerWebhookRoutes } from "./webhooks.js";
 import { registerJotformRoutes } from "./jotform/routes.js";
@@ -327,6 +329,12 @@ app.post("/api/login", async (req, res) => {
 
     clearAttempts(email);
 
+    // The hash was just read from the store, so it's the current one: keeps
+    // the in-memory password stamp in step even if the password was changed
+    // outside this server (e.g. edited on Monday), so this new session isn't
+    // refused as "password changed".
+    applyAccountChange(user.id, { passwordStamp: passwordStampOf(user.passwordHash) });
+
     // Fire-and-forget: a failed Last Login write must never block a login.
     setUserLastLogin(user.id).catch((err) => console.error("Failed to record last login:", err.message));
 
@@ -449,6 +457,8 @@ app.post("/api/admin/users/:id/password", requireAuth, requireAdmin, async (req,
     const passwordHash = await hashPassword(newPassword);
 
     await setUserPasswordHash(id, passwordHash);
+    // Signs the user out everywhere, including an Admin setting their own.
+    recordPasswordChange(id, passwordHash);
 
     const targetName = await getItemName(id);
     const actorName = `${req.user.firstName} ${req.user.lastName}`.trim();

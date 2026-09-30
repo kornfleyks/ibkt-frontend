@@ -1,5 +1,5 @@
 import { USERS } from "../../src/constants/boards/users.js";
-import { findUserByEmail, findUserByResetToken, setUserColumns, hashPassword } from "../auth.js";
+import { findUserByEmail, findUserByResetToken, setUserColumns, hashPassword, recordPasswordChange } from "../auth.js";
 import { clearAttempts } from "../loginLockout.js";
 import { logActivity } from "../activityLog.js";
 import { createResetCode, isUnexpired, codeMatches } from "./tokens.js";
@@ -94,12 +94,16 @@ export function registerPasswordResetRoutes(app) {
         return res.status(400).json({ error: INVALID_LINK });
       }
 
+      const passwordHash = await hashPassword(newPassword);
+
       // One write: the new password and the used code's removal together.
       await setUserColumns(user.id, {
-        [COLUMNS.PASSWORD_HASH]: await hashPassword(newPassword),
+        [COLUMNS.PASSWORD_HASH]: passwordHash,
         ...CLEARED_TOKEN,
       });
 
+      // Signed out everywhere: sessions made with the old password stop.
+      recordPasswordChange(user.id, passwordHash);
       clearAttempts(user.email);
 
       const fullName = fullNameOf(user);

@@ -66,6 +66,11 @@ export function clearSignOutReason() {
   }
 }
 
+// The server refused a session made with a password that has since changed
+// (401 code PASSWORD_CHANGED, or the session stream's "session-ended").
+export const PASSWORD_CHANGED_REASON =
+  "Your password was changed, so you've been signed out. Sign in with your new password.";
+
 export function inactiveAccountReason(accountStatus) {
   switch (accountStatus) {
     case "Suspended":

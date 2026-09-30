@@ -1,4 +1,4 @@
-import { readAuth, clearAuth, updateStoredRole, setSignOutReason, inactiveAccountReason } from './authStorage';
+import { readAuth, clearAuth, updateStoredRole, setSignOutReason, inactiveAccountReason, PASSWORD_CHANGED_REASON } from './authStorage';
 import { syncUsageFromResponse } from './mondayUsage';
 
 // All Monday requests go through our own server, which holds the API
@@ -25,13 +25,16 @@ function syncRoleFromResponse(response) {
 // This is a plain module, not a component, so it can't read AuthContext -
 // on an expired/invalid session it just clears storage and hard-redirects,
 // same end state a logout would produce. A suspended/archived account
-// (code ACCOUNT_INACTIVE) leaves a reason for the login page to show.
+// (code ACCOUNT_INACTIVE) or a changed password (PASSWORD_CHANGED) leaves a
+// reason for the login page to show.
 async function handleUnauthorized(response) {
     try {
         const body = await response.clone().json();
 
         if (body?.code === 'ACCOUNT_INACTIVE') {
             setSignOutReason(inactiveAccountReason());
+        } else if (body?.code === 'PASSWORD_CHANGED') {
+            setSignOutReason(PASSWORD_CHANGED_REASON);
         }
     } catch {
         // Not JSON - a plain expired session, nothing to explain.

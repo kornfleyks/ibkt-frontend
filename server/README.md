@@ -392,8 +392,9 @@ even though `/api/monday` refuses their Users-board mutations.
   belong to another account; the new address is marked Email Verified = No
   (no email can be sent to confirm it).
 - `POST /api/account/password` with `{ currentPassword, newPassword }` (8+
-  characters). Other sessions stay valid until they expire - tokens are
-  stateless.
+  characters). Signs out every other session (see "Signing out after a
+  password change") and returns `{ ok, token }`: this session re-issued for
+  the new password, same sign-in and expiry times.
 - `POST /api/account/preferences` with `{ preferences }` - replaces the
   saved set; only keys/values known to `src/constants/preferences.js` are
   kept. Needs the Users board **Preferences** column (long text), created
@@ -422,8 +423,8 @@ Set `JOTFORM_RESET_FORM_ID` to its id (here and on Render).
   previous code has expired. `503` without `JOTFORM_RESET_FORM_ID`.
 - `POST /api/password-reset/confirm` with `{ code, newPassword }` (8+
   characters) - sets the password, removes the code (single use), clears the
-  login lockout and logs a "Password Reset" activity. Invalid, used or
-  expired codes answer `400`. Other sessions stay valid until they expire.
+  login lockout, signs the account out everywhere and logs a "Password
+  Reset" activity. Invalid, used or expired codes answer `400`.
 
 The Users board's **Password Reset Token** keeps `<sha256 of code>.<expiry
 ms>` (never the code itself); **Password Reset Expiry** shows the same
@@ -433,6 +434,27 @@ are stored but send no emails. That isn't an official API, so a captcha or
 other spam protection added to the form would stop resets (failures are
 logged as "Password reset: request failed."). Submissions stay in the
 client's Jotform inbox. Moving to an email service only replaces `sender.js`.
+
+## Signing out after a password change (`passwordStamp.js`)
+
+Sessions are stateless tokens, so nothing lists them to revoke. Instead every
+token carries `pwd`, a 16-character HMAC (keyed with `JWT_SECRET`) of the
+account's password hash, and the live account state (`accountState.js`)
+keeps the current one. `requireAuth` refuses a token whose `pwd` no longer
+matches with `401` and code `PASSWORD_CHANGED`; the app shows "Your password
+was changed" on the login page. Nothing extra is stored: the stamp comes from
+the hash, so it survives restarts.
+
+- `recordPasswordChange()` (auth.js) runs after every password write: reset
+  link and Admin "Set Password" sign the account out everywhere; the Account
+  page keeps the session that made the change (by its `iat`) and re-issues
+  its token.
+- Open tabs are told at once: the session stream sends `session-ended` with
+  `{ code: "PASSWORD_CHANGED" }` and closes (`endPasswordChangedSessions`).
+- Tokens from before `pwd` existed carry no stamp and stay valid until they
+  expire.
+- Each sign-in re-reads the hash and refreshes the stamp in memory, so a
+  password edited outside the app doesn't refuse the new session.
 
 ## Monday API version (`mondayApiVersion.js`, `mondayApiVersionCheck.js`)
 

@@ -9,7 +9,8 @@ import { getAccountState, onAccountChange } from "./accountState.js";
 
 const HEARTBEAT_MS = 25_000;
 
-// userId -> Set of open responses (one per tab).
+// userId -> Set of open responses (one per tab). Each response remembers
+// its session's sign-in time and password stamp (res.locals.session).
 const streams = new Map();
 
 function send(res, event, data) {
@@ -45,6 +46,24 @@ export function pushToUser(userId, event, data) {
   }
 }
 
+// After a password change: tells every open tab of `userId` whose session
+// was made with the old password that it's signed out, then closes it. The
+// session that made the change (`exceptSignedInAt`, its token's iat) is
+// left alone - it gets a new token instead. Sessions from before stamps
+// existed (no `pwd` claim) aren't touched, as requireAuth still accepts them.
+export function endPasswordChangedSessions(userId, { exceptSignedInAt } = {}) {
+  for (const res of streams.get(String(userId)) ?? []) {
+    const session = res.locals.session;
+
+    if (!session?.passwordStamp || session.signedInAt === exceptSignedInAt) {
+      continue;
+    }
+
+    send(res, "session-ended", { code: "PASSWORD_CHANGED" });
+    res.end();
+  }
+}
+
 export function registerSessionEventRoutes(app, { requireAuth }) {
   // requireAuth already rejects non-Active accounts, so a suspended user
   // can't (re)connect - the client treats that 401 as "signed out".
@@ -59,6 +78,8 @@ export function registerSessionEventRoutes(app, { requireAuth }) {
       "X-Accel-Buffering": "no",
     });
     res.flushHeaders();
+
+    res.locals.session = { signedInAt: req.user.iat, passwordStamp: req.user.pwd };
 
     if (!streams.has(userId)) {
       streams.set(userId, new Set());

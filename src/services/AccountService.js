@@ -31,6 +31,8 @@ export async function changeEmail({ newEmail, currentPassword }) {
   return { ...result, account: toAccount(result.account) };
 }
 
+// Resolves { ok, token } - the session re-issued for the new password
+// (every other session is signed out).
 export function changePassword({ currentPassword, newPassword }) {
   return serverPost("/api/account/password", { currentPassword, newPassword });
 }

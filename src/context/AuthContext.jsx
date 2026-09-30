@@ -9,6 +9,7 @@ import {
   updateStoredRole,
   setSignOutReason,
   inactiveAccountReason,
+  PASSWORD_CHANGED_REASON,
   AUTH_ROLE_CHANGED_EVENT,
 } from "../services/authStorage";
 import { AuthContext } from "./authContextInstance";
@@ -63,11 +64,15 @@ function AuthProvider({ children }) {
         updateStoredRole(role);
       },
       // An expired session signs out quietly, as any other request's 401
-      // does; only an inactive account gets the explanation.
-      onUnauthorized: ({ inactive }) => {
-        if (inactive) {
+      // does; an inactive account or a changed password gets the explanation.
+      onUnauthorized: ({ code }) => {
+        if (code === "ACCOUNT_INACTIVE") {
           signOutInactive(null);
           return;
+        }
+
+        if (code === "PASSWORD_CHANGED") {
+          setSignOutReason(PASSWORD_CHANGED_REASON);
         }
 
         clearAuth();

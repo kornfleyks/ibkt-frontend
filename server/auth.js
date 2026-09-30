@@ -1,7 +1,9 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getSessionExpiryHours } from "./appSettings.js";
-import { getAccountState } from "./accountState.js";
+import { getAccountState, applyAccountChange } from "./accountState.js";
+import { passwordStampOf } from "./passwordStamp.js";
+import { endPasswordChangedSessions } from "./sessionEvents.js";
 import { USERS } from "../src/constants/boards/users.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch as rateLimitedFetch } from "./mondayRateLimit.js";
@@ -161,6 +163,16 @@ export async function setUserPasswordHash(userId, passwordHash) {
   });
 }
 
+// Call after every password write (reset link, own change, Admin): every
+// session made with the old password is refused from its next request, and
+// open tabs are told at once. `exceptSignedInAt` (a session's iat) keeps
+// the session that made the change signed in - it needs a new token from
+// signToken with the new hash.
+export function recordPasswordChange(userId, passwordHash, { exceptSignedInAt } = {}) {
+  applyAccountChange(userId, { passwordStamp: passwordStampOf(passwordHash) });
+  endPasswordChangedSessions(userId, { exceptSignedInAt });
+}
+
 // Last Login is a date column with time; written in UTC like the Activity
 // Log's Timestamp, so the app can show it correctly in any timezone.
 export async function setUserLastLogin(userId) {
@@ -311,6 +323,8 @@ export function comparePassword(password, hash) {
 // re-issues a token for the same session, e.g. after a name/email change,
 // without extending it: editing a profile must not keep a session alive
 // forever. Keeping iat means "signed in at" stays the real sign-in time.
+// `pwd` is the password stamp (passwordStamp.js): from `user.passwordHash`
+// when given (sign-in, own password change), else kept from `session`.
 export async function signToken(user, { session } = {}) {
   const claims = {
     sub: user.id,
@@ -318,6 +332,7 @@ export async function signToken(user, { session } = {}) {
     firstName: user.firstName,
     lastName: user.lastName,
     role: user.role,
+    pwd: user.passwordHash ? passwordStampOf(user.passwordHash) : session?.pwd,
   };
 
   if (session?.exp) {
@@ -357,6 +372,12 @@ export function requireAuth(req, res, next) {
 
       if (state.accountStatus !== "Active") {
         return res.status(401).json({ error: "This account is not active.", code: "ACCOUNT_INACTIVE" });
+      }
+
+      // Made with a password that has since changed. Tokens from before
+      // stamps existed carry no `pwd` and stay valid until they expire.
+      if (payload.pwd && state.passwordStamp && payload.pwd !== state.passwordStamp) {
+        return res.status(401).json({ error: "Your password was changed. Sign in again.", code: "PASSWORD_CHANGED" });
       }
 
       req.user = { ...payload, role: state.role };

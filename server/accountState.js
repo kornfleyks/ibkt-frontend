@@ -3,12 +3,15 @@ import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch } from "./mondayRateLimit.js";
 import { isDatabaseBoard } from "./database/switches.js";
 import * as usersStore from "./database/usersStore.js";
+import { passwordStampOf } from "./passwordStamp.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
 // In-memory view of every account's live Status and Role, so requireAuth
 // can reject suspended accounts and use the current role on every request
-// without asking Monday each time. Kept current by:
+// without asking Monday each time. Also the password stamp (passwordStamp.js,
+// never the hash), so sessions from before a password change are refused.
+// Kept current by:
 //   - one full read of the Users board at startup (initAccountState),
 //   - this server's own writes / proxied Users-board mutations (applyAccountChange),
 //   - Monday webhooks for edits made directly on the board (see webhooks.js).
@@ -57,6 +60,7 @@ function toState(item) {
     // Contact details for the profile card on @mentions (any signed-in user).
     email: columns[USERS.COLUMNS.EMAIL]?.text ?? "",
     phone: toPhone(columns[USERS.COLUMNS.PHONE]),
+    passwordStamp: passwordStampOf(columns[USERS.COLUMNS.PASSWORD_HASH]?.text),
   };
 }
 
@@ -67,6 +71,7 @@ const COLUMN_IDS = [
   USERS.COLUMNS.LAST_NAME,
   USERS.COLUMNS.EMAIL,
   USERS.COLUMNS.PHONE,
+  USERS.COLUMNS.PASSWORD_HASH,
 ];
 
 function fromStore(user) {
@@ -77,6 +82,7 @@ function fromStore(user) {
     lastName: user.lastName,
     email: user.email,
     phone: user.phone,
+    passwordStamp: passwordStampOf(user.passwordHash),
   };
 }
 
@@ -167,7 +173,7 @@ export async function initAccountState() {
   }
 }
 
-// { role, accountStatus, firstName, lastName, email, phone } or null if the user doesn't exist. Unknown ids
+// { role, accountStatus, firstName, lastName, email, phone, passwordStamp } or null if the user doesn't exist. Unknown ids
 // (e.g. an account created after startup) cost one Monday read, once.
 export async function getAccountState(userId) {
   const key = String(userId);

@@ -7,6 +7,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import SectionCard from '../Common/SectionCard';
 import { changePassword } from '../../services/AccountService';
+import useAuth from '../../hooks/useAuth';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -33,6 +34,7 @@ function validate(form) {
 }
 
 function PasswordChangeCard() {
+    const { updateSession } = useAuth();
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -57,7 +59,11 @@ function PasswordChangeCard() {
         setChanged(false);
 
         try {
-            await changePassword({ currentPassword: form.currentPassword, newPassword: form.newPassword });
+            const { token } = await changePassword({ currentPassword: form.currentPassword, newPassword: form.newPassword });
+
+            // Sessions made with the old password are refused from now on -
+            // this device continues on the re-issued token.
+            updateSession({ token });
             setForm(EMPTY_FORM);
             setChanged(true);
         } catch (err) {
@@ -71,16 +77,15 @@ function PasswordChangeCard() {
         <SectionCard title="Password">
             <Box component="form" onSubmit={handleSubmit} noValidate>
                 <Stack spacing={2}>
-                    {/* Sessions are stateless tokens - nothing can end them early. */}
                     <Typography variant="body2" color="text.secondary">
-                        Other devices where you're signed in stay signed in until their session expires.
+                        Changing your password signs you out on every other device. You stay signed in here.
                     </Typography>
 
                     {error && <Alert severity="error">{error}</Alert>}
 
                     {changed && (
                         <Alert severity="success" onClose={() => setChanged(false)}>
-                            Your password was changed.
+                            Your password was changed. Other devices have been signed out.
                         </Alert>
                     )}
 

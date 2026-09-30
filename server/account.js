@@ -6,6 +6,7 @@ import {
   getAccountRow,
   setUserColumns,
   setUserPasswordHash,
+  recordPasswordChange,
   findUserByEmail,
   hashPassword,
   comparePassword,
@@ -284,11 +285,19 @@ export function registerAccountRoutes(app, { requireAuth }) {
         return res.status(failed.status).json({ error: failed.error });
       }
 
-      await setUserPasswordHash(req.user.sub, await hashPassword(newPassword));
+      const passwordHash = await hashPassword(newPassword);
+
+      await setUserPasswordHash(req.user.sub, passwordHash);
+
+      // Other devices are signed out; this one continues on a token carrying
+      // the new password's stamp (same sign-in and expiry times).
+      recordPasswordChange(req.user.sub, passwordHash, { exceptSignedInAt: req.user.iat });
+
+      const token = await signToken({ ...sessionUserOf(row), role: req.user.role, passwordHash }, { session: req.user });
 
       logOwnChange(req, row, "Password Changed", "changed their password");
 
-      res.json({ ok: true });
+      res.json({ ok: true, token });
     } catch (err) {
       sendFailure(res, err, "Failed to change your password.");
     }
