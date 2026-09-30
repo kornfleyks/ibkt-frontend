@@ -1,4 +1,7 @@
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
+import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../src/constants/statuses/activeApplicationsStatuses.js";
+import { CATS_STATUS_OPTIONS } from "../src/constants/statuses/catsStatuses.js";
+import { getCat, changeCat } from "./cats.js";
 import { isDatabaseBoard } from "./database/switches.js";
 import { query } from "./database/db.js";
 import { readRecords, readRecord, changeRecord, logChanges, actorOf, send, exists, InputError } from "./database/boardRecords.js";
@@ -17,9 +20,30 @@ import { readRecords, readRecord, changeRecord, logChanges, actorOf, send, exist
 //   POST /api/applications/:id             { field: value, ... } (see writable fields)
 //
 // Assigned Volunteer changes only through assignedVolunteer.js.
+//
+// A stage change also moves the linked cats along (applyStageEffects):
+// Approved -> the cats become Adopted; Rejected, or Archived before
+// approval -> the cats are unlinked and back to Adoption Ready (an Approved
+// or Completed application that is archived keeps its Adopted cats). An
+// Approved application can't go back to New or Active. (Matching itself
+// sets the cats to Reserved.)
 
 const A = ACTIVE_APPLICATIONS.COLUMNS;
 const TABLE = "applications";
+const STAGES = ACTIVE_APPLICATIONS_STATUS_OPTIONS.ADOPTION_STAGE;
+const CAT_STATUS = CATS_STATUS_OPTIONS.STATUS;
+
+// Stages an Approved application may not go back to.
+const BEFORE_APPROVAL = [STAGES.NEW_APPLICATION, STAGES.ACTIVE_APPLICATION];
+// Once approved, the cats are the adopter's: archiving only files the
+// application away. Rejecting always frees them (the adoption isn't happening).
+const APPROVED_STAGES = [STAGES.APPROVED_APPLICATION, STAGES.COMPLETED_APPLICATION];
+
+function freesCats(fromStage, toStage) {
+  if (toStage === STAGES.REJECTED_APPLICATION) return true;
+
+  return toStage === STAGES.ARCHIVED_APPLICATION && !APPROVED_STAGES.includes(fromStage);
+}
 
 export const APPLICATION_FIELDS = {
   email: { column: A.EMAIL },
@@ -128,13 +152,79 @@ export async function changeApplication(actor, id, changes) {
     }
   }
 
+  if (changes.adoptionStage && BEFORE_APPROVAL.includes(changes.adoptionStage)) {
+    const current = await getApplication(id);
+
+    if (current?.adoptionStage === STAGES.APPROVED_APPLICATION) {
+      throw new InputError(`An approved application can't go back to "${changes.adoptionStage}".`);
+    }
+  }
+
   const result = await changeRecord(TABLE, APPLICATION_FIELDS, id, changes);
 
   if (!result) return null;
 
   logChanges({ actor, table: TABLE, boardName: "Active Applications", fields: APPLICATION_FIELDS, ...result, keys: Object.keys(changes) });
 
+  if (result.before.adoptionStage !== result.after.adoptionStage) {
+    return (await applyStageEffects(actor, result.before.adoptionStage, result.after)) ?? result.after;
+  }
+
   return result.after;
+}
+
+// Sets each cat that is still linked to `application` to `status`, but only
+// from one of `fromStatuses` (a cat changed by hand since, e.g. Archived,
+// is left alone). One failure doesn't stop the rest.
+async function setLinkedCatsStatus(actor, application, status, fromStatuses) {
+  for (const catId of application.linkedCatIds) {
+    try {
+      const cat = await getCat(catId);
+
+      if (!cat || String(cat.linkedAdopterId ?? "") !== String(application.id)) continue;
+      if (cat.status === status || !fromStatuses.includes(cat.status)) continue;
+
+      await changeCat(actor, catId, { status });
+    } catch (err) {
+      console.error(`Application ${application.id}: couldn't set cat ${catId} to "${status}".`, err);
+    }
+  }
+}
+
+// The application is no longer going ahead: its cats go back to Adoption
+// Ready and are unlinked (Match Confidence cleared), as Unmatch does, so
+// they can be matched again. Answers the application as saved.
+export async function freeLinkedCats(actor, application) {
+  if (application.linkedCatIds.length === 0) return application;
+
+  await setLinkedCatsStatus(actor, application, CAT_STATUS.ADOPTION_READY, [CAT_STATUS.RESERVED, CAT_STATUS.ADOPTED]);
+
+  const keys = ["linkedCatIds", "matchConfidence"];
+  const result = await changeRecord(TABLE, APPLICATION_FIELDS, application.id, { linkedCatIds: [], matchConfidence: null });
+
+  if (!result) return application;
+
+  logChanges({ actor, table: TABLE, boardName: "Active Applications", fields: APPLICATION_FIELDS, ...result, keys });
+
+  return result.after;
+}
+
+// What a new Adoption Stage does to the linked cats. Answers the
+// application as saved when it changed it (unlinked), else undefined.
+async function applyStageEffects(actor, fromStage, application) {
+  try {
+    if (application.adoptionStage === STAGES.APPROVED_APPLICATION) {
+      await setLinkedCatsStatus(actor, application, CAT_STATUS.ADOPTED, [CAT_STATUS.RESERVED, CAT_STATUS.ADOPTION_READY]);
+      return undefined;
+    }
+
+    if (freesCats(fromStage, application.adoptionStage)) return await freeLinkedCats(actor, application);
+  } catch (err) {
+    // The stage is saved either way; the cats can be fixed by hand.
+    console.error(`Application ${application.id}: the stage changed, but its cats weren't updated.`, err);
+  }
+
+  return undefined;
 }
 
 // Monday's "allow multiple items" setting of Linked Cat (kept in

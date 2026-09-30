@@ -83,9 +83,9 @@ function ActiveApplicationWorkspace() {
                 applicationName={application.name}
                 actions={stageActions.actions}
                 disabledReason={stageActions.blockedReason(application)}
-                onDecision={(newStage) =>
-                  setApplication((current) => ({ ...current, adoptionStage: newStage }))
-                }
+                // Reloaded, not just the stage: approving or rejecting also
+                // changes the linked cats on the server.
+                onDecision={() => loadActiveApplication()}
               />
             )}
           </Stack>

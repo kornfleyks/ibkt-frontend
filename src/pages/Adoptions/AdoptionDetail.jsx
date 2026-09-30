@@ -17,6 +17,19 @@ import useAuth from "../../hooks/useAuth";
 import useDateFormat from "../../hooks/useDateFormat";
 import { canSeeApplication } from "../../utils/ownership";
 import NotAssignedNotice from "../../components/Common/NotAssignedNotice";
+import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../constants/statuses/activeApplicationsStatuses";
+
+const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
+
+// An Approved application can't go back to New or Active (the server
+// refuses it too); from Approved it moves on to Completed, or ends.
+const NOT_AFTER_APPROVAL = [ADOPTION_STAGE.NEW_APPLICATION, ADOPTION_STAGE.ACTIVE_APPLICATION];
+
+function stageOptionsFor(stage) {
+  const options = ADOPTION_EDITABLE_FIELDS.adoptionStage.options;
+
+  return stage === ADOPTION_STAGE.APPROVED_APPLICATION ? options.filter((option) => !NOT_AFTER_APPROVAL.includes(option)) : options;
+}
 
 function AdoptionDetail() {
   const { id } = useParams();
@@ -150,7 +163,7 @@ function AdoptionDetail() {
               value={editing ? draft.adoptionStage : adoption.adoptionStage}
               editing={editing}
               fieldType="status"
-              options={ADOPTION_EDITABLE_FIELDS.adoptionStage.options}
+              options={stageOptionsFor(adoption.adoptionStage)}
               onChange={(value) => setDraft((d) => ({ ...d, adoptionStage: value }))}
             />
             <EditableInfoRow

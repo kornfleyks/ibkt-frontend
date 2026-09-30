@@ -4,3 +4,4 @@
 - [Assigned Volunteer](assigned-volunteer.md) - BUILT 2026-09-30: Users link column, Active Volunteers only, Admin + Case Owner, notification; real assignment not tried yet
 - [Adoption Form import](adoption-form-import.md) - BUILT 2026-09-30: every Adoption Form and References answer in its own column (36 new), handler in jotform/adoptionReferences; ID copy + unmatched untested
 - [Application update not guarded](application-update-not-guarded.md) - SECURITY: POST /api/applications/:id checks login only; Matching depends on it; fix needs per-field rules, ask first
+- [Stage and cat rules](stage-cat-rules.md) - BUILT 2026-09-30: Approved -> cats Adopted; Rejected / pre-approval Archive frees cats; Approved cannot go back
