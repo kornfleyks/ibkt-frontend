@@ -28,11 +28,9 @@ const { ADOPTION_STAGE } = ACTIVE_APPLICATIONS_STATUS_OPTIONS;
 
 // Fields an Admin can edit from the Adoptions detail view, and how to
 // shape each one for Monday's change_column_value mutation.
+// (Assigned Volunteer isn't one: it changes only through
+// assignVolunteer(), where its rules are enforced.)
 export const ADOPTION_EDITABLE_FIELDS = {
-  assignedVolunteer: {
-    column: ACTIVE_APPLICATIONS.COLUMNS.ASSIGNED_VOLUNTEER,
-    type: "text",
-  },
   priority: {
     column: ACTIVE_APPLICATIONS.COLUMNS.PRIORITY,
     type: "status",
@@ -308,4 +306,18 @@ export async function assignCaseOwner(applicationId, userId) {
   const { caseOwner } = await serverPost(`/api/applications/${applicationId}/case-owner`, { userId });
 
   return caseOwner;
+}
+
+// Active Volunteers who can be an application's Assigned Volunteer.
+export async function getVolunteerOptions(applicationId) {
+  const { users } = await serverGet(`/api/applications/${applicationId}/volunteer-options`);
+
+  return users;
+}
+
+// userId === null clears it. Resolves to { id, name } or null.
+export async function assignVolunteer(applicationId, userId) {
+  const { assignedVolunteer } = await serverPost(`/api/applications/${applicationId}/assigned-volunteer`, { userId });
+
+  return assignedVolunteer;
 }

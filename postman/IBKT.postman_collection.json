@@ -867,6 +867,62 @@
             "description": "The saved Pre-Adoption answers { answers, createdAt } for Preview. Admin/Volunteer only (403). 404 when the application has none."
           },
           "response": []
+        },
+        {
+          "name": "List volunteer options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/volunteer-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "volunteer-options"
+              ]
+            },
+            "description": "{ users: [{ id, name, role }] }: Active users with the Volunteer role, sorted by name, for the Assigned Volunteer picker. Admins and the application Case Owner only (403 otherwise; 400 for a non-numeric id)."
+          },
+          "response": []
+        },
+        {
+          "name": "Set assigned volunteer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/{{applicationId}}/assigned-volunteer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                "{{applicationId}}",
+                "assigned-volunteer"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Sets (or with userId null clears) the Assigned Volunteer. Only an Active Volunteer can be picked (400 otherwise). Admins and the Case Owner only (403). Logged on the Activity tab; the volunteer gets a Volunteer Assigned / Unassigned bell notification. Answers { assignedVolunteer: { id, name } | null }. The generic application update and /api/monday refuse this column."
+          },
+          "response": []
         }
       ]
     },

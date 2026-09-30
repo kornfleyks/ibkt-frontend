@@ -12,7 +12,10 @@ export const ACTIVE_APPLICATIONS = {
     CITY: "text_mm4865d2", // City | text
     ADDRESS: "long_text_mm48pr65", // Address | long_text
     ADOPTION_STAGE: "color_mm4g93ck", // Adoption Stage | status
-    ASSIGNED_VOLUNTEER: "text_mm48zfbv", // Assigned Volunteer | text
+    // Renamed "Assigned Volunteer (old)" on Monday; kept, unused (was empty).
+    ASSIGNED_VOLUNTEER_OLD: "text_mm48zfbv", // Assigned Volunteer (old) | text
+    // Set only through POST /api/applications/:id/assigned-volunteer.
+    ASSIGNED_VOLUNTEER: "board_relation_mm7pz26f", // Assigned Volunteer | board_relation
     CASE_OWNER_LEGACY: "text_mm48cefa", // Case Owner (Legacy) | text - free-text names, superseded by CASE_OWNER
     CASE_OWNER: "board_relation_mm7gn9en", // Case Owner | board_relation
     PRIORITY: "color_mm4g1c21", // Priority | status

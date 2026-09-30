@@ -56,12 +56,18 @@ export async function getAssignableUsers() {
 
 // Raw write with no rule checks - callers (the endpoint below, the
 // migration script) must have validated the user first.
-export async function writeCaseOwner(applicationId, userId) {
+export function writeCaseOwner(applicationId, userId) {
+  return writeApplicationUserLink(CASE_OWNER_COLUMN_ID, applicationId, userId);
+}
+
+// Sets one of an application's Users link columns (Case Owner, Assigned
+// Volunteer) to one user, or clears it (userId null). No rule checks.
+export async function writeApplicationUserLink(columnId, applicationId, userId) {
   // Applications kept in the database: saved there (the nightly sync sends it).
   if (isDatabaseBoard("applications")) {
     const { field } = await boardFields("applications");
 
-    await updateItem("applications", applicationId, { fields: { [field(CASE_OWNER_COLUMN_ID)]: userId ? [Number(userId)] : [] } });
+    await updateItem("applications", applicationId, { fields: { [field(columnId)]: userId ? [Number(userId)] : [] } });
     return;
   }
 
@@ -81,7 +87,7 @@ export async function writeCaseOwner(applicationId, userId) {
   await mondayDirectRequest(mutation, {
     boardId: ACTIVE_APPLICATIONS.BOARD_ID,
     itemId: applicationId,
-    columnId: CASE_OWNER_COLUMN_ID,
+    columnId,
     value: JSON.stringify({ item_ids: userId ? [Number(userId)] : [] }),
   });
 }

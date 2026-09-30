@@ -22,8 +22,9 @@ export function mapMondayActiveApplication(item) {
 
     adoptionStage: columns[ACTIVE_APPLICATIONS.COLUMNS.ADOPTION_STAGE]?.text ?? "",
 
-    assignedVolunteer:
-      columns[ACTIVE_APPLICATIONS.COLUMNS.ASSIGNED_VOLUNTEER]?.text ?? "",
+    // Assigned Volunteer is a relation to the Users board (single item).
+    assignedVolunteerId: columns[ACTIVE_APPLICATIONS.COLUMNS.ASSIGNED_VOLUNTEER]?.linked_items?.[0]?.id ?? null,
+    assignedVolunteer: columns[ACTIVE_APPLICATIONS.COLUMNS.ASSIGNED_VOLUNTEER]?.linked_items?.[0]?.name ?? "",
 
     // Case Owner is a relation to the Users board (single item).
     caseOwnerId: columns[ACTIVE_APPLICATIONS.COLUMNS.CASE_OWNER]?.linked_items?.[0]?.id ?? null,

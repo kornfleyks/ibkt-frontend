@@ -15,6 +15,8 @@ import { readRecords, readRecord, changeRecord, logChanges, actorOf, send, exist
 //   GET  /api/applications/linked-cat-multiple   whether Linked Cat takes several cats
 //   GET  /api/applications/:id
 //   POST /api/applications/:id             { field: value, ... } (see writable fields)
+//
+// Assigned Volunteer changes only through assignedVolunteer.js.
 
 const A = ACTIVE_APPLICATIONS.COLUMNS;
 const TABLE = "applications";
@@ -25,7 +27,10 @@ export const APPLICATION_FIELDS = {
   country: { column: A.COUNTRY },
   city: { column: A.CITY },
   adoptionStage: { column: A.ADOPTION_STAGE, write: "status" },
-  assignedVolunteer: { column: A.ASSIGNED_VOLUNTEER, write: "text" },
+  // Read-only here: set through /api/applications/:id/assigned-volunteer
+  // (assignedVolunteer.js), where its rules live.
+  assignedVolunteerId: { column: A.ASSIGNED_VOLUNTEER, read: "firstId" },
+  assignedVolunteer: { column: A.ASSIGNED_VOLUNTEER, read: "firstName" },
   caseOwnerId: { column: A.CASE_OWNER, read: "firstId" },
   caseOwner: { column: A.CASE_OWNER, read: "firstName" },
   priority: { column: A.PRIORITY, write: "status" },
@@ -103,10 +108,15 @@ export function getApplication(id) {
   return readRecord(TABLE, APPLICATION_FIELDS, id);
 }
 
-// Saves and logs changes (the case owner is refused - it has its own endpoint).
+// Saves and logs changes (Case Owner and Assigned Volunteer are refused -
+// they have their own endpoints).
 export async function changeApplication(actor, id, changes) {
   if ("caseOwnerId" in changes || "caseOwner" in changes) {
     throw new InputError("Case Owner can only be changed through the case owner endpoint.");
+  }
+
+  if ("assignedVolunteerId" in changes || "assignedVolunteer" in changes) {
+    throw new InputError("Assigned Volunteer can only be changed through the assigned volunteer endpoint.");
   }
 
   if (changes.linkedCatIds) {

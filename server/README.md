@@ -182,6 +182,23 @@ npm run migrate:case-owners            # dry run: report only
 npm run migrate:case-owners -- --apply # write the matched rows
 ```
 
+## Assigned Volunteer (`assignedVolunteer.js`)
+
+An application's Assigned Volunteer is a relation to the Users board
+(`board_relation_mm7pz26f`, created by `scripts/createAssignedVolunteerColumn.js`;
+the old text column is kept as "Assigned Volunteer (old)"). It changes only
+through these endpoints: the generic `POST /api/applications/:id` and
+`/api/monday` refuse it.
+
+- `GET /api/applications/:id/volunteer-options` - Active users with the
+  Volunteer role (`id`, `name`, `role`).
+- `POST /api/applications/:id/assigned-volunteer` with `{ "userId": "<id>" | null }`
+  - the user must be an Active Volunteer. Logged to the Activity Log; the
+  volunteer gets a "Volunteer Assigned" / "Volunteer Unassigned" bell
+  notification.
+
+Both are for Admins and the application's Case Owner (`applicationAccess.js`).
+
 ## Account state and user administration
 
 `requireAuth` checks every request against each account's **live** Status and

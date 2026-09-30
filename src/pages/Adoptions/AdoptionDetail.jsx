@@ -56,7 +56,6 @@ function AdoptionDetail() {
 
   function startEditing() {
     setDraft({
-      assignedVolunteer: adoption.assignedVolunteer,
       priority: adoption.priority,
       adoptionStage: adoption.adoptionStage,
       caseHealth: adoption.caseHealth,
@@ -134,18 +133,10 @@ function AdoptionDetail() {
 
         <Grid size={{ xs: 12, md: 6 }}>
           <SectionCard title="Case Information">
-            {/* Read-only here: Case Owner is assigned in the application
-                workspace, where the assignment rules are enforced. */}
+            {/* Read-only here: Case Owner and Assigned Volunteer are set in
+                the application workspace, where their rules are enforced. */}
             <InfoRow label="Case Owner" value={adoption.caseOwner || "Unassigned"} labelWidth={160} />
-            <EditableInfoRow
-              label="Assigned Volunteer"
-              value={editing ? draft.assignedVolunteer : adoption.assignedVolunteer}
-              editing={editing}
-              fieldType="text"
-              onChange={(value) =>
-                setDraft((d) => ({ ...d, assignedVolunteer: value }))
-              }
-            />
+            <InfoRow label="Assigned Volunteer" value={adoption.assignedVolunteer || "Unassigned"} labelWidth={160} />
             <EditableInfoRow
               label="Priority"
               value={editing ? draft.priority : adoption.priority}

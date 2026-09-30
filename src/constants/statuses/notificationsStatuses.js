@@ -8,6 +8,9 @@ export const NOTIFICATIONS_STATUS_OPTIONS = {
     MENTION: "Mention",
     POST_ADOPTION_ASSIGNED: "Post-Adoption Assigned",
     POST_ADOPTION_UNASSIGNED: "Post-Adoption Unassigned",
+    // Created on the board the first time one is sent (create_labels_if_missing).
+    VOLUNTEER_ASSIGNED: "Volunteer Assigned",
+    VOLUNTEER_UNASSIGNED: "Volunteer Unassigned",
     ESCALATION: "Escalation",
     // Created on the board the first time one is sent (create_labels_if_missing).
     API_VERSION: "API Version",

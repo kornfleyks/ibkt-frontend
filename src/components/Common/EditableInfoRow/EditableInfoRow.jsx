@@ -7,7 +7,7 @@ import InfoRow from '../InfoRow';
 // edit pencil, inline editor, Check/Close to save or cancel. The actual
 // input control is left to the caller since it differs per field (plain
 // text, select, autocomplete).
-function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEditor, renderDisplay }) {
+function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEditor, renderDisplay, labelWidth = 120 }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -47,7 +47,7 @@ function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEdit
                     },
                 }}
             >
-                {renderDisplay ? renderDisplay() : <InfoRow label={label} value={displayValue} />}
+                {renderDisplay ? renderDisplay() : <InfoRow label={label} value={displayValue} labelWidth={labelWidth} />}
 
                 <IconButton
                     size="small"
@@ -67,7 +67,7 @@ function EditableInfoRow({ label, displayValue, getEditValue, onSave, renderEdit
     // shrinking so the buttons never get pushed out of view.
     return (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 1, py: 0.5 }}>
-            <Typography sx={{ minWidth: 120, flexShrink: 0, fontWeight: 600, color: 'text.secondary' }}>
+            <Typography sx={{ minWidth: labelWidth, flexShrink: 0, fontWeight: 600, color: 'text.secondary' }}>
                 {label}
             </Typography>
 

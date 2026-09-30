@@ -188,6 +188,12 @@ const ASSIGNMENT_TEXT = {
     assigned: (actor, name) => `${actor} assigned you the case: ${name}`,
     unassigned: (actor, name) => `${actor} took you off the case: ${name}`,
   },
+  volunteer: {
+    assignedType: TYPE.VOLUNTEER_ASSIGNED,
+    unassignedType: TYPE.VOLUNTEER_UNASSIGNED,
+    assigned: (actor, name) => `${actor} made you the assigned volunteer on ${name}`,
+    unassigned: (actor, name) => `${actor} took you off as volunteer on ${name}`,
+  },
 };
 
 // Owner went from `previousIds` to `nextIds`: everyone added is told they

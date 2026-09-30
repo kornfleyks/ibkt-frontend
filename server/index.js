@@ -35,6 +35,7 @@ import { APP_SETTINGS } from "../src/constants/boards/appSettings.js";
 import { USERS } from "../src/constants/boards/users.js";
 import { registerMondayApiVersionRoutes, startMondayApiVersionChecks } from "./mondayApiVersionCheck.js";
 import { registerCaseOwnerRoutes, CASE_OWNER_COLUMN_ID } from "./caseOwner.js";
+import { registerAssignedVolunteerRoutes, ASSIGNED_VOLUNTEER_COLUMN_ID } from "./assignedVolunteer.js";
 import { initAccountState, applyAccountChange, TRACKED_COLUMNS, NAME_COLUMNS } from "./accountState.js";
 import { passwordStampOf } from "./passwordStamp.js";
 import { registerUserAdminRoutes } from "./userAdmin.js";
@@ -501,6 +502,7 @@ registerPostAdoptionRoutes(app, { requireAuth });
 registerScreeningRoutes(app, { requireAuth });
 registerAiReviewRoutes(app, { requireAuth });
 registerAdoptionFormRoutes(app, { requireAuth });
+registerAssignedVolunteerRoutes(app, { requireAuth });
 registerReadOnlyBoardRoutes(app, { requireAuth });
 registerUserRoutes(app, { requireAuth, requireAdmin });
 registerCommunicationRoutes(app, { requireAuth });
@@ -567,6 +569,14 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     (query.includes(CASE_OWNER_COLUMN_ID) || JSON.stringify(variables ?? {}).includes(CASE_OWNER_COLUMN_ID))
   ) {
     return res.status(403).json({ error: "Case Owner can only be changed through the case owner endpoint." });
+  }
+
+  // Same for Assigned Volunteer (assignedVolunteer.js).
+  if (
+    mutation &&
+    (query.includes(ASSIGNED_VOLUNTEER_COLUMN_ID) || JSON.stringify(variables ?? {}).includes(ASSIGNED_VOLUNTEER_COLUMN_ID))
+  ) {
+    return res.status(403).json({ error: "Assigned Volunteer can only be changed through the assigned volunteer endpoint." });
   }
 
   // Protected file columns go through their own routes (access check,
