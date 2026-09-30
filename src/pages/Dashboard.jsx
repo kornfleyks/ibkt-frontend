@@ -20,6 +20,9 @@ import { selectUpcomingTasks, todayDateString } from '../utils/taskStatus';
 import UpcomingTasksPanel from '../components/Dashboard/UpcomingTasksPanel';
 import RecentActivityPanel from '../components/Dashboard/RecentActivityPanel';
 import MondayApiVersionBanner from '../components/Dashboard/MondayApiVersionBanner';
+import DashboardDetailsDialog from '../components/Dashboard/DashboardDetailsDialog';
+import { dashboardDetails } from '../components/Dashboard/dashboardDetails';
+import useDateFormat from '../hooks/useDateFormat';
 import { getAllActivity } from '../services/ActivityLogService';
 import { selectRecentActivity } from '../utils/recentActivity';
 import { canAccessPath } from '../utils/navigationAccess';
@@ -48,6 +51,8 @@ function Dashboard() {
     const [recentActivity, setRecentActivity] = useState(null);
     const [recentActivityError, setRecentActivityError] = useState(false);
 
+    // The items behind each number (null while loading) - the tile shows the
+    // count, clicking it lists them (DashboardDetailsDialog).
     const [stats, setStats] = useState({
         awaitingPassport: null,
         pendingMatching: null,
@@ -55,8 +60,12 @@ function Dashboard() {
         travelPending: null,
         escalationsRequired: null,
         myOpenCases: null,
-        myOpenCasesBreakdown: '',
     });
+    const [myOpenCasesBreakdown, setMyOpenCasesBreakdown] = useState('');
+    // Key of the stat whose items are listed, or null.
+    const [detailsKey, setDetailsKey] = useState(null);
+    const { formatDateString } = useDateFormat();
+    const details = dashboardDetails({ formatDateString, user });
 
     // One tasks fetch feeds both the Tasks Due Today tile and the Upcoming
     // Tasks panel. Also re-run after a task is created from this page, so
@@ -66,14 +75,14 @@ function Dashboard() {
             .then(([tasks, days]) => {
                 const today = todayDateString();
 
-                const count = tasks.filter(
+                const dueToday = tasks.filter(
                     (task) =>
                         task.dueDate === today &&
                         task.status !== TASKS_STATUS_OPTIONS.STATUS.COMPLETED &&
                         task.status !== TASKS_STATUS_OPTIONS.STATUS.CANCELLED,
-                ).length;
+                );
 
-                setStats((current) => ({ ...current, tasksDueToday: count }));
+                setStats((current) => ({ ...current, tasksDueToday: dueToday }));
                 setUpcomingDays(days);
                 setUpcomingTasks(selectUpcomingTasks(tasks, user, days));
                 setUpcomingError(false);
@@ -91,11 +100,11 @@ function Dashboard() {
 
         getCats()
             .then((cats) => {
-                const count = cats.filter(
+                const awaitingPassport = cats.filter(
                     (cat) => cat.status === CATS_STATUS_OPTIONS.STATUS.AWAITING_PASSPORT,
-                ).length;
+                );
 
-                setStats((current) => ({ ...current, awaitingPassport: count }));
+                setStats((current) => ({ ...current, awaitingPassport }));
             })
             .catch((err) => console.error('Failed to load cats for dashboard:', err));
 
@@ -109,7 +118,7 @@ function Dashboard() {
                     (application) =>
                         matchingStages.includes(application.adoptionStage) &&
                         application.linkedCatIds.length === 0,
-                ).length;
+                );
 
                 const myOpenCases = applications.filter(
                     (application) =>
@@ -125,12 +134,8 @@ function Dashboard() {
                     .map(({ stage, count }) => `${count} ${stage.replace(/ Application$/, '')}`)
                     .join(' · ');
 
-                setStats((current) => ({
-                    ...current,
-                    pendingMatching,
-                    myOpenCases: myOpenCases.length,
-                    myOpenCasesBreakdown,
-                }));
+                setStats((current) => ({ ...current, pendingMatching, myOpenCases }));
+                setMyOpenCasesBreakdown(myOpenCasesBreakdown);
             })
             .catch((err) => console.error('Failed to load active applications for dashboard:', err));
 
@@ -145,13 +150,13 @@ function Dashboard() {
 
         getTravel()
             .then((travel) => {
-                const count = travel.filter(
+                const travelPending = travel.filter(
                     (item) =>
                         item.status !== TRAVEL_STATUS_OPTIONS.STATUS.COMPLETED &&
                         item.status !== TRAVEL_STATUS_OPTIONS.STATUS.CANCELLED,
-                ).length;
+                );
 
-                setStats((current) => ({ ...current, travelPending: count }));
+                setStats((current) => ({ ...current, travelPending }));
             })
             .catch((err) => console.error('Failed to load travel for dashboard:', err));
 
@@ -159,7 +164,7 @@ function Dashboard() {
             .then((cases) => {
                 const escalationsRequired = cases.filter(
                     (item) => item.escalationRequired === POST_ADOPTION_STATUS_OPTIONS.ESCALATION_REQUIRED.URGENT,
-                ).length;
+                );
 
                 setStats((current) => ({ ...current, escalationsRequired }));
             })
@@ -188,8 +193,9 @@ function Dashboard() {
 
                 <DashboardCard
                     title="Awaiting Passport"
-                    value={stats.awaitingPassport}
+                    value={stats.awaitingPassport?.length}
                     loading={stats.awaitingPassport === null}
+                    onValueClick={() => setDetailsKey('awaitingPassport')}
                     icon={<PetsIcon />}
                 />
 
@@ -200,8 +206,9 @@ function Dashboard() {
 
                 <DashboardCard
                     title="Pending Matching"
-                    value={stats.pendingMatching}
+                    value={stats.pendingMatching?.length}
                     loading={stats.pendingMatching === null}
+                    onValueClick={() => setDetailsKey('pendingMatching')}
                     icon={<AssignmentIcon />}
                 />
 
@@ -213,8 +220,9 @@ function Dashboard() {
 
                 <DashboardCard
                     title="Escalations Required"
-                    value={stats.escalationsRequired}
+                    value={stats.escalationsRequired?.length}
                     loading={stats.escalationsRequired === null}
+                    onValueClick={() => setDetailsKey('escalationsRequired')}
                     icon={<ReportProblemIcon />}
                 />
 
@@ -226,8 +234,9 @@ function Dashboard() {
 
                 <DashboardCard
                     title="Tasks Due Today"
-                    value={stats.tasksDueToday}
+                    value={stats.tasksDueToday?.length}
                     loading={stats.tasksDueToday === null}
+                    onValueClick={() => setDetailsKey('tasksDueToday')}
                     icon={<CheckCircleIcon />}
                 />
 
@@ -239,8 +248,9 @@ function Dashboard() {
 
                 <DashboardCard
                     title="Travel Pending"
-                    value={stats.travelPending}
+                    value={stats.travelPending?.length}
                     loading={stats.travelPending === null}
+                    onValueClick={() => setDetailsKey('travelPending')}
                     icon={<FlightTakeoffIcon />}
                 />
 
@@ -252,9 +262,10 @@ function Dashboard() {
 
                 <DashboardCard
                     title="My Open Cases"
-                    value={stats.myOpenCases}
+                    value={stats.myOpenCases?.length}
                     loading={stats.myOpenCases === null}
-                    caption={stats.myOpenCasesBreakdown}
+                    caption={myOpenCasesBreakdown}
+                    onValueClick={() => setDetailsKey('myOpenCases')}
                     icon={<AssignmentIndIcon />}
                 />
 
@@ -366,6 +377,15 @@ function Dashboard() {
             onClose={() => setAddTaskOpen(false)}
             onCreated={loadTasks}
         />
+
+        {detailsKey && (
+            <DashboardDetailsDialog
+                open
+                {...details[detailsKey]}
+                rows={stats[detailsKey] ?? []}
+                onClose={() => setDetailsKey(null)}
+            />
+        )}
 
     </>
 

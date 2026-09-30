@@ -3,15 +3,30 @@ import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
+import ButtonBase from '@mui/material/ButtonBase';
 
+// `onValueClick` makes the number a button (e.g. to list what it counts);
+// only while there's something to show - not for 0 or while loading.
 function DashboardCard({
     title,
     value,
     icon,
     color = 'primary.main',
     loading = false,
-    caption = null
+    caption = null,
+    onValueClick = null
 }) {
+
+    const clickable = Boolean(onValueClick) && !loading && Number(value) > 0;
+
+    const valueText = (
+        <Typography
+            variant="h3"
+            sx={{ fontWeight: 600 }}
+        >
+            {value}
+        </Typography>
+    );
 
     return (
 
@@ -74,13 +89,21 @@ function DashboardCard({
 
                     {loading ? (
                         <CircularProgress size={28} sx={{ color: 'text.secondary' }} />
-                    ) : (
-                        <Typography
-                            variant="h3"
-                            sx={{ fontWeight: 600 }}
+                    ) : clickable ? (
+                        <ButtonBase
+                            onClick={onValueClick}
+                            aria-label={`${title}: show the ${value}`}
+                            sx={{
+                                borderRadius: 1,
+                                px: 1,
+                                mx: -1,
+                                '&:hover, &.Mui-focusVisible': { bgcolor: 'action.hover', color: 'primary.main' }
+                            }}
                         >
-                            {value}
-                        </Typography>
+                            {valueText}
+                        </ButtonBase>
+                    ) : (
+                        valueText
                     )}
 
                 </Box>
