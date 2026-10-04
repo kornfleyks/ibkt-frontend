@@ -2,6 +2,7 @@ import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../src/constants/statuses/activeApplicationsStatuses.js";
 import { CATS_STATUS_OPTIONS } from "../src/constants/statuses/catsStatuses.js";
 import { getCat, changeCat } from "./cats.js";
+import { canAccessApplication } from "./applicationAccess.js";
 import { isDatabaseBoard } from "./database/switches.js";
 import { query } from "./database/db.js";
 import { readRecords, readRecord, changeRecord, logChanges, actorOf, send, exists, InputError } from "./database/boardRecords.js";
@@ -17,7 +18,8 @@ import { readRecords, readRecord, changeRecord, logChanges, actorOf, send, exist
 //   GET  /api/applications                 all applications
 //   GET  /api/applications/linked-cat-multiple   whether Linked Cat takes several cats
 //   GET  /api/applications/:id
-//   POST /api/applications/:id             { field: value, ... } (see writable fields)
+//   POST /api/applications/:id             { field: value, ... } (see writable fields);
+//                                          Admins / Case Owner, except Matching's fields
 //
 // Assigned Volunteer changes only through assignedVolunteer.js.
 //
@@ -112,6 +114,8 @@ export const APPLICATION_FIELDS = {
   paymentRequired: { column: A.PAYMENT_REQUIRED },
   paymentStatus: { column: A.PAYMENT_STATUS, write: "status" },
   paymentDate: { column: A.PAYMENT_DATE, write: "date" },
+  // Read-only here: set by the contract import (jotform/contract/handler.js).
+  adoptionFee: { column: A.ADOPTION_FEE },
   internalNotes: { column: A.INTERNAL_NOTES, write: "longText" },
   // Which Jotform form / submission each part came from. Read-only here:
   // only the Jotform handlers (server/jotform/) set them.
@@ -238,6 +242,17 @@ async function linkedCatAllowsMultiple() {
   return rows[0]?.settings?.allowMultipleItems !== false;
 }
 
+// Fields the Matching page sets (Admins and every Volunteer use it). Any
+// other field may only be changed by an Admin or the application's Case
+// Owner, the people who can open the application page.
+const MATCHING_FIELDS = new Set(["linkedCatIds", "matchConfidence"]);
+
+async function mayChange(user, id, changes) {
+  if (Object.keys(changes).every((key) => MATCHING_FIELDS.has(key))) return true;
+
+  return canAccessApplication(user, id);
+}
+
 export function registerApplicationRoutes(app, { requireAuth }) {
   const onlyInDatabase = (req, res, next) =>
     isDatabaseBoard(TABLE) ? next() : res.status(409).json({ error: "Applications are still kept on Monday on this server." });
@@ -250,7 +265,18 @@ export function registerApplicationRoutes(app, { requireAuth }) {
 
   app.get("/api/applications/:id", requireAuth, onlyInDatabase, (req, res) => send(res, getApplication(req.params.id), "applications request"));
 
-  app.post("/api/applications/:id", requireAuth, onlyInDatabase, (req, res) =>
-    send(res, changeApplication(actorOf(req), req.params.id, req.body ?? {}), "applications request"),
-  );
+  app.post("/api/applications/:id", requireAuth, onlyInDatabase, async (req, res) => {
+    const changes = req.body ?? {};
+
+    try {
+      if (!(await mayChange(req.user, req.params.id, changes))) {
+        return res.status(403).json({ error: "Only Admins and this application's Case Owner can change it." });
+      }
+    } catch (err) {
+      console.error("Application access check failed:", err);
+      return res.status(500).json({ error: "The applications request failed." });
+    }
+
+    send(res, changeApplication(actorOf(req), req.params.id, changes), "applications request");
+  });
 }
