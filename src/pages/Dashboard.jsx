@@ -12,6 +12,8 @@ import Stack from '@mui/material/Stack';
 import DashboardCard from '../components/DashboardCard';
 import AddCatDialog from '../components/Cats/AddCatDialog/AddCatDialog';
 import AddTaskDialog from '../components/Tasks/AddTaskDialog';
+import AddApplicationDialog from '../components/ActiveApplications/AddApplicationDialog/AddApplicationDialog';
+import { useNavigate } from 'react-router-dom';
 
 import { getCats } from '../services/CatsService';
 import { getActiveApplications } from '../services/ActiveApplicationsService';
@@ -43,6 +45,8 @@ function Dashboard() {
 
     const [addCatOpen, setAddCatOpen] = useState(false);
     const [addTaskOpen, setAddTaskOpen] = useState(false);
+    const [addApplicationOpen, setAddApplicationOpen] = useState(false);
+    const navigate = useNavigate();
     const { user } = useAuth();
     // null while loading; see UpcomingTasksPanel.
     const [upcomingTasks, setUpcomingTasks] = useState(null);
@@ -335,14 +339,7 @@ function Dashboard() {
 
                         <Button
                             variant="contained"
-                        >
-                            Add Adopter
-                        </Button>
-
-
-
-                        <Button
-                            variant="contained"
+                            onClick={() => setAddApplicationOpen(true)}
                         >
                             Create Active Application
                         </Button>
@@ -376,6 +373,12 @@ function Dashboard() {
             open={addTaskOpen}
             onClose={() => setAddTaskOpen(false)}
             onCreated={loadTasks}
+        />
+
+        <AddApplicationDialog
+            open={addApplicationOpen}
+            onClose={() => setAddApplicationOpen(false)}
+            onCreated={({ id }) => navigate(`/active-applications/${id}`)}
         />
 
         {detailsKey && (
