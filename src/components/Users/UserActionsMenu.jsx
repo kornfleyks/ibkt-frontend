@@ -9,9 +9,11 @@ import { MoreVertIcon, InfoIcon } from '../icons';
 import { USER_STATUS_ACTIONS } from './userStatusActions';
 
 // The Users table's per-row "⋮" menu: View details, then whichever status
-// actions this account allows (`actions`, keys of USER_STATUS_ACTIONS).
-// Each action only opens its confirmation dialog - nothing changes here.
-function UserActionsMenu({ user, actions, onRequestAction, onOpenDetails }) {
+// actions this account allows (`actions`, keys of USER_STATUS_ACTIONS), then
+// Delete if the viewer is allowed it (`canDelete` - server-enforced too,
+// server/userAdmin.js). Each action only opens its confirmation dialog -
+// nothing changes here.
+function UserActionsMenu({ user, actions, canDelete, onRequestAction, onRequestDelete, onOpenDetails }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
     function choose(callback) {
@@ -54,13 +56,29 @@ function UserActionsMenu({ user, actions, onRequestAction, onOpenDetails }) {
                         <MenuItem
                             key={action}
                             onClick={() => choose(() => onRequestAction(user, action))}
-                            // Taking someone out of action reads as a warning.
-                            sx={config.color === 'error' ? { color: 'error.main' } : undefined}
+                            // Taking someone out of action reads as a warning;
+                            // bringing them into action (Approve, Unblock,
+                            // Reactivate, Restore) reads as the opposite.
+                            sx={
+                                config.color === 'error'
+                                    ? { color: 'error.main' }
+                                    : config.color === 'success'
+                                      ? { color: 'success.main' }
+                                      : undefined
+                            }
                         >
                             {config.label}
                         </MenuItem>
                     );
                 })}
+
+                {canDelete && <Divider />}
+
+                {canDelete && (
+                    <MenuItem onClick={() => choose(() => onRequestDelete(user))} sx={{ color: 'error.main' }}>
+                        Delete
+                    </MenuItem>
+                )}
             </Menu>
         </>
     );

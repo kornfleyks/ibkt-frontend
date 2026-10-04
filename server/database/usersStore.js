@@ -77,3 +77,10 @@ export async function createUser(name, columnValues) {
 
   return record.id;
 }
+
+// Permanent, immediate - not the generic boardStore.deleteItem, which only
+// queues the Monday side for the nightly sync. The caller deletes the
+// Monday item itself, right away, alongside this.
+export async function deleteUser(userId) {
+  await query(`delete from ${ident(TABLE)} where monday_item_id = $1`, [Number(userId)]);
+}

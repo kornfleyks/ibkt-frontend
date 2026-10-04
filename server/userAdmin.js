@@ -1,11 +1,11 @@
 import { USERS } from "../src/constants/boards/users.js";
-import { isSuperAdminEmail } from "../src/constants/roles.js";
+import { isSuperAdminEmail, canDeleteUsers } from "../src/constants/roles.js";
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
 import { TASKS } from "../src/constants/boards/tasks.js";
 import { USERS_STATUS_OPTIONS } from "../src/constants/statuses/usersStatuses.js";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../src/constants/statuses/activeApplicationsStatuses.js";
 import { TASKS_STATUS_OPTIONS } from "../src/constants/statuses/tasksStatuses.js";
-import { applyAccountChange, getAccountState } from "./accountState.js";
+import { applyAccountChange, getAccountState, removeAccount } from "./accountState.js";
 import { writeCaseOwner } from "./caseOwner.js";
 import { clearCache } from "./mondayCache.js";
 import { logActivity, getItemName, resolveBoardName } from "./activityLog.js";
@@ -14,7 +14,8 @@ import { mondayFetch } from "./mondayRateLimit.js";
 import { isDatabaseBoard } from "./database/switches.js";
 import { listTasks, changeTask } from "./database/tasksStore.js";
 import { listApplications } from "./applications.js";
-import { setUserValues } from "./database/usersStore.js";
+import { setUserValues, deleteUser } from "./database/usersStore.js";
+import { sendAccountApprovedEmail } from "./mail/accountEmails.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
@@ -131,6 +132,12 @@ async function changeColumnValue(boardId, itemId, columnId, value) {
 
 function actorOf(req) {
   return { id: req.user.sub, name: `${req.user.firstName} ${req.user.lastName}`.trim() };
+}
+
+// Deletes the Monday item outright - not the generic board_relation-aware
+// boardStore.deleteItem, which only queues this for the nightly sync.
+async function deleteItemOnMonday(itemId) {
+  await mondayDirectRequest(`mutation ($itemId: ID!) { delete_item(item_id: $itemId) { id } }`, { itemId });
 }
 
 // Hands every open case and task of `userId` to `actor`. Sequential (small
@@ -261,6 +268,10 @@ export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
       applyAccountChange(id, { accountStatus: status });
       clearCache(HANDOVER_BOARDS);
 
+      if (target?.accountStatus === ACCOUNT_STATUS.PENDING && status === ACCOUNT_STATUS.ACTIVE) {
+        sendAccountApprovedEmail({ userId: id, email: target.email, firstName: target.firstName, lastName: target.lastName, actor });
+      }
+
       const handOverText = moved.cases || moved.tasks
         ? `; reassigned ${moved.cases} case(s) and ${moved.tasks} task(s) to ${actor.name}`
         : "";
@@ -282,6 +293,78 @@ export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to change the account status." });
+    }
+  });
+
+  // Permanent - deletes the Monday item and the database row (when the
+  // Users board is database-backed) right away, not through the nightly
+  // sync. Restricted to one account (canDeleteUsers), narrower than
+  // requireAdmin/Super Admin. Any open cases/tasks are handed to the actor
+  // first, same as Suspend/Archive.
+  app.delete("/api/admin/users/:id", requireAuth, requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const actor = actorOf(req);
+
+    if (!ITEM_ID_PATTERN.test(id)) {
+      return res.status(400).json({ error: "Invalid user id." });
+    }
+
+    const actorState = await getAccountState(actor.id);
+
+    if (!canDeleteUsers(actorState?.email)) {
+      return res.status(403).json({ error: "You can't delete accounts." });
+    }
+
+    if (String(id) === String(actor.id)) {
+      return res.status(400).json({ error: "You can't delete your own account." });
+    }
+
+    const target = await getAccountState(id);
+
+    if (target && isSuperAdminEmail(target.email)) {
+      return res.status(403).json({ error: "This account can't be deleted." });
+    }
+
+    try {
+      const userName = (await getItemName(id)) || `user ${id}`;
+      const handOver = await handOverOpenWork(id, userName, actor);
+
+      if (handOver.failed.length > 0) {
+        clearCache(HANDOVER_BOARDS);
+        return res.status(502).json({
+          error: `Couldn't reassign ${handOver.failed.join(", ")}. The account was not deleted - try again.`,
+          reassigned: handOver.moved,
+        });
+      }
+
+      await deleteItemOnMonday(id);
+
+      if (isDatabaseBoard("users")) {
+        await deleteUser(id);
+      }
+
+      removeAccount(id);
+      clearCache(HANDOVER_BOARDS);
+
+      const handOverText = handOver.moved.cases || handOver.moved.tasks
+        ? `; reassigned ${handOver.moved.cases} case(s) and ${handOver.moved.tasks} task(s) to ${actor.name}`
+        : "";
+
+      logActivity({
+        actorId: actor.id,
+        actorName: actor.name,
+        boardId: USERS.BOARD_ID,
+        boardName: resolveBoardName(USERS.BOARD_ID),
+        itemId: id,
+        itemName: userName,
+        actionType: "Deleted",
+        description: `${actor.name} permanently deleted ${userName}'s account${handOverText}`,
+      });
+
+      res.json({ ok: true, reassigned: handOver.moved });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to delete the account." });
     }
   });
 }

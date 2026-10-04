@@ -46,3 +46,12 @@ export const SUPER_ADMIN_EMAILS = ["billkifonidis@gmail.com", "support@ittybitty
 export function isSuperAdminEmail(email) {
   return SUPER_ADMIN_EMAILS.includes(String(email ?? "").trim().toLowerCase());
 }
+
+// The one account allowed to permanently delete a user (2026-10-04, Users
+// page). Deliberately narrower than SUPER_ADMIN_EMAILS - the other Super
+// Admin account doesn't get this.
+const USER_DELETE_EMAIL = "billkifonidis@gmail.com";
+
+export function canDeleteUsers(email) {
+  return String(email ?? "").trim().toLowerCase() === USER_DELETE_EMAIL;
+}

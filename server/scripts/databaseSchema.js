@@ -287,6 +287,27 @@ await transaction(async (run) => {
     sent_at timestamptz not null default now()
   )`);
   await run("create index if not exists adoption_form_invites_application on adoption_form_invites (application_id, sent_at desc)");
+
+  // Every email mail/accountEmails.js sent through Mailgun, and the latest
+  // delivery event Mailgun's webhooks reported for it (mail/webhookRoutes.js
+  // updates the row by message_id as events arrive) - Mailgun's own
+  // dashboard only keeps its logs for a day. App-only: never sent to Monday.
+  await run(`create table if not exists email_log (
+    id bigserial primary key,
+    message_id text unique,
+    user_id bigint,
+    to_address text not null,
+    subject text not null,
+    kind text not null,
+    status text not null default 'sent',
+    error text,
+    last_event jsonb,
+    sent_by_id text,
+    sent_by_name text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists email_log_user on email_log (user_id, created_at desc)");
   // A standing punch-list for client calls: questions to put to the client,
   // things to flag to them, and internal to-dos, with a place to record the
   // answer (reviewItems/, src/pages/ReviewItems). App-only, visible to one
@@ -443,7 +464,7 @@ await transaction(async (run) => {
 
   // Reachable only by this server's connection; Supabase's public API
   // (anon / authenticated keys) gets nothing without policies.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "reference_checks", "review_items", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "reference_checks", "review_items", "email_log", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });

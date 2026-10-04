@@ -48,6 +48,8 @@ import { registerCommunicationRoutes, communicationBoardOfItem } from "./communi
 import { registerTaskRoutes } from "./tasks.js";
 import { registerAccountRoutes } from "./account.js";
 import { registerPasswordResetRoutes } from "./passwordReset/routes.js";
+import { sendRegistrationPendingEmail } from "./mail/accountEmails.js";
+import { registerMailgunWebhookRoutes } from "./mail/webhookRoutes.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
 import { mondayFetch, mondayRetryAfterSeconds } from "./mondayRateLimit.js";
 import { getMondayUsage } from "./mondayUsage.js";
@@ -423,6 +425,8 @@ app.post("/api/register", async (req, res) => {
       description: `${fullName} registered a new account (pending approval)`,
     });
 
+    sendRegistrationPendingEmail({ userId: newUserId, email, firstName, lastName });
+
     res.json({ ok: true });
   } catch (err) {
     console.error(err);
@@ -495,6 +499,7 @@ app.post("/api/admin/users/:id/password", requireAuth, requireAdmin, async (req,
 registerCaseOwnerRoutes(app, { requireAuth });
 registerUserAdminRoutes(app, { requireAuth, requireAdmin });
 registerWebhookRoutes(app);
+registerMailgunWebhookRoutes(app);
 registerJotformRoutes(app);
 registerSessionEventRoutes(app, { requireAuth });
 registerNotificationRoutes(app, { requireAuth });

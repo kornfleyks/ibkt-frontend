@@ -229,6 +229,32 @@ export function applyAccountChange(userId, changes) {
   }
 }
 
+// The account was permanently deleted (Monday item and database row both
+// gone already): tells open tabs the same way a status change does (so a
+// deleted user's session ends immediately), then drops it from memory so
+// the next lookup treats the id as unknown, same as any account that never
+// existed.
+export function removeAccount(userId) {
+  const key = String(userId);
+  const current = accounts.get(key);
+
+  if (!current) {
+    return;
+  }
+
+  const next = { ...current, accountStatus: "Deleted" };
+
+  for (const listener of changeListeners) {
+    try {
+      listener(key, next, current);
+    } catch (err) {
+      console.error("Account state listener failed:", err);
+    }
+  }
+
+  accounts.delete(key);
+}
+
 export function displayNameOf(state, userId) {
   return `${state?.firstName ?? ""} ${state?.lastName ?? ""}`.trim() || `User ${userId}`;
 }

@@ -33,8 +33,9 @@ import {
     resetUserPassword,
 } from '../../services/UsersService';
 import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
-import { isSuperAdminEmail } from '../../constants/roles';
+import { isSuperAdminEmail, canDeleteUsers } from '../../constants/roles';
 import UserStatusDialog from '../../components/Users/UserStatusDialog';
+import UserDeleteDialog from '../../components/Users/UserDeleteDialog';
 import RoleChangeDialog from '../../components/Users/RoleChangeDialog';
 import UserDetailDrawer from '../../components/Users/UserDetailDrawer';
 import UserActionsMenu from '../../components/Users/UserActionsMenu';
@@ -359,12 +360,16 @@ function PasswordCell({ user }) {
     );
 }
 
-function UserRow({ user, isSelf, onRequestRole, onRequestAction, onOpenDetails, onUpdate }) {
+function UserRow({ user, isSelf, viewerCanDelete, onRequestRole, onRequestAction, onRequestDelete, onOpenDetails, onUpdate }) {
     // Fully protected, regardless of who's viewing - not tied to whoever
     // happens to be logged in. Role and status both locked (server-enforced
     // too: server/users.js, server/userAdmin.js).
     const isSuperAdminAccount = isSuperAdminEmail(user.email);
     const isRoleLocked = isSuperAdminAccount;
+    // Delete is its own, narrower permission (canDeleteUsers) - not tied to
+    // status, and never offered for yourself or a Super Admin account
+    // (server-enforced too: server/userAdmin.js).
+    const canDelete = viewerCanDelete && !isSelf && !isSuperAdminAccount;
     const { formatDateTime } = useDateFormat();
     // You can't take your own account out of action - block, suspend or
     // archive (the server refuses any status but Active for yourself).
@@ -424,7 +429,9 @@ function UserRow({ user, isSelf, onRequestRole, onRequestAction, onOpenDetails, 
                 <UserActionsMenu
                     user={user}
                     actions={actions}
+                    canDelete={canDelete}
                     onRequestAction={onRequestAction}
+                    onRequestDelete={onRequestDelete}
                     onOpenDetails={onOpenDetails}
                 />
             </TableCell>
@@ -461,6 +468,7 @@ function Users() {
     const [notice, setNotice] = useState(null);
     const [search, setSearch] = useState('');
     const [statusRequest, setStatusRequest] = useState(null);
+    const [deleteRequest, setDeleteRequest] = useState(null);
     const [roleRequest, setRoleRequest] = useState(null);
     const [detailUser, setDetailUser] = useState(null);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -520,6 +528,20 @@ function Users() {
         handleUserUpdate(userId, updates);
         setRoleRequest(null);
     }
+
+    function handleUserDeleted(userId, result) {
+        const { cases, tasks } = result.reassigned ?? {};
+
+        setUsers((current) => current.filter((user) => user.id !== userId));
+        setDeleteRequest(null);
+        setNotice(
+            cases || tasks
+                ? `Account deleted. ${cases} case(s) and ${tasks} task(s) were reassigned to you.`
+                : 'Account deleted.',
+        );
+    }
+
+    const viewerCanDelete = canDeleteUsers(currentUser?.email);
 
     const counts = Object.fromEntries(
         TABS.map((item) => [
@@ -635,6 +657,7 @@ function Users() {
                                                     key={user.id}
                                                     user={user}
                                                     isSelf={String(user.id) === String(currentUser?.id)}
+                                                    viewerCanDelete={viewerCanDelete}
                                                     onUpdate={handleUserUpdate}
                                                     onRequestRole={(target, role) => {
                                                         if (role !== target.role) {
@@ -642,6 +665,7 @@ function Users() {
                                                         }
                                                     }}
                                                     onRequestAction={(target, action) => setStatusRequest({ user: target, action })}
+                                                    onRequestDelete={(target) => setDeleteRequest({ user: target })}
                                                     onOpenDetails={setDetailUser}
                                                 />
                                             ))}
@@ -661,6 +685,15 @@ function Users() {
                     action={statusRequest.action}
                     onClose={() => setStatusRequest(null)}
                     onChanged={handleStatusChanged}
+                />
+            )}
+
+            {deleteRequest && (
+                <UserDeleteDialog
+                    key={`delete-${deleteRequest.user.id}`}
+                    user={deleteRequest.user}
+                    onClose={() => setDeleteRequest(null)}
+                    onDeleted={handleUserDeleted}
                 />
             )}
 

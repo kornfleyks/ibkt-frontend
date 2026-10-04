@@ -1,4 +1,4 @@
-import { mondayRequest, changeMondayColumnValue, serverPost, serverGet } from "./MondayService";
+import { mondayRequest, changeMondayColumnValue, serverPost, serverGet, serverDelete } from "./MondayService";
 import { USERS } from "../constants/boards/users";
 import { mapUser } from "./mappers/UserMapper";
 import { isDatabaseBoard } from "./DatabaseBoardsService";
@@ -113,6 +113,13 @@ export async function setUserStatus(userId, status) {
 // and owned by the user - what a Suspend/Archive would hand over.
 export async function getUserOpenWork(userId) {
   return serverGet(`/api/admin/users/${userId}/open-work`);
+}
+
+// Permanent: deletes the Monday item and database row right away. Open
+// cases/tasks are reassigned to the caller first (server/userAdmin.js).
+// Resolves to { ok, reassigned: { cases, tasks } }.
+export async function deleteUser(userId) {
+  return serverDelete(`/api/admin/users/${userId}`);
 }
 
 export async function updateUserRole(userId, role) {
