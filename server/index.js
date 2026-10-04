@@ -60,6 +60,7 @@ import { registerSyncRoutes } from "./database/syncRoutes.js";
 import { startSyncSchedule } from "./database/sync.js";
 import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER } from "../src/constants/mondayApiUsage.js";
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
+import { proxyRefusal, stripSensitive } from "./mondayProxyGuard.js";
 import { isDatabaseEnabled, getQueryCount } from "./database/db.js";
 import { isDatabaseBoardId, databaseBoards } from "./database/switches.js";
 import { refreshFileCopy } from "./database/fileCopies.js";
@@ -73,6 +74,8 @@ import { PHOTOS_COLUMN_ID as POST_ADOPTION_PHOTOS_COLUMN_ID } from "./postAdopti
 import { registerScreeningRoutes, TRANSCRIPT_COLUMNS, VIDEO_COLUMN_ID } from "./screening/routes.js";
 import { registerAiReviewRoutes } from "./aiReview/routes.js";
 import { registerAdoptionFormRoutes } from "./adoptionForm/routes.js";
+import { registerReferenceCheckRoutes } from "./referenceChecks/routes.js";
+import { startJotformChecks } from "./jotform/poll.js";
 import { addFileToColumn } from "./mondayFiles.js";
 import { registerReadOnlyBoardRoutes } from "./readOnlyBoards.js";
 import { registerUserRoutes } from "./users.js";
@@ -504,6 +507,7 @@ registerPostAdoptionRoutes(app, { requireAuth });
 registerScreeningRoutes(app, { requireAuth });
 registerAiReviewRoutes(app, { requireAuth });
 registerAdoptionFormRoutes(app, { requireAuth });
+registerReferenceCheckRoutes(app, { requireAuth });
 registerAssignedVolunteerRoutes(app, { requireAuth });
 registerReadOnlyBoardRoutes(app, { requireAuth });
 registerUserRoutes(app, { requireAuth, requireAdmin });
@@ -562,6 +566,14 @@ app.post("/api/monday", requireAuth, async (req, res) => {
     return res.status(409).json({ error: "This board is kept in the database now; reload the page to use the new version." });
   }
 
+  // ... nor through one of its items' ids or links, and never the password /
+  // token columns (mondayProxyGuard.js).
+  const refusal = await proxyRefusal({ query, variables, isFileChange });
+
+  if (refusal) {
+    return res.status(refusal.status).json({ error: refusal.error });
+  }
+
   // Case Owner assignment rules (who may assign, who may be picked) live in
   // POST /api/applications/:id/case-owner. Any mutation mentioning the
   // column - in the query text or the variables - is refused here, so
@@ -607,7 +619,7 @@ app.post("/api/monday", requireAuth, async (req, res) => {
   // Monday (see mondayReads.js).
   if (!mutation) {
     try {
-      return res.json({ data: await readOne({ query, variables, cacheTtlMs }) });
+      return res.json({ data: stripSensitive(await readOne({ query, variables, cacheTtlMs })) });
     } catch (err) {
       if (sendRateLimited(res, err)) {
         return;
@@ -711,7 +723,7 @@ app.post("/api/monday", requireAuth, async (req, res) => {
       }
     }
 
-    res.json({ data: result.data });
+    res.json({ data: stripSensitive(result.data) });
   } catch (err) {
     if (sendRateLimited(res, err)) {
       return;
@@ -738,6 +750,11 @@ app.post("/api/monday/batch", requireAuth, async (req, res) => {
   const results = new Array(requests.length);
   const reads = [];
 
+  // Same refusals as /api/monday (mondayProxyGuard.js), checked first.
+  const refusals = await Promise.all(
+    requests.map((request) => (typeof request?.query === "string" && request.query ? proxyRefusal({ query: request.query, variables: request.variables, isFileChange: false }) : null)),
+  );
+
   requests.forEach((request, index) => {
     const { query, variables, cacheTtlMs } = request ?? {};
 
@@ -749,6 +766,8 @@ app.post("/api/monday/batch", requireAuth, async (req, res) => {
       results[index] = { error: "Notifications are only available through /api/notifications.", status: 403 };
     } else if (namesDatabaseBoard(query, variables)) {
       results[index] = { error: "This board is kept in the database now; reload the page to use the new version.", status: 409 };
+    } else if (refusals[index]) {
+      results[index] = { error: refusals[index].error, status: refusals[index].status };
     } else {
       reads.push({ index, request: { query, variables, cacheTtlMs } });
     }
@@ -762,7 +781,7 @@ app.post("/api/monday/batch", requireAuth, async (req, res) => {
 
       results[read.index] = result.error
         ? { error: result.error.status ? result.error.message : "Request to Monday failed.", status: result.error.status ?? 500 }
-        : { data: result.data };
+        : { data: stripSensitive(result.data) };
     });
 
     res.json({ results });
@@ -872,6 +891,8 @@ app.listen(PORT, () => {
       processWaitingSubmissions()
         .then((handled) => handled && console.log(`Jotform: handled ${handled} waiting submission(s).`))
         .catch((err) => console.error("Jotform: handling waiting submissions failed.", err));
+      // The safety net for missed webhooks: every 30 minutes (jotform/poll.js).
+      startJotformChecks();
     }
   });
   startMondayApiVersionChecks();

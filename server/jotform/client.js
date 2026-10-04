@@ -30,3 +30,46 @@ export async function getSubmission(submissionId) {
 
   throw new Error(`Jotform answered ${code}: ${body?.message ?? res.statusText}`);
 }
+
+// Every submission of a form created after `since` ("YYYY-MM-DD HH:MM:SS",
+// Jotform's account time), oldest first, deleted ones left out. 1 API call
+// per 1,000 submissions (the import of older submissions).
+export async function listFormSubmissions(formId, { since }) {
+  const filter = encodeURIComponent(JSON.stringify({ "created_at:gt": since }));
+  const all = [];
+
+  for (let offset = 0; ; offset += 1000) {
+    const res = await fetch(`${API_URL}/form/${encodeURIComponent(formId)}/submissions?limit=1000&offset=${offset}&filter=${filter}`, {
+      headers: { APIKEY: API_KEY },
+    });
+    const body = await res.json().catch(() => null);
+
+    if ((body?.responseCode ?? res.status) !== 200) throw new Error(`Jotform answered ${body?.responseCode ?? res.status}: ${body?.message ?? res.statusText}`);
+
+    all.push(...body.content);
+
+    if (body.content.length < 1000) break;
+  }
+
+  return all.filter((submission) => submission.status !== "DELETED").sort((a, b) => a.created_at.localeCompare(b.created_at));
+}
+
+// A form's submissions created or edited after `since` ("YYYY-MM-DD
+// HH:MM:SS", Jotform's account time), deleted ones left out, each once.
+// 2 API calls (the safety-net check, jotform/poll.js).
+export async function listChangedSubmissions(formId, { since }) {
+  const byFilter = async (key) => {
+    const filter = encodeURIComponent(JSON.stringify({ [key]: since }));
+    const res = await fetch(`${API_URL}/form/${encodeURIComponent(formId)}/submissions?limit=1000&filter=${filter}`, { headers: { APIKEY: API_KEY } });
+    const body = await res.json().catch(() => null);
+
+    if ((body?.responseCode ?? res.status) !== 200) throw new Error(`Jotform answered ${body?.responseCode ?? res.status}: ${body?.message ?? res.statusText}`);
+
+    return body.content;
+  };
+  const both = [...(await byFilter("created_at:gt")), ...(await byFilter("updated_at:gt"))];
+
+  return [...new Map(both.filter((submission) => submission.status !== "DELETED").map((submission) => [String(submission.id), submission])).values()].sort((a, b) =>
+    String(a.updated_at ?? a.created_at).localeCompare(String(b.updated_at ?? b.created_at)),
+  );
+}

@@ -3,6 +3,9 @@ import { formKindOf } from "./forms.js";
 import { saveSubmission, claimSubmission, setSubmissionStatus, waitingSubmissions } from "./submissionsStore.js";
 import { handlePreAdoption } from "./handlers/preAdoption.js";
 import { handleAdoptionReferences } from "./adoptionReferences/handler.js";
+import { handleUaeForm } from "./uae/handler.js";
+import { handleReferenceCheck } from "./referenceCheck/handler.js";
+import { handleContract } from "./contract/handler.js";
 
 // What happens to a submission the server hears about (from the webhook,
 // or later a scheduled check): fetch it from Jotform - so a forged request
@@ -11,13 +14,21 @@ import { handleAdoptionReferences } from "./adoptionReferences/handler.js";
 //
 // A handler gets the claimed submission and answers { status, applicationId? }
 // with status "processed" or "unmatched"; throwing marks it "failed".
-// Kinds without one (the UAE form, references, contracts, for now) stay "received"
+// Kinds without one (the foster and cat forms) stay "received"
 // until theirs exists, then get processed from the table
 // (processWaitingSubmissions).
 const HANDLERS = {
   pre_adoption: handlePreAdoption,
   adoption_references: handleAdoptionReferences,
+  uae_adoption_form: handleUaeForm,
+  reference_check: handleReferenceCheck,
+  // England & Wales and Scotland; the unused USA contracts fail visibly.
+  contract: handleContract,
 };
+
+export function hasHandler(formKind) {
+  return Boolean(HANDLERS[formKind]);
+}
 
 // A submission edited again while its handler ran is handled again, but
 // not endlessly.
@@ -25,7 +36,8 @@ const MAX_ROUNDS = 3;
 
 // Answers { status: "saved", submission } or { status: "ignored", reason };
 // throws when Jotform or the database fails.
-export async function receiveSubmission(submissionId, { via, expectedFormId = null }) {
+// quiet: no notifications from the handler (the import of older submissions).
+export async function receiveSubmission(submissionId, { via, expectedFormId = null, quiet = false }) {
   const submission = await getSubmission(submissionId);
 
   if (!submission) {
@@ -42,13 +54,13 @@ export async function receiveSubmission(submissionId, { via, expectedFormId = nu
 
   const saved = await saveSubmission({ submission, formKind: formKindOf(submission.form_id), via });
 
-  await processSubmission(saved);
+  await processSubmission(saved, { quiet });
 
   return { status: "saved", submission: saved };
 }
 
 // Runs the handler for a "received" submission, if its kind has one.
-export async function processSubmission({ submissionId, formKind }) {
+export async function processSubmission({ submissionId, formKind }, { quiet = false } = {}) {
   const handler = HANDLERS[formKind];
 
   if (!handler) return;
@@ -61,7 +73,7 @@ export async function processSubmission({ submissionId, formKind }) {
     let outcome;
 
     try {
-      const result = await handler(submission);
+      const result = await handler(submission, { quiet });
       outcome = { status: result.status, applicationId: result.applicationId ?? null };
     } catch (err) {
       console.error(`Jotform: handling submission ${submissionId} (${formKind}) failed.`, err);

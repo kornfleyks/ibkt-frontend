@@ -749,7 +749,7 @@
                 "{{applicationId}}"
               ]
             },
-            "description": "Changes writable fields ({ field: value }, e.g. adoptionStage, priority, caseHealth, call1Date, teamDecision, internalNotes, linkedCatIds). Case Owner is refused here (use the case owner request). Any signed-in user. 400 invalid field/value, 404 not found. 409 when Applications is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "description": "Changes writable fields ({ field: value }, e.g. adoptionStage, priority, caseHealth, call1Date, teamDecision, internalNotes, linkedCatIds). Case Owner is refused here (use the case owner request). Any signed-in user. 400 invalid field/value, 404 not found. 409 when Applications is still kept on Monday on this server (not in DATABASE_BOARDS). Admins and the application Case Owner only (403 otherwise), except a change of only linkedCatIds / matchConfidence (the Matching page), which any signed-in user may make.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"adoptionStage\": \"Active Application\",\n  \"priority\": \"High\",\n  \"internalNotes\": \"Called the applicant, follow up next week.\",\n  \"linkedCatIds\": [\n    \"{{catId}}\"\n  ]\n}",
@@ -1735,6 +1735,32 @@
                   }
                 },
                 "description": "Records that the Adoption Form link was sent (the app sends no email yet) and logs it on the Activity tab. formKey: standard | uae. method: copy_link | email_client. Answers { invite }. Admins and the Case Owner only; 409 unless the application is Active Application; 400 for an unknown formKey or method."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "References",
+          "item": [
+            {
+              "name": "List reference checks",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/applications/{{applicationId}}/reference-checks",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "applications",
+                    "{{applicationId}}",
+                    "reference-checks"
+                  ]
+                },
+                "description": "{ checks: [{ id, submissionId, refereeSlot, referee: { name, email, phone }, candidateName, criminalHistory, answers: [{ qid, question, answer }], signatureUrl, signedOn, submittedAt, receivedAt }] }: the referees' Reference Check answers (Jotform), in the order they arrived. Admins and the application Case Owner only (403 otherwise; 400 for a non-numeric id)."
               },
               "response": []
             }

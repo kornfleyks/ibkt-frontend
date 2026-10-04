@@ -288,6 +288,27 @@ await transaction(async (run) => {
   )`);
   await run("create index if not exists adoption_form_invites_application on adoption_form_invites (application_id, sent_at desc)");
 
+  // Each referee's "Reference Check - IBKT" answers about an application
+  // (jotform/referenceCheck/handler.js, referenceChecks/). App-only: never
+  // sent to Monday.
+  await run(`create table if not exists reference_checks (
+    id bigserial primary key,
+    submission_id text not null unique,
+    application_id bigint not null,
+    referee_slot smallint check (referee_slot in (1, 2, 3)),
+    referee_name text,
+    referee_email text,
+    referee_phone text,
+    candidate_name text,
+    criminal_history text,
+    answers jsonb not null,
+    signature_url text,
+    signed_on text,
+    submitted_at text,
+    received_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists reference_checks_application on reference_checks (application_id, received_at)");
+
   await run("create index if not exists jotform_submissions_status on jotform_submissions (status)");
   await run("create index if not exists jotform_submissions_form on jotform_submissions (form_id, first_received_at desc)");
 
@@ -405,7 +426,7 @@ await transaction(async (run) => {
 
   // Reachable only by this server's connection; Supabase's public API
   // (anon / authenticated keys) gets nothing without policies.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "reference_checks", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });

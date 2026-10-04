@@ -32,8 +32,11 @@ function toSubmission(row) {
 
 // Saves a submission fetched from Jotform. A repeat of an unchanged
 // submission (webhook retry, or webhook and a later check both seeing it)
-// keeps its status; a changed one (an edit, e.g. a contract being signed)
-// goes back to "received" so its handler sees the new answers. While a
+// keeps its status; one whose answers changed (an edit, e.g. a contract
+// being signed) goes back to "received" so its handler sees the new
+// answers. Jotform also moves updated_at without any answer changing
+// (most Pre-Adoption submissions have one), so the answers decide - an
+// old form is never re-applied over a volunteer's changes for nothing. While a
 // handler is running the status stays "processing": setSubmissionStatus
 // then notices the newer version and hands it back as "received".
 export async function saveSubmission({ submission, formKind, via }) {
@@ -45,7 +48,7 @@ export async function saveSubmission({ submission, formKind, via }) {
        answers = excluded.answers,
        jotform_updated_at = excluded.jotform_updated_at,
        status = case
-         when jotform_submissions.jotform_updated_at is distinct from excluded.jotform_updated_at
+         when jotform_submissions.answers is distinct from excluded.answers
            and jotform_submissions.status not in ('log_only', 'processing')
          then 'received'
          else jotform_submissions.status

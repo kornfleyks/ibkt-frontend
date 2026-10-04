@@ -2,7 +2,7 @@
 // question: which Active Applications column each answer goes to
 // (docs/jotform-adoption-form-import.md). Read from the live form on
 // 2026-09-30. Shared by scripts/createAdoptionFormColumns.js (creates the
-// columns) and toApplicationChanges.js (fills them). When the client edits
+// columns) and form.js / secondStage (fill them). When the client edits
 // the form on Jotform, update this to match.
 //
 // A column: { key, title, type, qids, format, labels? }

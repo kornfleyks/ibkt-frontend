@@ -159,6 +159,20 @@ a database would need. Optional: without `DATABASE_URL` nothing changes.
   - The generic `/api/monday` and `/api/monday/batch` routes refuse reads
     and writes naming a switched-on board (file changes excepted).
 
+## Monday proxy rules (`mondayProxyGuard.js`)
+
+Every board is kept in the database, so `/api/monday` and
+`/api/monday/batch` are only a fallback. Besides refusing requests that
+name a database board, they refuse any request naming the **id of an item**
+kept in the database (so `items(ids: ...)` and links can't reach, e.g., a
+Users item), any request naming a password / token column, and file
+changes that ask for anything back but ids. Those columns are also blanked
+in every proxy answer.
+
+`POST /api/applications/:id` is for Admins and the application's Case
+Owner, except a change of only `linkedCatIds` / `matchConfidence` (the
+Matching page, used by every Volunteer).
+
 ## Case Owner (`caseOwner.js`)
 
 An application's Case Owner (a relation to the Users board) can only be
@@ -262,7 +276,16 @@ the server receives their submissions. Research, form ids and fields:
   lines and ID files; found by the Send Adoption Form link's hidden id,
   then email, then name; no match = `unmatched` + Admin bell;
   `docs/jotform-adoption-form-import.md`). Its columns come from
-  `scripts/createAdoptionFormColumns.js [--apply]`.
+  `scripts/createAdoptionFormColumns.js [--apply]`. An Adoption Form also
+  moves a New application to Active (the applicant passed Jotform's
+  screening approvals).
+- Older submissions: `scripts/importJotformSubmissions.js [--apply]`
+  (dry run by default) imports Pre-Adoption Forms of the last 6 weeks and
+  Adoption Forms of the last 6 months (with their applicants' Pre-Adoption
+  Forms) through the same path, without unmatched bells;
+  `docs/jotform-backfill.md`.
+- Also handled (docs/jotform-step3.md): **UAE Adoption Form & Agreement** (`uae/`, same machinery as the UK/US form in `secondStage/`; signed = Signed Contract Received, Payment Required AED), **Reference Check - IBKT** (`referenceCheck/`, answers in `reference_checks`, `GET /api/applications/:id/reference-checks`; matched by the referee's email, then candidate name) and the **Pet Adoption Contract** England & Wales / Scotland (`contract/`; issued: Final Contract Sent, GBP / Pending, fee, cat by microchip, -> Approved; signed: Signed Contract Received).
+- Safety net (`poll.js`): every 30 minutes, submissions created or edited in the last 48 hours that the app hasn't stored (or stored before their answers changed) are received as if the webhook had arrived.
 - The same submission arriving twice is saved once; an edited one (a
   contract being signed) is handled again with the new answers.
 - Every request with the right secret is first stored as it arrived in

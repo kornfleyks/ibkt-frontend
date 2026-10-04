@@ -3,5 +3,8 @@
 - [Send Adoption Form](send-adoption-form.md) - IN PROGRESS: button + UAE/UK-US link, copy/mailto, adoption_form_invites; table CREATED 2026-09-30; not tested yet; email service later
 - [Assigned Volunteer](assigned-volunteer.md) - BUILT 2026-09-30: Users link column, Active Volunteers only, Admin + Case Owner, notification; real assignment not tried yet
 - [Adoption Form import](adoption-form-import.md) - BUILT 2026-09-30: every Adoption Form and References answer in its own column (36 new), handler in jotform/adoptionReferences; ID copy + unmatched untested
-- [Application update not guarded](application-update-not-guarded.md) - SECURITY: POST /api/applications/:id checks login only; Matching depends on it; fix needs per-field rules, ask first
+- [Application update guarded](application-update-not-guarded.md) - RESOLVED 2026-10-01: Admin/Case Owner, except Matching fields
 - [Stage and cat rules](stage-cat-rules.md) - BUILT 2026-09-30: Approved -> cats Adopted; Rejected / pre-approval Archive frees cats; Approved cannot go back
+- [Jotform workflows](jotform-workflows.md) - client runs the adoption stages as Jotform approval workflows; Jotform itself sends the Adoption Form; API paths found
+- [Jotform backfill](jotform-backfill.md) - 2026-10-01: Jotform stays the process, app follows (AF -> Active); import of current applicants run
+- [Jotform step 3](jotform-step3.md) - BUILT 2026-10-01: UAE / Reference Check / contracts handlers, 30-min safety net; dev:all watch mode restarts on edits

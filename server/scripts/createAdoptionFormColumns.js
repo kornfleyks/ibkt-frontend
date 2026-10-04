@@ -1,23 +1,28 @@
-// One-off: adds the Active Applications columns for the Jotform "Adoption
-// Form and References" (one column per answer;
-// docs/jotform-adoption-form-import.md). The list lives in
-// jotform/adoptionReferences/questions.js. Missing columns are created in
+// One-off: adds the Active Applications columns for a second-stage Jotform
+// form, one column per answer: the "Adoption Form and References" (default;
+// docs/jotform-adoption-form-import.md, list in
+// jotform/adoptionReferences/questions.js) or, with --form uae, the "UAE
+// Adoption Form & Agreement" (docs/jotform-step3.md; only its new columns,
+// list in jotform/uae/questions.js). Missing columns are created in
 // ONE Monday request; status columns get the form's options as labels.
 // Prints the ids for src/constants/boards/activeApplications.js; then run
 // `node scripts/databaseSchema.js --refresh`.
 //
-//   node scripts/createAdoptionFormColumns.js           # dry run: what's missing (1 Monday call)
-//   node scripts/createAdoptionFormColumns.js --apply   # create them (+1 call)
+//   node scripts/createAdoptionFormColumns.js [--form uae]           # dry run: what's missing (1 Monday call)
+//   node scripts/createAdoptionFormColumns.js [--form uae] --apply   # create them (+1 call)
 //
 // Safe to re-run: existing columns with these titles (and the same type)
 // are reused.
 import "dotenv/config";
 import { ACTIVE_APPLICATIONS } from "../../src/constants/boards/activeApplications.js";
 import { ADOPTION_FORM_COLUMNS } from "../jotform/adoptionReferences/questions.js";
+import { UAE_NEW_COLUMNS } from "../jotform/uae/questions.js";
 import { mondayDirectRequest as monday } from "../mondayClient.js";
 
 const APPLY = process.argv.includes("--apply");
-const DESCRIPTION = "Adoption Form and References answer (Jotform, IBKT app).";
+const UAE = process.argv.includes("uae");
+const COLUMNS = UAE ? UAE_NEW_COLUMNS : ADOPTION_FORM_COLUMNS;
+const DESCRIPTION = UAE ? "UAE Adoption Form & Agreement answer (Jotform, IBKT app)." : "Adoption Form and References answer (Jotform, IBKT app).";
 
 // Status label indexes: 5 is Monday's grey "no status", so it's skipped.
 function statusDefaults(labels) {
@@ -33,7 +38,7 @@ const existing = boards[0].columns;
 const ids = {};
 const missing = [];
 
-for (const column of ADOPTION_FORM_COLUMNS) {
+for (const column of COLUMNS) {
   const found = existing.find((candidate) => candidate.title === column.title);
 
   if (found && found.type !== column.type) {
@@ -49,7 +54,7 @@ for (const column of ADOPTION_FORM_COLUMNS) {
   }
 }
 
-console.log(`${existing.length} columns on the board; ${missing.length} of ${ADOPTION_FORM_COLUMNS.length} to create.`);
+console.log(`${existing.length} columns on the board; ${missing.length} of ${COLUMNS.length} to create.`);
 
 if (missing.length && !APPLY) {
   for (const column of missing) console.log(`  would create: ${column.title} (${column.type})`);
@@ -74,6 +79,6 @@ if (missing.length) {
   });
 }
 
-const lines = ADOPTION_FORM_COLUMNS.map(({ key, title, type }) => `    ${key}: "${ids[key]}", // ${title} | ${type}`);
+const lines = COLUMNS.map(({ key, title, type }) => `    ${key}: "${ids[key]}", // ${title} | ${type}`);
 
 console.log(`\nIn src/constants/boards/activeApplications.js:\n${lines.join("\n")}`);

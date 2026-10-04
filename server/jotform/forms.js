@@ -2,8 +2,8 @@
 // docs/jotform-research.md). "kind" picks what happens to a submission:
 //
 //   pre_adoption        creates an application (handlers/preAdoption.js)
-//   new_application     creates an application (UAE form: no handler yet)
-//   adoption_references updates the applicant's application (by email)
+//   uae_adoption_form   updates the applicant's application (uae/handler.js)
+//   adoption_references updates the applicant's application (adoptionReferences/handler.js)
 //   reference_check     updates the candidate's application (by name)
 //   contract            contract sent / signed on the adopter's application
 //   log_only            kept in jotform_submissions only, for now
@@ -12,7 +12,7 @@
 
 export const JOTFORM_FORMS = {
   "203096212272447": { kind: "pre_adoption", name: "Pre-Adoption Form" },
-  "202981102716450": { kind: "new_application", name: "UAE Adoption Form & Agreement" },
+  "202981102716450": { kind: "uae_adoption_form", name: "UAE Adoption Form & Agreement" },
   "211304838746458": { kind: "adoption_references", name: "Adoption Form and References" },
   "220642582493458": { kind: "reference_check", name: "Reference Check - IBKT" },
   "203072984903054": { kind: "contract", name: "Pet Adoption Contract - England & Wales only" },

@@ -2,6 +2,7 @@ import { Chip, Grid, Stack, Typography } from "@mui/material";
 import SectionCard from "../../../Common/SectionCard";
 import RecordField from "../../../Common/RecordField";
 import RefereeCard from "./RefereeCard";
+import ReferenceChecks from "./ReferenceChecks";
 import { ADOPTION_EDITABLE_FIELDS, updateAdoptionField } from "../../../../services/ActiveApplicationsService";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../../../constants/statuses/activeApplicationsStatuses";
 
@@ -73,10 +74,7 @@ function ReferencesTab({ application, onApplicationChange }) {
       </SectionCard>
 
       <SectionCard title="Reference checks">
-        <Typography color="text.secondary">
-          The referees&apos; own answers (the &quot;Reference Check&quot; Jotform form) will appear here once that form is
-          connected to the app.
-        </Typography>
+        <ReferenceChecks applicationId={application.id} />
       </SectionCard>
     </Stack>
   );

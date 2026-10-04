@@ -147,6 +147,50 @@ export const ACTIVE_APPLICATIONS = {
     AF_WHERE_CAT_SLEEPS: "long_text_mm7p97km", // Where Cat Sleeps | long_text
     REFEREE_3: "text_mm7pfv0x", // Referee 3 | text
     AF_ANYTHING_ELSE: "long_text_mm7pcpmh", // Anything Else | long_text
+    // Pet Adoption Contract (server/scripts/createContractColumns.js).
+    ADOPTION_FEE: "text_mm7q3zfc", // Adoption Fee | text
+    // UAE Adoption Form & Agreement answers (Jotform import,
+    // server/scripts/createAdoptionFormColumns.js --form uae; the questions it
+    // shares with the UK/US form use the AF_ columns above).
+    UAE_CATS_INTERESTED_IN: "long_text_mm7q15w2", // UAE Form Cats Interested In | long_text
+    UAE_AGE_PREFERENCE: "text_mm7q3f9r", // UAE Form Age Preference | text
+    UAE_CAT_PREFERENCES: "text_mm7qh467", // UAE Form Cat Preferences | text
+    UAE_LIFETIME_COMMITMENT: "color_mm7q9ebd", // UAE Form Lifetime Commitment | status
+    UAE_HOUSEHOLD_ALLERGIES: "color_mm7q81pv", // UAE Form Household Allergies | status
+    UAE_ALLERGY_DETAILS: "long_text_mm7qtdac", // UAE Form Allergy Details | long_text
+    UAE_FAMILY_IN_AGREEMENT: "color_mm7q5avp", // UAE Form Family In Agreement | status
+    UAE_FAMILY_AGREEMENT_NOTES: "long_text_mm7qfea2", // UAE Form Family Agreement Notes | long_text
+    UAE_HOUSEHOLD_MEMBERS: "long_text_mm7q8rd4", // UAE Form Household Members | long_text
+    UAE_HOURS_ALONE: "long_text_mm7q16fd", // UAE Form Hours Alone | long_text
+    UAE_WHY_ADOPT: "long_text_mm7qafak", // UAE Form Why Adopt | long_text
+    UAE_ADOPTION_MOTIVATION: "text_mm7qv7zx", // UAE Form Adoption Motivation | text
+    UAE_ABOUT_YOURSELF: "long_text_mm7q6cec", // About Yourself | long_text
+    UAE_VET_FEE_AGREEMENT: "color_mm7qvg8s", // Agrees To Vet Fee Reimbursement | status
+    UAE_DWELLING_TYPE: "color_mm7qj7vz", // Dwelling Type | status
+    UAE_OWNS_HOME: "color_mm7qv2ax", // Owns Home | status
+    UAE_GARDEN_BALCONY: "color_mm7qc99q", // Garden Or Balcony | status
+    UAE_OUTDOOR_PLANS: "long_text_mm7qt4f5", // Balcony Or Outdoor Plans | long_text
+    UAE_MOVING_SOON: "color_mm7qk03b", // Moving In 12 Months | status
+    UAE_MOVING_PLANS: "long_text_mm7qmtmn", // Moving Plans | long_text
+    UAE_LEAVING_UAE_PLANS: "long_text_mm7qmbsg", // Plans When Leaving The UAE | long_text
+    UAE_BIRTH_DATE: "text_mm7q9ay9", // Birth Date | text
+    UAE_CHILDREN_PLANS: "color_mm7qsnqc", // Children Planned Or Visiting | status
+    UAE_KITTEN_ALONE: "long_text_mm7q7c4t", // Where A Kitten Stays Alone | long_text
+    UAE_PETS_OWNED_5_YEARS: "color_mm7q7nj2", // Pets Owned (5 Years) | status
+    UAE_PETS_LIST: "long_text_mm7q67na", // Pets Owned List | long_text
+    UAE_SPOUSE_CAT: "text_mm7qw871", // Owned A Cat With Spouse | text
+    UAE_PET_LOST_OR_GIVEN: "color_mm7q8ns8", // Lost Or Gave Away A Pet | status
+    UAE_PETS_REACTION: "long_text_mm7q48a2", // Current Pets With New Cats | long_text
+    UAE_PRESENT_PETS_NEUTERED: "long_text_mm7qkc08", // Present Pets Neutered | long_text
+    UAE_PREVIOUS_PETS_NEUTERED: "long_text_mm7qvrzg", // Previous Pets Neutered | long_text
+    UAE_RELOCATION_BUDGET: "text_mm7qx8sf", // Relocation Budget | text
+    UAE_VET_COSTS_AED: "text_mm7qhqrt", // Vet Costs (AED) | text
+    UAE_ADOPTER_SIGNATURE: "text_mm7qag2p", // Adopter Signature | text
+    UAE_ADOPTER_SIGNED_NAME: "text_mm7q8wg4", // Adopter Signed Name | text
+    UAE_ADOPTER_SIGNED_DATE: "text_mm7qn2t5", // Adopter Signed Date | text
+    UAE_RESCUER_SIGNATURE: "text_mm7q1twr", // Rescuer Signature | text
+    UAE_RESCUER_SIGNED_NAME: "text_mm7qnmrt", // Rescuer Signed Name | text
+    UAE_RESCUER_SIGNED_DATE: "text_mm7qyxe4", // Rescuer Signed Date | text
   },
   RELATIONS: {
     LINKED_CAT: ["5098369241"],

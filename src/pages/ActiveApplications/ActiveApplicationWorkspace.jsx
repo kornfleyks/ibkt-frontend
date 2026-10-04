@@ -74,6 +74,7 @@ function ActiveApplicationWorkspace() {
                 applicationId={application.id}
                 applicationName={application.name}
                 applicantEmail={application.email}
+                applicantCountry={application.country}
               />
             )}
 
