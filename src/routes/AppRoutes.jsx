@@ -176,7 +176,7 @@ function AppRoutes() {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute roles={["Admin"]} emails={["billkifonidis@gmail.com"]}>
+            <ProtectedRoute roles={["Super Admin"]}>
               <AppLayout>
                 <AppSettings />
               </AppLayout>
@@ -187,7 +187,7 @@ function AppRoutes() {
         <Route
           path="/client-review"
           element={
-            <ProtectedRoute roles={["Admin"]} emails={["billkifonidis@gmail.com"]}>
+            <ProtectedRoute roles={["Super Admin"]}>
               <AppLayout>
                 <ReviewItems />
               </AppLayout>

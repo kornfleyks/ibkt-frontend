@@ -1,4 +1,5 @@
 import { USERS } from "../src/constants/boards/users.js";
+import { isSuperAdminEmail } from "../src/constants/roles.js";
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
 import { TASKS } from "../src/constants/boards/tasks.js";
 import { USERS_STATUS_OPTIONS } from "../src/constants/statuses/usersStatuses.js";
@@ -222,6 +223,14 @@ export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
 
     if (String(id) === String(actor.id) && status !== ACCOUNT_STATUS.ACTIVE) {
       return res.status(400).json({ error: "You can't change your own account's status." });
+    }
+
+    // Fully protected, for every viewer including each other: a Super
+    // Admin account's status never changes through this page.
+    const target = await getAccountState(id);
+
+    if (target && isSuperAdminEmail(target.email)) {
+      return res.status(403).json({ error: "This account's status can't be changed here." });
     }
 
     try {

@@ -11,14 +11,13 @@ import { getAccessibleNavItems } from "../../utils/navigationAccess";
 import SidebarFooter from "../SidebarFooter/SidebarFooter";
 import MondayUsageCounter from "../Common/MondayUsageCounter";
 import DatabaseUsageCounter from "../Common/DatabaseUsageCounter";
-import { ROLES } from "../../constants/roles";
 
 function Sidebar() {
   const theme = useTheme();
 
   const { sidebarOpen, setSidebarOpen } = useLayout();
 
-  const { user } = useAuth();
+  const { user, isSuperAdmin } = useAuth();
 
   function handleNavigation() {
     if (window.innerWidth < 768) {
@@ -27,8 +26,9 @@ function Sidebar() {
   }
 
   const visibleItems = getAccessibleNavItems(user);
-  // Development-only request counters (Monday API, database), for Admins.
-  const showMondayUsage = import.meta.env.APP_ENV === "development" && user?.role === ROLES.ADMIN;
+  // Request counters (Monday API, database), for Super Admins - every
+  // environment, not just development.
+  const showMondayUsage = isSuperAdmin;
 
   return (
     <div

@@ -22,7 +22,7 @@ import { ADOPTION_FORMS, SEND_METHODS, UAE_COUNTRY } from "../../../constants/fo
 import useAuth from "../../../hooks/useAuth";
 import useDateFormat from "../../../hooks/useDateFormat";
 
-// "Send Adoption Form" in the application header (Active applications):
+// "Email References" in the application header (Active applications):
 // the pre-filled link to the UAE or UK/US Adoption Form, picked from the
 // applicant's country and changeable. Until the app can send email, the
 // volunteer copies the link or opens it in their email app; either one
@@ -170,14 +170,14 @@ function SendAdoptionFormButton({ applicationId, applicationName, applicantEmail
       <Tooltip title={hint ?? sentNote}>
         <span>
           <Button variant="outlined" startIcon={<EmailIcon />} disabled={Boolean(hint)} onClick={() => setOpen(true)}>
-            {lastInvite ? "Resend Adoption Form" : "Send Adoption Form"}
+            {lastInvite ? "Resend References" : "Email References"}
           </Button>
         </span>
       </Tooltip>
 
       <Dialog open={open} onClose={closeDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontSize: "1.1rem", pr: 6 }}>
-          Send Adoption Form: {applicationName}
+          Email References: {applicationName}
           <IconButton onClick={closeDialog} aria-label="Close" sx={{ position: "absolute", right: 8, top: 8 }}>
             <CloseIcon />
           </IconButton>

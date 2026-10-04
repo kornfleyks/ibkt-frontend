@@ -1,7 +1,7 @@
 import { ACTIVE_APPLICATIONS } from "../../../src/constants/boards/activeApplications.js";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../../src/constants/statuses/activeApplicationsStatuses.js";
 import { NOTIFICATIONS_STATUS_OPTIONS } from "../../../src/constants/statuses/notificationsStatuses.js";
-import { ROLES } from "../../../src/constants/roles.js";
+import { isAdminRole } from "../../../src/constants/roles.js";
 import { isDatabaseBoard } from "../../database/switches.js";
 import { updateItem, fieldsFromMondayValues } from "../../database/boardStore.js";
 import { exists } from "../../database/boardRecords.js";
@@ -70,7 +70,7 @@ async function findApplication(submission, { applicationIdHint, email, name }) {
 }
 
 export async function notifyAdminsUnmatched(formName, submission, { name, email }) {
-  const admins = (await getUserDirectory()).filter((user) => user.role === ROLES.ADMIN && user.accountStatus === "Active");
+  const admins = (await getUserDirectory()).filter((user) => isAdminRole(user.role) && user.accountStatus === "Active");
   const who = [name, email && `<${email}>`].filter(Boolean).join(" ") || "someone";
 
   for (const admin of admins) {

@@ -556,7 +556,7 @@
                 "{{userId}}"
               ]
             },
-            "description": "Changes any of { firstName, lastName, email, role } (send only what changes; role must be an existing Role label). Admin only. 400 invalid input or email taken, 404 unknown user. 409 when Users is still kept on Monday on this server (not in DATABASE_BOARDS).",
+            "description": "Changes any of { firstName, lastName, email, role } (send only what changes; role must be an existing Role label). Admin only. 400 invalid input or email taken, 404 unknown user. 409 when Users is still kept on Monday on this server (not in DATABASE_BOARDS). Role can never be set to Super Admin here (every account refused), and neither field nor status changes are accepted for the two Super Admin accounts (403/400 either way).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"role\": \"Volunteer\"\n}",
@@ -650,7 +650,7 @@
                 "status"
               ]
             },
-            "description": "Sets Account Status (Pending, Active, Suspended, Archived, Blocked). Suspended/Archived first hand the user's open cases and tasks to the acting Admin. Admin only. 400 invalid status or changing your own status, 502 when the hand-over partly failed (status not changed).",
+            "description": "Sets Account Status (Pending, Active, Suspended, Archived, Blocked). Suspended/Archived first hand the user's open cases and tasks to the acting Admin. Admin only. 400 invalid status or changing your own status, 502 when the hand-over partly failed (status not changed). Refused (403) for the two Super Admin accounts, for any actor.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"Active\"\n}",

@@ -46,7 +46,7 @@ directly. It holds the Monday API token server-side and does two things:
   adds every call it makes (per UTC day, also saved to `.monday-usage.json`).
   Admins get it on every response (`X-Monday-Usage: used/limit`, plus
   `X-Monday-Blocked-For` seconds while Monday returns 429); App Settings
-  shows it always, the sidebar in development (`APP_ENV=development`).
+  shows it always, the sidebar for Super Admins in every environment.
 - Respects Monday's rate limit (`mondayRateLimit.js`): every Monday call goes
   through `mondayFetch`. On a 429 it pauses all Monday calls until Monday's
   `Retry-After`, failing fast meanwhile; `/api/monday` and `/api/upload`
@@ -159,6 +159,28 @@ a database would need. Optional: without `DATABASE_URL` nothing changes.
   - The generic `/api/monday` and `/api/monday/batch` routes refuse reads
     and writes naming a switched-on board (file changes excepted).
 
+## Roles (`src/constants/roles.js`)
+
+`ROLES.SUPER_ADMIN` ("Super Admin") is Admin-and-more: it satisfies every
+check that currently accepts Admin (`isAdminRole(role)` for a single-role
+comparison, `roleSatisfies(requiredRoles, role)` for an array or a
+configurable App Settings role list - Super Admin passes whenever the list
+includes Admin, even if "Super Admin" itself isn't in it), plus two pages
+a regular Admin can't see at all - App Settings and Client Review are
+gated `roles: ["Super Admin"]`, which `roleSatisfies` does **not** widen
+for a plain Admin (only the reverse: Super Admin satisfies an
+`["Admin"]` gate). The sidebar's API usage counters are Super-Admin-only
+the same way (`isSuperAdmin` from `useAuth`, not `isAdmin`), in every
+environment, not just development. Only ever applied to the two accounts in `SUPER_ADMIN_EMAILS`
+(`billkifonidis@gmail.com`, `support@ittybittykittytails.co.uk`), set
+directly on Monday by `scripts/seedSuperAdmins.js` - never selectable in
+the Users page role picker, never assignable through
+`POST /api/admin/users/:id` (refused there for every account). Those two
+accounts are fully protected on the Users page for every viewer, including
+each other: no role or status change goes through
+(`server/users.js`, `server/userAdmin.js`, mirrored client-side in
+`src/pages/Users/Users.jsx`).
+
 ## Monday proxy rules (`mondayProxyGuard.js`)
 
 Every board is kept in the database, so `/api/monday` and
@@ -200,11 +222,13 @@ npm run migrate:case-owners -- --apply # write the matched rows
 
 A standing punch-list for client calls: questions to put to the client,
 things to flag to them, and internal to-dos, each with a place to record
-the answer (`review_items` table, app-only). Admin-only on the server,
-same as App Settings; the page itself (`src/pages/ReviewItems`) is further
-restricted in the frontend to one developer account
-(`src/routes/AppRoutes.jsx`, `emails: ["billkifonidis@gmail.com"]`) - not
-re-checked here, so any other Admin account could reach the API directly.
+the answer (`review_items` table, app-only). Admin-only on the server
+(`requireAdmin`, which Super Admin also satisfies); the page itself
+(`src/pages/ReviewItems`) is further restricted in the frontend to
+Super Admin (`src/routes/AppRoutes.jsx`, `roles: ["Super Admin"]`, same as
+App Settings) - not re-checked here, so any other Admin account could
+still reach the API directly. All three sections, including
+"Internal / to do", are visible to every Super Admin.
 
 - `GET /api/review-items` - every item.
 - `POST /api/review-items` - `{ category: "question" | "flag" | "internal", title, detail? }`.

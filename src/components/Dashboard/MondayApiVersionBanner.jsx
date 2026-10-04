@@ -4,7 +4,6 @@ import { Alert, Button } from "@mui/material";
 
 import useAuth from "../../hooks/useAuth";
 import { canAccessPath } from "../../utils/navigationAccess";
-import { ROLES } from "../../constants/roles";
 import {
   getMondayApiVersionStatus,
   describeMondayApiVersionStatus,
@@ -14,8 +13,7 @@ import {
 // version needs updating (maintenance, deprecated). Renders nothing
 // otherwise, or if the status can't be loaded.
 function MondayApiVersionBanner() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === ROLES.ADMIN;
+  const { user, isAdmin } = useAuth();
   const [status, setStatus] = useState(null);
 
   useEffect(() => {

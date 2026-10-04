@@ -4,7 +4,10 @@ import { USERS_STATUS_OPTIONS } from "./statuses/usersStatuses.js";
 import { DEFAULT_MONDAY_API_VERSION, isValidMondayApiVersion } from "./mondayApiVersion.js";
 
 const STAGES = ACTIVE_APPLICATIONS_STATUS_OPTIONS.ADOPTION_STAGE;
-const ROLES = USERS_STATUS_OPTIONS.ROLE;
+// Super Admin satisfies any of these lists that include Admin regardless
+// (server roleSatisfies) - it's never a tickable option, same as it's
+// never a pickable role on the Users page.
+const ROLES = Object.fromEntries(Object.entries(USERS_STATUS_OPTIONS.ROLE).filter(([key]) => key !== "SUPER_ADMIN"));
 
 // Settings the app itself introduced, so their App Settings board row may
 // not exist yet. Shared by the frontend (App Settings shows these with

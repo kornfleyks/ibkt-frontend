@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom";
 
 import useAuth from "../../hooks/useAuth";
+import { roleSatisfies } from "../../constants/roles";
 
 function ProtectedRoute({ children, roles = [], emails = [] }) {
   const { isAuthenticated, user, roleChange } = useAuth();
@@ -9,7 +10,7 @@ function ProtectedRoute({ children, roles = [], emails = [] }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles.length > 0 && !roles.includes(user?.role)) {
+  if (roles.length > 0 && !roleSatisfies(roles, user?.role)) {
     // A live role change just removed access to this page: go somewhere
     // everyone can use (the role-change notice explains why) rather than
     // showing Forbidden for a page they were legitimately on.

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { isAdminRole } from "../src/constants/roles.js";
 import { getSessionExpiryHours } from "./appSettings.js";
 import { getAccountState, applyAccountChange } from "./accountState.js";
 import { passwordStampOf } from "./passwordStamp.js";
@@ -396,7 +397,7 @@ export function requireAuth(req, res, next) {
 
 // Must run after requireAuth, which populates req.user.
 export function requireAdmin(req, res, next) {
-  if (req.user?.role !== "Admin") {
+  if (!isAdminRole(req.user?.role)) {
     return res.status(403).json({ error: "Admin access required." });
   }
 

@@ -1,6 +1,6 @@
 import { ACTIVE_APPLICATIONS } from "../../src/constants/boards/activeApplications.js";
 import { POST_ADOPTION_STATUS_OPTIONS } from "../../src/constants/statuses/postAdoptionStatuses.js";
-import { ROLES } from "../../src/constants/roles.js";
+import { isAdminRole } from "../../src/constants/roles.js";
 import { requireApplicationAccess } from "../applicationAccess.js";
 import { listItemFiles, uploadItemFile, deleteItemFile, receiveFile } from "../itemFiles.js";
 import { answer, HttpError } from "../httpAnswer.js";
@@ -52,7 +52,7 @@ async function ownerOptions(applicationId) {
   const caseOwnerId = await caseOwnerIdOf(applicationId);
 
   return listActiveAccounts()
-    .filter((account) => account.role === ROLES.ADMIN || account.id === caseOwnerId)
+    .filter((account) => isAdminRole(account.role) || account.id === caseOwnerId)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -150,7 +150,7 @@ async function changePostAdoption(req) {
 
   if (after.escalationRequired === ESCALATION_REQUIRED.URGENT && before.escalationRequired !== ESCALATION_REQUIRED.URGENT) {
     const caseOwnerId = await caseOwnerIdOf(applicationId);
-    const admins = listActiveAccounts().filter((account) => account.role === ROLES.ADMIN).map((account) => account.id);
+    const admins = listActiveAccounts().filter((account) => isAdminRole(account.role)).map((account) => account.id);
 
     notifyUrgentEscalation({ recipientIds: [...admins, ...(caseOwnerId ? [caseOwnerId] : [])], actor, target, link: tabLink(applicationId) });
   }

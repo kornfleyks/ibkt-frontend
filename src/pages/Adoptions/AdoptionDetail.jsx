@@ -33,9 +33,9 @@ function stageOptionsFor(stage) {
 
 function AdoptionDetail() {
   const { id } = useParams();
-  const { hasRole, user } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { formatDateString } = useDateFormat();
-  const canEdit = hasRole("Admin");
+  const canEdit = isAdmin;
 
   const [adoption, setAdoption] = useState(null);
   const [editing, setEditing] = useState(false);

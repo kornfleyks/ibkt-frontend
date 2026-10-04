@@ -60,6 +60,7 @@ import { registerSyncRoutes } from "./database/syncRoutes.js";
 import { startSyncSchedule } from "./database/sync.js";
 import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER } from "../src/constants/mondayApiUsage.js";
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
+import { isAdminRole } from "../src/constants/roles.js";
 import { proxyRefusal, stripSensitive } from "./mondayProxyGuard.js";
 import { isDatabaseEnabled, getQueryCount } from "./database/db.js";
 import { isDatabaseBoardId, databaseBoards } from "./database/switches.js";
@@ -281,7 +282,7 @@ app.use((req, res, next) => {
   const json = res.json.bind(res);
 
   res.json = (body) => {
-    if (req.user?.role === "Admin") {
+    if (isAdminRole(req.user?.role)) {
       const { count, limit } = getMondayUsage();
       const blockedFor = mondayRetryAfterSeconds();
 
@@ -547,12 +548,12 @@ app.post("/api/monday", requireAuth, async (req, res) => {
   // app's architecture, but a mutation against the Users board can change
   // someone's role or account status - that one case needs a real
   // server-side check, not just a client-side Admin-only page.
-  if (mutation && variables?.boardId === USERS_BOARD_ID && req.user.role !== "Admin") {
+  if (mutation && variables?.boardId === USERS_BOARD_ID && !isAdminRole(req.user.role)) {
     return res.status(403).json({ error: "Only Admins can modify user accounts." });
   }
 
   // App Settings change through POST /api/admin/settings (Admins only).
-  if (mutation && String(variables?.boardId) === APP_SETTINGS.BOARD_ID && req.user.role !== "Admin") {
+  if (mutation && String(variables?.boardId) === APP_SETTINGS.BOARD_ID && !isAdminRole(req.user.role)) {
     return res.status(403).json({ error: "Only Admins can change App Settings." });
   }
 

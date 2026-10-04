@@ -1,4 +1,5 @@
 import { USERS } from "../src/constants/boards/users.js";
+import { ROLES, isSuperAdminEmail } from "../src/constants/roles.js";
 import { isDatabaseBoard } from "./database/switches.js";
 import { allUsers, userById, setUserValues } from "./database/usersStore.js";
 import { optionLabels, actorOf, send, InputError } from "./database/boardRecords.js";
@@ -60,6 +61,9 @@ async function toColumnValues(userId, changes) {
       if (taken) throw new InputError("An account with this email already exists.");
       values[EDITABLE[key].column] = { email: value, text: value };
     } else {
+      // Super Admin is only ever set directly on Monday (scripts/seedSuperAdmins.js
+      // or by hand) - never through this page, for anyone.
+      if (value === ROLES.SUPER_ADMIN) throw new InputError("Super Admin can't be set here.");
       if (!(await optionLabels("users", U.ROLE)).includes(value)) throw new InputError(`Unknown role "${value}".`);
       values[EDITABLE[key].column] = { label: value };
     }
@@ -72,6 +76,11 @@ async function changeUser(req, userId, changes) {
   const before = await userById(userId);
 
   if (!before) return null;
+
+  // Fully protected, for every viewer including each other (role is also
+  // never selectable as Super Admin, above): nothing about these two
+  // accounts changes through this page.
+  if (isSuperAdminEmail(before.email)) throw new InputError("This account can't be changed here.");
 
   if (!Object.keys(changes).length) throw new InputError("Nothing to change.");
 

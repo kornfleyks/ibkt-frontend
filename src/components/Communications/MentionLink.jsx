@@ -25,7 +25,7 @@ function initialsOf(name) {
 }
 
 function ProfileCard({ user, isSelf, onNavigate }) {
-    const { hasRole } = useAuth();
+    const { isAdmin } = useAuth();
     const phone = formatPhone(user.phone);
     const phoneHref = telHref(user.phone);
     const active = user.accountStatus === USERS_STATUS_OPTIONS.ACCOUNT_STATUS.ACTIVE;
@@ -64,7 +64,7 @@ function ProfileCard({ user, isSelf, onNavigate }) {
                 value={phoneHref ? <Link href={phoneHref} sx={{ color: 'info.main' }}>{phone}</Link> : '—'}
             />
 
-            {(isSelf || hasRole('Admin')) && (
+            {(isSelf || isAdmin) && (
                 <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end', mt: 1.5 }}>
                     {isSelf && (
                         <Button size="small" component={RouterLink} to="/account?tab=profile" onClick={onNavigate}>
@@ -72,7 +72,7 @@ function ProfileCard({ user, isSelf, onNavigate }) {
                         </Button>
                     )}
 
-                    {hasRole('Admin') && (
+                    {isAdmin && (
                         <Button size="small" component={RouterLink} to={`/users?user=${user.id}`} onClick={onNavigate}>
                             Open in Users
                         </Button>

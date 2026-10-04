@@ -33,6 +33,7 @@ import {
     resetUserPassword,
 } from '../../services/UsersService';
 import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
+import { isSuperAdminEmail } from '../../constants/roles';
 import UserStatusDialog from '../../components/Users/UserStatusDialog';
 import RoleChangeDialog from '../../components/Users/RoleChangeDialog';
 import UserDetailDrawer from '../../components/Users/UserDetailDrawer';
@@ -43,11 +44,11 @@ import useAuth from '../../hooks/useAuth';
 import useDateFormat from '../../hooks/useDateFormat';
 import { visibleScrollbarSx } from '../../utils/scrollbarSx';
 
-const ROLE_OPTIONS = Object.values(USERS_STATUS_OPTIONS.ROLE);
-
-// This specific account's role is always locked on this page, regardless
-// of who's viewing - not tied to whoever happens to be logged in.
-const ROLE_LOCKED_EMAIL = 'billkifonidis@gmail.com';
+// Super Admin is never a role anyone picks here - it's only ever set
+// directly on Monday, for the two accounts in SUPER_ADMIN_EMAILS.
+const ROLE_OPTIONS = Object.values(USERS_STATUS_OPTIONS.ROLE).filter(
+    (role) => role !== USERS_STATUS_OPTIONS.ROLE.SUPER_ADMIN,
+);
 const { ACCOUNT_STATUS } = USERS_STATUS_OPTIONS;
 
 function getStatusColor(status) {
@@ -359,13 +360,19 @@ function PasswordCell({ user }) {
 }
 
 function UserRow({ user, isSelf, onRequestRole, onRequestAction, onOpenDetails, onUpdate }) {
-    const isRoleLocked = user.email?.trim().toLowerCase() === ROLE_LOCKED_EMAIL;
+    // Fully protected, regardless of who's viewing - not tied to whoever
+    // happens to be logged in. Role and status both locked (server-enforced
+    // too: server/users.js, server/userAdmin.js).
+    const isSuperAdminAccount = isSuperAdminEmail(user.email);
+    const isRoleLocked = isSuperAdminAccount;
     const { formatDateTime } = useDateFormat();
     // You can't take your own account out of action - block, suspend or
     // archive (the server refuses any status but Active for yourself).
-    const actions = (ACTIONS_BY_STATUS[user.accountStatus] ?? []).filter(
-        (action) => !(isSelf && [ACCOUNT_STATUS.BLOCKED, ...HANDOVER_STATUSES].includes(USER_STATUS_ACTIONS[action].status)),
-    );
+    const actions = isSuperAdminAccount
+        ? []
+        : (ACTIONS_BY_STATUS[user.accountStatus] ?? []).filter(
+              (action) => !(isSelf && [ACCOUNT_STATUS.BLOCKED, ...HANDOVER_STATUSES].includes(USER_STATUS_ACTIONS[action].status)),
+          );
 
     return (
         <TableRow hover>

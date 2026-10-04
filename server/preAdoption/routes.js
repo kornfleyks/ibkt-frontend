@@ -1,7 +1,7 @@
 import { ACTIVE_APPLICATIONS } from "../../src/constants/boards/activeApplications.js";
 import { ACTIVE_APPLICATIONS_STATUS_OPTIONS } from "../../src/constants/statuses/activeApplicationsStatuses.js";
 import { answersErrors, PRE_ADOPTION_FORM_ID } from "../../src/constants/forms/preAdoptionForm.js";
-import { ROLES } from "../../src/constants/roles.js";
+import { ROLES, roleSatisfies } from "../../src/constants/roles.js";
 import { isDatabaseBoard } from "../database/switches.js";
 import { createItem, fieldsFromMondayValues, StoreError } from "../database/boardStore.js";
 import { logCreated, actorOf } from "../database/boardRecords.js";
@@ -37,7 +37,7 @@ async function openApplicationFor(email) {
 
 export function registerPreAdoptionRoutes(app, { requireAuth }) {
   app.post("/api/applications", requireAuth, async (req, res) => {
-    if (!CAN_ADD.includes(req.user.role)) {
+    if (!roleSatisfies(CAN_ADD, req.user.role)) {
       return res.status(403).json({ error: "Only Admins and Volunteers can add applications." });
     }
 
@@ -103,7 +103,7 @@ export function registerPreAdoptionRoutes(app, { requireAuth }) {
   // { answers, createdAt }, or 404 when it has none (e.g. created before
   // Add Application existed).
   app.get("/api/applications/:id/pre-adoption-answers", requireAuth, async (req, res) => {
-    if (!CAN_ADD.includes(req.user.role)) {
+    if (!roleSatisfies(CAN_ADD, req.user.role)) {
       return res.status(403).json({ error: "Only Admins and Volunteers can view application forms." });
     }
 

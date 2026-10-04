@@ -1,4 +1,5 @@
 import { APP_SETTINGS } from "../src/constants/boards/appSettings.js";
+import { isAdminRole } from "../src/constants/roles.js";
 import { NOTIFICATIONS_STATUS_OPTIONS } from "../src/constants/statuses/notificationsStatuses.js";
 import { mondayDirectRequest } from "./mondayClient.js";
 import { getMondayApiVersion } from "./mondayApiVersion.js";
@@ -72,7 +73,7 @@ async function alertAdmins(evaluation) {
 
   const alertKey = `monday-api:${evaluation.pinned}:${evaluation.status}`;
   const alreadyNotified = await getNotifiedRecipientIds(alertKey);
-  const admins = listActiveAccounts().filter((account) => account.role === "Admin" && !alreadyNotified.has(account.id));
+  const admins = listActiveAccounts().filter((account) => isAdminRole(account.role) && !alreadyNotified.has(account.id));
 
   for (const admin of admins) {
     await createNotification({

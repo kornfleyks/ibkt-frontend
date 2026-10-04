@@ -3,6 +3,7 @@ import { ACTIVE_APPLICATIONS } from "../constants/boards/activeApplications";
 import { TASKS } from "../constants/boards/tasks";
 import { USERS } from "../constants/boards/users";
 import { canAccessPath } from "./navigationAccess";
+import { isAdminRole } from "../constants/roles";
 
 // "Work" actions only - sign-ins, registrations and password resets stay
 // on the Activity Log page.
@@ -28,7 +29,7 @@ const BOARD_SECTIONS = {
 export function canSeeActivityEntry(entry, user) {
   const section = BOARD_SECTIONS[entry.boardId];
 
-  return section ? canAccessPath(section.path, user) : user?.role === "Admin";
+  return section ? canAccessPath(section.path, user) : isAdminRole(user?.role);
 }
 
 export function getActivityEntryLink(entry) {

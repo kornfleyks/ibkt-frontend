@@ -35,7 +35,6 @@ import { getPostAdoptionCases } from '../services/PostAdoptionService';
 
 import { CATS_STATUS_OPTIONS } from '../constants/statuses/catsStatuses';
 import { TASKS_STATUS_OPTIONS } from '../constants/statuses/tasksStatuses';
-import { ROLES } from '../constants/roles';
 import { TRAVEL_STATUS_OPTIONS } from '../constants/statuses/travelStatuses';
 import { POST_ADOPTION_STATUS_OPTIONS } from '../constants/statuses/postAdoptionStatuses';
 
@@ -47,7 +46,7 @@ function Dashboard() {
     const [addTaskOpen, setAddTaskOpen] = useState(false);
     const [addApplicationOpen, setAddApplicationOpen] = useState(false);
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, isAdmin } = useAuth();
     // null while loading; see UpcomingTasksPanel.
     const [upcomingTasks, setUpcomingTasks] = useState(null);
     const [upcomingDays, setUpcomingDays] = useState(null);
@@ -309,7 +308,7 @@ function Dashboard() {
                     tasks={upcomingTasks}
                     days={upcomingDays}
                     error={upcomingError}
-                    showOwner={user?.role === ROLES.ADMIN}
+                    showOwner={isAdmin}
                 />
 
             </Grid>

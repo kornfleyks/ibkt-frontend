@@ -1,8 +1,8 @@
-import { ROLES } from './roles';
+import { ROLES, isAdminRole } from './roles';
 
 const roleOf = user => user?.role || user?.Role || user?.ROLE;
 
-export const isAdmin = user => roleOf(user) === ROLES.ADMIN;
+export const isAdmin = user => isAdminRole(roleOf(user));
 export const isVolunteer = user => roleOf(user) === ROLES.VOLUNTEER;
 export const isRescuer = user => roleOf(user) === ROLES.RESCUER;
 export const isFoster = user => roleOf(user) === ROLES.FOSTER;

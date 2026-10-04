@@ -1,9 +1,10 @@
 import { navigationItems } from "../config/navigation";
+import { roleSatisfies } from "../constants/roles";
 
 // Same rule ProtectedRoute enforces: the role must be listed, and a few
 // items (e.g. App Settings) are further restricted to specific accounts.
 export function canAccessNavItem(item, user) {
-  if (!item.roles.includes(user?.role)) {
+  if (!roleSatisfies(item.roles, user?.role)) {
     return false;
   }
 

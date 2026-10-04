@@ -60,14 +60,14 @@ export const navigationItems = [
         title: "App Settings",
         path: "/settings",
         icon: SettingsIcon,
-        roles: ["Admin"],
-        emails: ["billkifonidis@gmail.com"]
+        // Super Admin only (roleSatisfies doesn't widen this the way it
+        // would for roles: ["Admin"] - a regular Admin does not match).
+        roles: ["Super Admin"]
     },
     {
         title: "Client Review",
         path: "/client-review",
         icon: ChatBubbleOutlineIcon,
-        roles: ["Admin"],
-        emails: ["billkifonidis@gmail.com"]
+        roles: ["Super Admin"]
     }
 ];

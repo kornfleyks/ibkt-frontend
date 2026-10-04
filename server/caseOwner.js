@@ -1,5 +1,6 @@
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
 import { SETTING_KEYS } from "../src/constants/boards/appSettings.js";
+import { roleSatisfies } from "../src/constants/roles.js";
 import { getUserDirectory } from "./auth.js";
 import { getListSetting } from "./appSettings.js";
 import { clearCache } from "./mondayCache.js";
@@ -38,7 +39,9 @@ async function mondayDirectRequest(query, variables = {}) {
 async function canAssignCaseOwner(role) {
   const assignerRoles = await getListSetting(SETTING_KEYS.CASE_OWNER_ASSIGNER_ROLES);
 
-  return assignerRoles.includes(role);
+  // Super Admin satisfies this even if the (configurable) list only names
+  // Admin - same as everywhere else Admin access is meant to include it.
+  return roleSatisfies(assignerRoles, role);
 }
 
 // Active accounts in one of the CASE_OWNER_ROLES, sorted by name.

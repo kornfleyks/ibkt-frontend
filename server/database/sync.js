@@ -8,6 +8,7 @@ import { mondayFetch, mondayRetryAfterSeconds } from "../mondayRateLimit.js";
 import { mondayHeaders } from "../mondayApiVersion.js";
 import { listActiveAccounts } from "../accountState.js";
 import { createNotification } from "../notifications.js";
+import { isAdminRole } from "../../src/constants/roles.js";
 
 // The nightly sync (database-first plan, Phase 2): sends the changes queued
 // in monday_outbox to Monday.
@@ -327,7 +328,7 @@ function exhaustedMessage(count) {
 }
 
 async function alertAdmins(runId, message) {
-  for (const admin of listActiveAccounts().filter((account) => account.role === "Admin")) {
+  for (const admin of listActiveAccounts().filter((account) => isAdminRole(account.role))) {
     await createNotification({
       recipientId: admin.id,
       type: "Sync",

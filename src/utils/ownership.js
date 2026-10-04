@@ -1,4 +1,4 @@
-import { ROLES } from "../constants/roles";
+import { isAdminRole } from "../constants/roles";
 
 // Visibility rule for owned records: Admins see everything, everyone else
 // only what is assigned to them. The session user id is their Users board
@@ -8,7 +8,7 @@ import { ROLES } from "../constants/roles";
 // generic Monday proxy (see memory: users-board-read-hole).
 
 export function isAdmin(user) {
-  return user?.role === ROLES.ADMIN;
+  return isAdminRole(user?.role);
 }
 
 export function isOwnedBy(ownerId, user) {

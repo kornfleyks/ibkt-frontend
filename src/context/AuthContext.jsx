@@ -13,6 +13,7 @@ import {
   AUTH_ROLE_CHANGED_EVENT,
 } from "../services/authStorage";
 import { AuthContext } from "./authContextInstance";
+import { isAdminRole, isSuperAdminRole } from "../constants/roles";
 
 function AuthProvider({ children }) {
   const [auth, setAuth] = useState(readAuth);
@@ -137,6 +138,11 @@ function AuthProvider({ children }) {
     isAuthenticated: !!auth,
 
     hasRole: (role) => auth?.user?.role === role,
+    // Admin or Super Admin - use this instead of hasRole('Admin') wherever
+    // Admin access is meant to include Super Admin too.
+    isAdmin: isAdminRole(auth?.user?.role),
+    // Super Admin only, not a regular Admin.
+    isSuperAdmin: isSuperAdminRole(auth?.user?.role),
 
     roleChange,
     clearRoleChange: () => setRoleChange(null),
