@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { CloseIcon, ContentCopyIcon, EmailIcon, OpenInNewIcon } from "../../icons";
 import { getAdoptionFormState, recordAdoptionFormSend } from "../../../services/AdoptionFormService";
-import { ADOPTION_FORMS, SEND_METHODS } from "../../../constants/forms/adoptionForms";
+import { ADOPTION_FORMS, SEND_METHODS, UAE_COUNTRY } from "../../../constants/forms/adoptionForms";
 import useAuth from "../../../hooks/useAuth";
 import useDateFormat from "../../../hooks/useDateFormat";
 
@@ -26,8 +26,13 @@ import useDateFormat from "../../../hooks/useDateFormat";
 // the pre-filled link to the UAE or UK/US Adoption Form, picked from the
 // applicant's country and changeable. Until the app can send email, the
 // volunteer copies the link or opens it in their email app; either one
-// records the send. Give it key={applicationId} so another application
-// starts fresh.
+// records the send. Only for UAE applicants: Jotform's own approval
+// workflow sends everyone else the UK/US form ("Request references"), so
+// for them the button stays visible but disabled, with the reason on hover.
+// Give it key={applicationId} so another application starts fresh.
+
+const NOT_UAE_REASON =
+  "Jotform sends the UK/US Adoption Form itself when you click \"Request references\" in its approval. This button is for UAE applicants, who Jotform doesn't send a form to.";
 
 const METHOD_LABELS = {
   [SEND_METHODS.COPY_LINK]: "link copied",
@@ -58,7 +63,8 @@ function emailClientLink({ to, applicantName, formName, link, senderName }) {
   return `mailto:${encodeURIComponent(to ?? "")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-function SendAdoptionFormButton({ applicationId, applicationName, applicantEmail }) {
+function SendAdoptionFormButton({ applicationId, applicationName, applicantEmail, applicantCountry }) {
+  const isUae = applicantCountry?.trim() === UAE_COUNTRY;
   const { user } = useAuth();
   const { formatDateTime } = useDateFormat();
 
@@ -70,6 +76,9 @@ function SendAdoptionFormButton({ applicationId, applicationName, applicantEmail
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
+    // Nothing to load while the button is disabled for this applicant.
+    if (!isUae) return undefined;
+
     let cancelled = false;
 
     getAdoptionFormState(applicationId)
@@ -87,11 +96,12 @@ function SendAdoptionFormButton({ applicationId, applicationName, applicantEmail
     return () => {
       cancelled = true;
     };
-  }, [applicationId]);
+  }, [applicationId, isUae]);
 
   const lastInvite = state?.invites?.[0];
-  const hint =
-    state === undefined
+  const hint = !isUae
+    ? NOT_UAE_REASON
+    : state === undefined
       ? "Loading..."
       : state === null
         ? "Couldn't load the Adoption Form. Reload the page to try again."

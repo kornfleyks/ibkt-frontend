@@ -14,3 +14,5 @@ Email later: user wants a free email service (Mailgun researched: 100/day free).
 **Why:** volunteers built and sent the step-2 link by hand.
 
 **How to apply:** check the doc's step list before continuing; table adoption_form_invites CREATED 2026-09-30 (RLS on). Related: [[postman-collection-upkeep]], [[forgot-password-via-jotform]]
+
+2026-10-01 (user): the button is always shown but DISABLED unless the application country is the UAE, with a tooltip saying Jotform sends the UK/US form itself ("Request references"). Test data archived 2026-10-01 (7 cats, Test Applicant); no real cats in the app yet.
