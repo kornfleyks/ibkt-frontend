@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Alert from "@mui/material/Alert";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
@@ -6,6 +7,7 @@ import Grid from "@mui/material/Grid";
 import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
 import PageHeader from "../components/PageHeader";
 import MatchingApplicationCard from "../components/Matching/MatchingApplicationCard";
 import MatchDialog from "../components/Matching/MatchDialog";
@@ -18,6 +20,7 @@ import { useLoading } from "../context/LoadingContext";
 import useTabParam from "../hooks/useTabParam";
 import useMyCasesFilter from "../hooks/useMyCasesFilter";
 import MyCasesToggle from "../components/Common/MyCasesToggle";
+import { searchText } from "../utils/searchText";
 
 const TABS = [
   { label: "Needs Match", slug: "needs-match", matched: false },
@@ -49,6 +52,23 @@ function Matching() {
   const [unmatching, setUnmatching] = useState(null);
   const [tab, setTab] = useTabParam(TABS);
   const myCases = useMyCasesFilter("matching");
+  // Kept in the URL (?q=) so it survives a reload and can be linked to.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get("q") ?? "";
+
+  function setSearch(value) {
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+
+        if (value) next.set("q", value);
+        else next.delete("q");
+
+        return next;
+      },
+      { replace: true },
+    );
+  }
   const { showLoading, hideLoading } = useLoading();
 
   function loadData() {
@@ -74,9 +94,12 @@ function Matching() {
 
   const matchableGroups = useMemo(() => getMatchableGroups(cats), [cats]);
 
+  const searchIndex = useMemo(() => new Map(applications.map((application) => [application.id, searchText(application)])), [applications]);
+  const term = search.trim().toLowerCase();
+
   const eligibleApplications = myCases.filter(applications).filter((application) =>
     stages.includes(application.adoptionStage),
-  );
+  ).filter((application) => !term || searchIndex.get(application.id)?.includes(term));
 
   const visibleApplications = eligibleApplications.filter(
     (application) => isMatched(application) === TABS[tab].matched,
@@ -157,12 +180,24 @@ function Matching() {
               />
             ))}
           </Tabs>
+
+          <TextField
+            id="matching-search"
+            size="small"
+            label="Search applications"
+            placeholder="Name, email, phone, cat..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ mt: 2, width: "100%", maxWidth: 420 }}
+          />
         </CardContent>
       </Card>
 
       {visibleApplications.length === 0 ? (
         <Typography color="text.secondary">
-          {TABS[tab].matched ? "No matched applications." : "No applications waiting for a match."}
+          {term
+            ? `No applications match "${search.trim()}".`
+            : TABS[tab].matched ? "No matched applications." : "No applications waiting for a match."}
         </Typography>
       ) : (
         <Grid container spacing={3}>
