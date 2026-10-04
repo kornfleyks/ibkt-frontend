@@ -18,27 +18,41 @@ import { normalizeMessageId } from "./mailgunClient.js";
 const SIGNING_KEY = process.env.MAILGUN_WEBHOOK_SIGNING_KEY;
 const MAX_AGE_SECONDS = 15 * 60;
 
-function isSignatureValid({ timestamp, token, signature } = {}) {
-  if (!SIGNING_KEY || !timestamp || !token || !signature) {
-    return false;
+// Returns why, never the secret itself - so a failed verification can be
+// told apart in the logs (missing env var vs. wrong key vs. a stale test
+// request) instead of all looking like the same 401.
+function checkSignature({ timestamp, token, signature } = {}) {
+  if (!SIGNING_KEY) {
+    return "MAILGUN_WEBHOOK_SIGNING_KEY isn't set on this server.";
+  }
+
+  if (!timestamp || !token || !signature) {
+    return "Request is missing signature.timestamp/token/signature.";
   }
 
   if (Math.abs(Date.now() / 1000 - Number(timestamp)) > MAX_AGE_SECONDS) {
-    return false;
+    return `Timestamp is more than ${MAX_AGE_SECONDS}s old (clock skew, or a stale/replayed request).`;
   }
 
   const expected = crypto.createHmac("sha256", SIGNING_KEY).update(`${timestamp}${token}`).digest("hex");
 
+  let matches;
+
   try {
-    return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
+    matches = crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(signature, "hex"));
   } catch {
-    return false;
+    return "signature isn't valid hex (unexpected payload shape).";
   }
+
+  return matches ? null : "HMAC didn't match - MAILGUN_WEBHOOK_SIGNING_KEY is likely wrong.";
 }
 
 export function registerMailgunWebhookRoutes(app) {
   app.post("/api/webhooks/mailgun", (req, res) => {
-    if (!isSignatureValid(req.body?.signature)) {
+    const failure = checkSignature(req.body?.signature);
+
+    if (failure) {
+      console.warn(`Mailgun webhook: rejected - ${failure}`);
       return res.status(401).end();
     }
 
