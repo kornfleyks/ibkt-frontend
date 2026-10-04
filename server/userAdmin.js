@@ -15,7 +15,7 @@ import { isDatabaseBoard } from "./database/switches.js";
 import { listTasks, changeTask } from "./database/tasksStore.js";
 import { listApplications } from "./applications.js";
 import { setUserValues, deleteUser } from "./database/usersStore.js";
-import { sendAccountApprovedEmail } from "./mail/accountEmails.js";
+import { sendAccountApprovedEmail, sendTestEmail } from "./mail/accountEmails.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
@@ -365,6 +365,43 @@ export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: "Failed to delete the account." });
+    }
+  });
+
+  // Users page > per-row actions > Send Test Email. Awaited (unlike the
+  // registration/approval sends) so the admin who triggered it learns right
+  // away whether Mailgun actually accepted it.
+  app.post("/api/admin/users/:id/send-test-email", requireAuth, requireAdmin, async (req, res) => {
+    const { id } = req.params;
+    const actor = actorOf(req);
+
+    if (!ITEM_ID_PATTERN.test(id)) {
+      return res.status(400).json({ error: "Invalid user id." });
+    }
+
+    const target = await getAccountState(id);
+
+    if (!target?.email) {
+      return res.status(404).json({ error: "This user has no email on file." });
+    }
+
+    try {
+      const { status, error } = await sendTestEmail({
+        userId: id,
+        email: target.email,
+        firstName: target.firstName,
+        lastName: target.lastName,
+        actor,
+      });
+
+      if (status !== "sent") {
+        return res.status(502).json({ error: error || "Mailgun isn't configured on this server." });
+      }
+
+      res.json({ ok: true, email: target.email });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to send the test email." });
     }
   });
 }

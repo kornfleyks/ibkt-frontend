@@ -115,6 +115,13 @@ export async function getUserOpenWork(userId) {
   return serverGet(`/api/admin/users/${userId}/open-work`);
 }
 
+// Sends a real test email to this user's address through Mailgun -
+// confirms the whole path works (email_log row, then its delivery webhook).
+// Resolves to { ok, email } or throws with Mailgun's own error message.
+export async function sendTestEmail(userId) {
+  return serverPost(`/api/admin/users/${userId}/send-test-email`, {});
+}
+
 // Permanent: deletes the Monday item and database row right away. Open
 // cases/tasks are reassigned to the caller first (server/userAdmin.js).
 // Resolves to { ok, reassigned: { cases, tasks } }.

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import {
+    Box,
     Table,
     TableContainer,
     TableHead,
@@ -22,7 +23,7 @@ import {
     Tabs,
     Tab,
 } from '@mui/material';
-import { EditIcon, CheckIcon, CloseIcon, LockIcon } from '../../components/icons';
+import { EditIcon, CheckIcon, CloseIcon, LockIcon, ContentCopyIcon } from '../../components/icons';
 
 import PageHeader from '../../components/PageHeader';
 import {
@@ -31,6 +32,7 @@ import {
     updateUserLastName,
     updateUserEmail,
     resetUserPassword,
+    sendTestEmail,
 } from '../../services/UsersService';
 import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
 import { isSuperAdminEmail, canDeleteUsers } from '../../constants/roles';
@@ -68,6 +70,51 @@ function getStatusColor(status) {
         default:
             return 'default';
     }
+}
+
+// Flexbox centers boxes geometrically, which doesn't match where a font's
+// glyphs actually sit in their line box (varies by font/browser/OS - a fixed
+// pixel nudge tuned for one of those doesn't hold for the others). This is
+// the standard, font-metric-independent way to line up an icon with
+// adjacent text: both are inline-level boxes, and the line's layout aligns
+// them by their shared vertical-align, not by centering their boxes.
+const ICON_ALIGN = { verticalAlign: 'middle', ml: 0.5 };
+
+// Reveals on hover/focus alongside the edit button (shares its
+// "row-edit-button" class and the parent span's hover sx), copies `value`,
+// and briefly shows a checkmark - same pattern as the Database table viewer.
+function CopyIconButton({ value, label }) {
+    const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        if (!copied) return undefined;
+
+        const timer = setTimeout(() => setCopied(false), 1200);
+
+        return () => clearTimeout(timer);
+    }, [copied]);
+
+    async function handleCopy() {
+        try {
+            await navigator.clipboard.writeText(String(value));
+            setCopied(true);
+        } catch {
+            // Clipboard API can be denied (permissions, insecure context) -
+            // the icon just doesn't change; the value is still there to select by hand.
+        }
+    }
+
+    return (
+        <IconButton
+            size="small"
+            onClick={handleCopy}
+            aria-label={label}
+            className="row-edit-button"
+            sx={{ opacity: 0, transition: 'opacity 0.15s', ...ICON_ALIGN }}
+        >
+            {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+        </IconButton>
+    );
 }
 
 function NameCell({ user, onUpdate }) {
@@ -113,28 +160,50 @@ function NameCell({ user, onUpdate }) {
 
     if (!editing) {
         return (
-            <Stack
-                direction="row"
-                alignItems="center"
-                spacing={0.5}
+            // A plain inline (not flex) container: lets vertical-align
+            // line up the text and icons (see ICON_ALIGN) instead of
+            // flexbox centering their boxes.
+            <Box
+                component="span"
                 sx={{
+                    whiteSpace: 'nowrap',
                     '&:hover .row-edit-button, &:focus-within .row-edit-button': {
                         opacity: 1,
                     },
                 }}
             >
-                <span>{user.firstName} {user.lastName}</span>
+                {/* Truncated, not wrapped: a long name wrapping to 2-3 lines
+                made the icons (which only ever sit on one line) look
+                misaligned with the first line of text. */}
+                <Box
+                    component="span"
+                    title={`${user.firstName} ${user.lastName}`.trim()}
+                    sx={{
+                        display: 'inline-block',
+                        verticalAlign: 'middle',
+                        maxWidth: 160,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {user.firstName} {user.lastName}
+                </Box>
+
+                {(user.firstName || user.lastName) && (
+                    <CopyIconButton value={`${user.firstName} ${user.lastName}`.trim()} label="Copy name" />
+                )}
 
                 <IconButton
                     size="small"
                     onClick={startEditing}
                     aria-label="Edit name"
                     className="row-edit-button"
-                    sx={{ opacity: 0, transition: 'opacity 0.15s' }}
+                    sx={{ opacity: 0, transition: 'opacity 0.15s', ...ICON_ALIGN }}
                 >
                     <EditIcon fontSize="small" />
                 </IconButton>
-            </Stack>
+            </Box>
         );
     }
 
@@ -212,28 +281,42 @@ function EmailCell({ user, onUpdate }) {
 
     if (!editing) {
         return (
-            <Stack
-                direction="row"
-                alignItems="center"
-                spacing={0.5}
+            <Box
+                component="span"
                 sx={{
+                    whiteSpace: 'nowrap',
                     '&:hover .row-edit-button, &:focus-within .row-edit-button': {
                         opacity: 1,
                     },
                 }}
             >
-                <span>{user.email || '—'}</span>
+                <Box
+                    component="span"
+                    title={user.email || ''}
+                    sx={{
+                        display: 'inline-block',
+                        verticalAlign: 'middle',
+                        maxWidth: 220,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {user.email || '—'}
+                </Box>
+
+                {user.email && <CopyIconButton value={user.email} label="Copy email" />}
 
                 <IconButton
                     size="small"
                     onClick={startEditing}
                     aria-label="Edit email"
                     className="row-edit-button"
-                    sx={{ opacity: 0, transition: 'opacity 0.15s' }}
+                    sx={{ opacity: 0, transition: 'opacity 0.15s', ...ICON_ALIGN }}
                 >
                     <EditIcon fontSize="small" />
                 </IconButton>
-            </Stack>
+            </Box>
         );
     }
 
@@ -360,7 +443,7 @@ function PasswordCell({ user }) {
     );
 }
 
-function UserRow({ user, isSelf, viewerCanDelete, onRequestRole, onRequestAction, onRequestDelete, onOpenDetails, onUpdate }) {
+function UserRow({ user, isSelf, viewerCanDelete, onRequestRole, onRequestAction, onRequestDelete, onSendTestEmail, onOpenDetails, onUpdate }) {
     // Fully protected, regardless of who's viewing - not tied to whoever
     // happens to be logged in. Role and status both locked (server-enforced
     // too: server/users.js, server/userAdmin.js).
@@ -432,6 +515,7 @@ function UserRow({ user, isSelf, viewerCanDelete, onRequestRole, onRequestAction
                     canDelete={canDelete}
                     onRequestAction={onRequestAction}
                     onRequestDelete={onRequestDelete}
+                    onSendTestEmail={onSendTestEmail}
                     onOpenDetails={onOpenDetails}
                 />
             </TableCell>
@@ -527,6 +611,19 @@ function Users() {
     function handleRoleChanged(userId, updates) {
         handleUserUpdate(userId, updates);
         setRoleRequest(null);
+    }
+
+    async function handleSendTestEmail(user) {
+        setNotice(`Sending a test email to ${user.email}...`);
+
+        try {
+            const result = await sendTestEmail(user.id);
+            setNotice(`Test email sent to ${result.email}. Check email_log / the Activity Log once it's delivered.`);
+        } catch (err) {
+            console.error('Failed to send test email:', err);
+            setNotice(null);
+            setError(err.message || 'Failed to send the test email.');
+        }
     }
 
     function handleUserDeleted(userId, result) {
@@ -666,6 +763,7 @@ function Users() {
                                                     }}
                                                     onRequestAction={(target, action) => setStatusRequest({ user: target, action })}
                                                     onRequestDelete={(target) => setDeleteRequest({ user: target })}
+                                                    onSendTestEmail={handleSendTestEmail}
                                                     onOpenDetails={setDetailUser}
                                                 />
                                             ))}

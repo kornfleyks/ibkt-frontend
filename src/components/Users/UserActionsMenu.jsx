@@ -8,12 +8,12 @@ import MenuItem from '@mui/material/MenuItem';
 import { MoreVertIcon, InfoIcon } from '../icons';
 import { USER_STATUS_ACTIONS } from './userStatusActions';
 
-// The Users table's per-row "⋮" menu: View details, then whichever status
-// actions this account allows (`actions`, keys of USER_STATUS_ACTIONS), then
-// Delete if the viewer is allowed it (`canDelete` - server-enforced too,
-// server/userAdmin.js). Each action only opens its confirmation dialog -
-// nothing changes here.
-function UserActionsMenu({ user, actions, canDelete, onRequestAction, onRequestDelete, onOpenDetails }) {
+// The Users table's per-row "⋮" menu: View details, Send Test Email, then
+// whichever status actions this account allows (`actions`, keys of
+// USER_STATUS_ACTIONS), then Delete if the viewer is allowed it (`canDelete`
+// - server-enforced too, server/userAdmin.js). Each action only opens its
+// confirmation dialog or fires its request - nothing changes here.
+function UserActionsMenu({ user, actions, canDelete, onRequestAction, onRequestDelete, onSendTestEmail, onOpenDetails }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
     function choose(callback) {
@@ -45,6 +45,10 @@ function UserActionsMenu({ user, actions, canDelete, onRequestAction, onRequestD
                         <InfoIcon fontSize="small" />
                     </ListItemIcon>
                     <ListItemText>View details</ListItemText>
+                </MenuItem>
+
+                <MenuItem onClick={() => choose(() => onSendTestEmail(user))}>
+                    <ListItemText>Send Test Email</ListItemText>
                 </MenuItem>
 
                 {actions.length > 0 && <Divider />}

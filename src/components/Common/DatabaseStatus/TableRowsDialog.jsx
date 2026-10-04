@@ -8,6 +8,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -17,11 +19,50 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import { CheckIcon, ContentCopyIcon } from "../../icons";
 import { getDatabaseTableRows } from "../../../services/DatabaseHealthService";
 import { visibleScrollbarSx } from "../../../utils/scrollbarSx";
 
 const ROWS_PER_PAGE = [25, 50, 100];
-const cell = { whiteSpace: "nowrap", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", fontSize: "0.75rem", py: 0.5 };
+const cell = { maxWidth: 280, fontSize: "0.75rem", py: 0.5 };
+const headerCell = { ...cell, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: 600 };
+const truncate = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+
+// A cell's value, truncated like before, plus a copy icon that only shows
+// on hover/focus (same reveal-on-hover pattern as the row-edit buttons on
+// Users/Cats pages) - hidden for null, since there's nothing to copy.
+function CellValue({ value, copied, onCopy }) {
+  if (value === null) {
+    return (
+      <Box component="span" sx={{ ...truncate, color: "text.disabled" }}>
+        null
+      </Box>
+    );
+  }
+
+  return (
+    <Stack
+      direction="row"
+      spacing={0.5}
+      alignItems="center"
+      sx={{ "&:hover .cell-copy-button, &:focus-within .cell-copy-button": { opacity: 1 } }}
+    >
+      <Box component="span" sx={truncate}>
+        {value}
+      </Box>
+
+      <IconButton
+        size="small"
+        className="cell-copy-button"
+        aria-label="Copy value"
+        onClick={onCopy}
+        sx={{ opacity: 0, transition: "opacity 0.15s", p: 0.25, flexShrink: 0 }}
+      >
+        {copied ? <CheckIcon sx={{ fontSize: 14 }} /> : <ContentCopyIcon sx={{ fontSize: 14 }} />}
+      </IconButton>
+    </Stack>
+  );
+}
 
 // One database table's rows (newest first), opened from the Database card
 // (Admin). Read-only; secret columns never reach the browser.
@@ -31,6 +72,26 @@ function TableRowsDialog({ table, onClose }) {
   const [rowsPerPage, setRowsPerPage] = useState(ROWS_PER_PAGE[0]);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [copiedCell, setCopiedCell] = useState(null);
+
+  // Reverts a cell's icon back to the copy icon a moment after it copied.
+  useEffect(() => {
+    if (!copiedCell) return undefined;
+
+    const timer = setTimeout(() => setCopiedCell(null), 1200);
+
+    return () => clearTimeout(timer);
+  }, [copiedCell]);
+
+  async function copyValue(value, key) {
+    try {
+      await navigator.clipboard.writeText(String(value));
+      setCopiedCell(key);
+    } catch {
+      // Clipboard API can be denied (permissions, insecure context) - the
+      // icon just doesn't change; the value was still there to select by hand.
+    }
+  }
 
   useEffect(() => {
     if (!table) return undefined;
@@ -106,7 +167,7 @@ function TableRowsDialog({ table, onClose }) {
                 <TableHead>
                   <TableRow>
                     {data.columns.map((column) => (
-                      <TableCell key={column.name} sx={{ ...cell, fontWeight: 600 }} title={column.type}>
+                      <TableCell key={column.name} sx={headerCell} title={column.type}>
                         {column.name}
                       </TableCell>
                     ))}
@@ -115,11 +176,15 @@ function TableRowsDialog({ table, onClose }) {
                 <TableBody>
                   {data.rows.map((row, rowIndex) => (
                     <TableRow key={rowIndex} hover>
-                      {row.map((value, columnIndex) => (
-                        <TableCell key={data.columns[columnIndex].name} sx={{ ...cell, color: value === null ? "text.disabled" : undefined }} title={value ?? ""}>
-                          {value === null ? "null" : value}
-                        </TableCell>
-                      ))}
+                      {row.map((value, columnIndex) => {
+                        const cellKey = `${rowIndex}-${columnIndex}`;
+
+                        return (
+                          <TableCell key={data.columns[columnIndex].name} sx={cell} title={value ?? ""}>
+                            <CellValue value={value} copied={copiedCell === cellKey} onCopy={() => copyValue(value, cellKey)} />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   ))}
                 </TableBody>

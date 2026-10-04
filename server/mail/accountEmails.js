@@ -74,6 +74,11 @@ async function sendOrLog(kind, label, { to, subject, text }, { userId, userName,
       sentByName: actorName ?? userName,
     }).catch((err) => console.error("Email log: failed to record the send.", err.message));
   }
+
+  // Registration/approval ignore this (fire-and-forget); sendTestEmail
+  // awaits it, so the admin who triggered it learns right away whether it
+  // actually went out.
+  return { status, error };
 }
 
 export function sendRegistrationPendingEmail({ userId, email, firstName, lastName }) {
@@ -101,6 +106,25 @@ export function sendAccountApprovedEmail({ userId, email, firstName, lastName, a
       to: email,
       subject: "Your IBKT account has been approved",
       text: `Hi ${firstName},\n\nGood news - your IBKT System account has been approved. You can now log in.\n\nIBKT System`,
+    },
+    { userId, userName, actorId: actor?.id, actorName: actor?.name },
+  );
+}
+
+// Users page > per-row actions > Send Test Email: proves the whole path
+// works end to end for one real address - Mailgun accepts it, it goes on
+// the Activity Log and email_log, and (once Mailgun's webhook is set up)
+// email_log's row updates with whatever actually happened to it.
+export function sendTestEmail({ userId, email, firstName, lastName, actor }) {
+  const userName = `${firstName} ${lastName}`.trim();
+
+  return sendOrLog(
+    "test",
+    "Test email",
+    {
+      to: email,
+      subject: "IBKT System test email",
+      text: `Hi ${firstName},\n\nThis is a test email sent from the Users page by ${actor?.name ?? "an admin"}, to confirm email delivery is working.\n\nIBKT System`,
     },
     { userId, userName, actorId: actor?.id, actorName: actor?.name },
   );
