@@ -75,6 +75,7 @@ import { registerScreeningRoutes, TRANSCRIPT_COLUMNS, VIDEO_COLUMN_ID } from "./
 import { registerAiReviewRoutes } from "./aiReview/routes.js";
 import { registerAdoptionFormRoutes } from "./adoptionForm/routes.js";
 import { registerReferenceCheckRoutes } from "./referenceChecks/routes.js";
+import { registerReviewItemRoutes } from "./reviewItems/routes.js";
 import { startJotformChecks } from "./jotform/poll.js";
 import { addFileToColumn } from "./mondayFiles.js";
 import { registerReadOnlyBoardRoutes } from "./readOnlyBoards.js";
@@ -508,6 +509,7 @@ registerScreeningRoutes(app, { requireAuth });
 registerAiReviewRoutes(app, { requireAuth });
 registerAdoptionFormRoutes(app, { requireAuth });
 registerReferenceCheckRoutes(app, { requireAuth });
+registerReviewItemRoutes(app, { requireAuth, requireAdmin });
 registerAssignedVolunteerRoutes(app, { requireAuth });
 registerReadOnlyBoardRoutes(app, { requireAuth });
 registerUserRoutes(app, { requireAuth, requireAdmin });

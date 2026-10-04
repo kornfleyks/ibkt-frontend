@@ -287,6 +287,23 @@ await transaction(async (run) => {
     sent_at timestamptz not null default now()
   )`);
   await run("create index if not exists adoption_form_invites_application on adoption_form_invites (application_id, sent_at desc)");
+  // A standing punch-list for client calls: questions to put to the client,
+  // things to flag to them, and internal to-dos, with a place to record the
+  // answer (reviewItems/, src/pages/ReviewItems). App-only, visible to one
+  // developer account (routes.js, AppRoutes.jsx); never sent to Monday.
+  await run(`create table if not exists review_items (
+    id bigserial primary key,
+    category text not null check (category in ('question', 'flag', 'internal')),
+    title text not null,
+    detail text,
+    status text not null default 'open' check (status in ('open', 'answered', 'resolved')),
+    answer text,
+    answered_by_name text,
+    answered_at timestamptz,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists review_items_category on review_items (category, created_at)");
 
   // Each referee's "Reference Check - IBKT" answers about an application
   // (jotform/referenceCheck/handler.js, referenceChecks/). App-only: never
@@ -426,7 +443,7 @@ await transaction(async (run) => {
 
   // Reachable only by this server's connection; Supabase's public API
   // (anon / authenticated keys) gets nothing without policies.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "reference_checks", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "reference_checks", "review_items", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });

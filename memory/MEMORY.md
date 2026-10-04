@@ -8,3 +8,4 @@
 - [Jotform workflows](jotform-workflows.md) - client runs the adoption stages as Jotform approval workflows; Jotform itself sends the Adoption Form; API paths found
 - [Jotform backfill](jotform-backfill.md) - 2026-10-01: Jotform stays the process, app follows (AF -> Active); import of current applicants run
 - [Jotform step 3](jotform-step3.md) - BUILT 2026-10-01: UAE / Reference Check / contracts handlers, 30-min safety net; dev:all watch mode restarts on edits
+- [Review items](review-items.md) - BUILT 2026-10-04: /client-review page (billkifonidis@gmail.com only), punch-list of questions/flags with stored answers

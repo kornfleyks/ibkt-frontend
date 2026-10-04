@@ -196,6 +196,26 @@ npm run migrate:case-owners            # dry run: report only
 npm run migrate:case-owners -- --apply # write the matched rows
 ```
 
+## Review items (`reviewItems/`)
+
+A standing punch-list for client calls: questions to put to the client,
+things to flag to them, and internal to-dos, each with a place to record
+the answer (`review_items` table, app-only). Admin-only on the server,
+same as App Settings; the page itself (`src/pages/ReviewItems`) is further
+restricted in the frontend to one developer account
+(`src/routes/AppRoutes.jsx`, `emails: ["billkifonidis@gmail.com"]`) - not
+re-checked here, so any other Admin account could reach the API directly.
+
+- `GET /api/review-items` - every item.
+- `POST /api/review-items` - `{ category: "question" | "flag" | "internal", title, detail? }`.
+- `POST /api/review-items/:id` - any of `{ category, title, detail, status, answer }`.
+  Answering a still-open item marks it "answered" unless `status` is given
+  explicitly; clearing the answer on an "answered" item reopens it.
+- `DELETE /api/review-items/:id`.
+
+`node scripts/seedReviewItems.js` added the first batch (2026-10-04); safe
+to re-run (titles already present are skipped).
+
 ## Assigned Volunteer (`assignedVolunteer.js`)
 
 An application's Assigned Volunteer is a relation to the Users board

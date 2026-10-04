@@ -14,6 +14,7 @@ import Tasks from "../pages/Tasks";
 import Users from "../pages/Users";
 import ActivityLog from "../pages/ActivityLog";
 import AppSettings from "../pages/AppSettings";
+import ReviewItems from "../pages/ReviewItems/ReviewItems";
 import Account from "../pages/Account";
 import Login from "../pages/Login/Login";
 import Register from "../pages/Register";
@@ -178,6 +179,17 @@ function AppRoutes() {
             <ProtectedRoute roles={["Admin"]} emails={["billkifonidis@gmail.com"]}>
               <AppLayout>
                 <AppSettings />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/client-review"
+          element={
+            <ProtectedRoute roles={["Admin"]} emails={["billkifonidis@gmail.com"]}>
+              <AppLayout>
+                <ReviewItems />
               </AppLayout>
             </ProtectedRoute>
           }

@@ -1,4 +1,4 @@
-import { DashboardIcon, PetsIcon, AssignmentIcon, VolunteerActivismIcon, FavoriteIcon, CheckCircleIcon, GroupIcon, HistoryIcon, SettingsIcon } from "../components/icons";
+import { DashboardIcon, PetsIcon, AssignmentIcon, VolunteerActivismIcon, FavoriteIcon, CheckCircleIcon, GroupIcon, HistoryIcon, SettingsIcon, ChatBubbleOutlineIcon } from "../components/icons";
 //import PersonIcon from "@mui/icons-material/PersonOutlined";
 
 export const navigationItems = [
@@ -60,6 +60,13 @@ export const navigationItems = [
         title: "App Settings",
         path: "/settings",
         icon: SettingsIcon,
+        roles: ["Admin"],
+        emails: ["billkifonidis@gmail.com"]
+    },
+    {
+        title: "Client Review",
+        path: "/client-review",
+        icon: ChatBubbleOutlineIcon,
         roles: ["Admin"],
         emails: ["billkifonidis@gmail.com"]
     }
