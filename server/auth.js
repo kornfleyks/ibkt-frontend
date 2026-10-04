@@ -270,14 +270,17 @@ export async function setUserColumns(userId, columnValues) {
   });
 }
 
-export async function createPendingUser({ firstName, lastName, email, passwordHash }) {
+// role/accountStatus default to self-registration's own values (Adopter,
+// Pending); the Users page's "Add User" (server/userAdmin.js) passes its
+// own picked role and "Active" instead.
+export async function createUserAccount({ firstName, lastName, email, passwordHash, role = "Adopter", accountStatus = "Pending" }) {
   const columnValues = {
     [USERS_COLUMNS.FIRST_NAME]: firstName,
     [USERS_COLUMNS.LAST_NAME]: lastName,
     [USERS_COLUMNS.EMAIL]: { email, text: email },
     [USERS_COLUMNS.PASSWORD_HASH]: passwordHash,
-    [USERS_COLUMNS.ROLE]: { label: "Adopter" },
-    [USERS_COLUMNS.ACCOUNT_STATUS]: { label: "Pending" },
+    [USERS_COLUMNS.ROLE]: { label: role },
+    [USERS_COLUMNS.ACCOUNT_STATUS]: { label: accountStatus },
   };
 
   if (inDatabase()) {

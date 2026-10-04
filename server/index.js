@@ -8,7 +8,7 @@ import { readOne, readMany } from "./mondayReads.js";
 import {
   USERS_BOARD_ID,
   findUserByEmail,
-  createPendingUser,
+  createUserAccount,
   setUserPasswordHash,
   recordPasswordChange,
   setUserLastLogin,
@@ -411,7 +411,7 @@ app.post("/api/register", async (req, res) => {
 
     const passwordHash = await hashPassword(password);
 
-    const newUserId = await createPendingUser({ firstName, lastName, email, passwordHash });
+    const newUserId = await createUserAccount({ firstName, lastName, email, passwordHash });
     const fullName = `${firstName} ${lastName}`.trim();
 
     logActivity({

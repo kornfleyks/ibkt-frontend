@@ -1,5 +1,5 @@
 import { USERS } from "../src/constants/boards/users.js";
-import { isSuperAdminEmail, canDeleteUsers } from "../src/constants/roles.js";
+import { ROLES, isSuperAdminEmail, canDeleteUsers } from "../src/constants/roles.js";
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
 import { TASKS } from "../src/constants/boards/tasks.js";
 import { USERS_STATUS_OPTIONS } from "../src/constants/statuses/usersStatuses.js";
@@ -16,10 +16,13 @@ import { listTasks, changeTask } from "./database/tasksStore.js";
 import { listApplications } from "./applications.js";
 import { setUserValues, deleteUser } from "./database/usersStore.js";
 import { sendAccountApprovedEmail, sendTestEmail } from "./mail/accountEmails.js";
+import { findUserByEmail, createUserAccount, hashPassword } from "./auth.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
 const ITEM_ID_PATTERN = /^\d+$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const CREATABLE_ROLES = Object.values(ROLES).filter((role) => role !== ROLES.SUPER_ADMIN);
 const { ACCOUNT_STATUS } = USERS_STATUS_OPTIONS;
 const STAGES = ACTIVE_APPLICATIONS_STATUS_OPTIONS.ADOPTION_STAGE;
 const TASK_STATUS = TASKS_STATUS_OPTIONS.STATUS;
@@ -204,6 +207,71 @@ async function handOverOpenWork(userId, userName, actor) {
 }
 
 export function registerUserAdminRoutes(app, { requireAuth, requireAdmin }) {
+  // Body: { firstName, lastName, email, role, password }. Creates the
+  // account Active (no approval queue - an Admin already decided) with the
+  // password the form generated - never emailed; the admin relays it to
+  // the new user themselves.
+  app.post("/api/admin/users", requireAuth, requireAdmin, async (req, res) => {
+    const { firstName, lastName, email, role, password } = req.body ?? {};
+    const actor = actorOf(req);
+
+    if (!firstName?.trim() || !lastName?.trim() || !email?.trim()) {
+      return res.status(400).json({ error: "First name, last name and email are required." });
+    }
+
+    if (!EMAIL_PATTERN.test(email)) {
+      return res.status(400).json({ error: "Enter a valid email address." });
+    }
+
+    if (!CREATABLE_ROLES.includes(role)) {
+      return res.status(400).json({ error: "Invalid role." });
+    }
+
+    if (typeof password !== "string" || password.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters." });
+    }
+
+    try {
+      const existing = await findUserByEmail(email);
+
+      if (existing) {
+        return res.status(409).json({ error: "An account with this email already exists." });
+      }
+
+      const passwordHash = await hashPassword(password);
+      const newUserId = await createUserAccount({
+        firstName,
+        lastName,
+        email,
+        passwordHash,
+        role,
+        accountStatus: ACCOUNT_STATUS.ACTIVE,
+      });
+
+      // So the new account is mentionable etc. straight away, same as a
+      // status change (see the comment on the status route below).
+      await getAccountState(newUserId);
+
+      const fullName = `${firstName} ${lastName}`.trim();
+
+      logActivity({
+        actorId: actor.id,
+        actorName: actor.name,
+        boardId: USERS.BOARD_ID,
+        boardName: resolveBoardName(USERS.BOARD_ID),
+        itemId: newUserId,
+        itemName: fullName,
+        actionType: "Created",
+        description: `${actor.name} created ${fullName}'s account (${role})`,
+      });
+
+      res.json({ user: { id: newUserId, firstName, lastName, email, role, accountStatus: ACCOUNT_STATUS.ACTIVE } });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Failed to create the account." });
+    }
+  });
+
   app.get("/api/admin/users/:id/open-work", requireAuth, requireAdmin, async (req, res) => {
     if (!ITEM_ID_PATTERN.test(req.params.id)) {
       return res.status(400).json({ error: "Invalid user id." });

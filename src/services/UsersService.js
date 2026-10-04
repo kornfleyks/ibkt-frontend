@@ -43,6 +43,13 @@ export async function getUsers() {
   }));
 }
 
+// Admin-created account: Active immediately. The password is the admin's
+// own choice/generated one from the form - never emailed (server/userAdmin.js).
+// Resolves to { user }.
+export async function createUser({ firstName, lastName, email, role, password }) {
+  return serverPost("/api/admin/users", { firstName, lastName, email, role, password });
+}
+
 // Never fetches PASSWORD_HASH - that stays server-side, this is only for
 // the account-management page (name/email/role/status).
 export async function getAllUsersFull() {

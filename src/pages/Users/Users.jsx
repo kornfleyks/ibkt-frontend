@@ -23,7 +23,7 @@ import {
     Tabs,
     Tab,
 } from '@mui/material';
-import { EditIcon, CheckIcon, CloseIcon, LockIcon, ContentCopyIcon } from '../../components/icons';
+import { EditIcon, CheckIcon, CloseIcon, LockIcon, ContentCopyIcon, PersonAddIcon } from '../../components/icons';
 
 import PageHeader from '../../components/PageHeader';
 import {
@@ -36,6 +36,7 @@ import {
 } from '../../services/UsersService';
 import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
 import { isSuperAdminEmail, canDeleteUsers } from '../../constants/roles';
+import AddUserDialog from '../../components/Users/AddUserDialog';
 import UserStatusDialog from '../../components/Users/UserStatusDialog';
 import UserDeleteDialog from '../../components/Users/UserDeleteDialog';
 import RoleChangeDialog from '../../components/Users/RoleChangeDialog';
@@ -551,6 +552,10 @@ function Users() {
     const [error, setError] = useState(null);
     const [notice, setNotice] = useState(null);
     const [search, setSearch] = useState('');
+    const [addUserOpen, setAddUserOpen] = useState(false);
+    // Bumped on every open so AddUserDialog's key changes - it generates a
+    // fresh password on mount, so reopening needs a fresh mount too.
+    const [addUserKey, setAddUserKey] = useState(0);
     const [statusRequest, setStatusRequest] = useState(null);
     const [deleteRequest, setDeleteRequest] = useState(null);
     const [roleRequest, setRoleRequest] = useState(null);
@@ -638,6 +643,14 @@ function Users() {
         );
     }
 
+    // The dialog closes itself once the invite email is confirmed sent (or
+    // stays open to show the password if it wasn't) - this just updates the
+    // list either way.
+    function handleUserCreated(user) {
+        setUsers((current) => [{ ...user, lastLogin: null }, ...current]);
+        setNotice(`${user.firstName} ${user.lastName}'s account was created.`.trim());
+    }
+
     const viewerCanDelete = canDeleteUsers(currentUser?.email);
 
     const counts = Object.fromEntries(
@@ -686,6 +699,18 @@ function Users() {
             <PageHeader
                 title="Users"
                 subtitle={counts.pending > 0 ? `${counts.pending} account(s) awaiting approval` : 'Manage user accounts'}
+                actions={
+                    <Button
+                        variant="contained"
+                        startIcon={<PersonAddIcon />}
+                        onClick={() => {
+                            setAddUserKey((key) => key + 1);
+                            setAddUserOpen(true);
+                        }}
+                    >
+                        Add User
+                    </Button>
+                }
             />
 
             {error && (
@@ -803,6 +828,10 @@ function Users() {
                     onClose={() => setRoleRequest(null)}
                     onChanged={handleRoleChanged}
                 />
+            )}
+
+            {addUserOpen && (
+                <AddUserDialog key={addUserKey} onClose={() => setAddUserOpen(false)} onCreated={handleUserCreated} />
             )}
 
             <UserDetailDrawer key={shownUser?.id ?? 'closed'} user={shownUser} onClose={closeDetails} />
