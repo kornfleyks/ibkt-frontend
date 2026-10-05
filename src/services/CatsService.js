@@ -52,9 +52,15 @@ export async function getCatOld(id) {
   return mockCats.find((cat) => cat.id === Number(id));
 }
 
+// The database sends createdAt as an ISO string (JSON has no Date type);
+// Monday mode's mapCat() already gives a Date, straight from `created_at`.
+function withCreatedAtDate(cat) {
+  return { ...cat, createdAt: cat.createdAt ? new Date(cat.createdAt) : null };
+}
+
 export async function getCats() {
   if (await inDatabase()) {
-    return serverGet("/api/cats");
+    return (await serverGet("/api/cats")).map(withCreatedAtDate);
   }
 
   const query = `
@@ -64,6 +70,7 @@ export async function getCats() {
                     items {
                         id
                         name
+                        created_at
                         column_values {
                             id
                             type
@@ -93,10 +100,12 @@ export async function getCats() {
 
 export async function getCat(id) {
   if (await inDatabase()) {
-    return serverGet(`/api/cats/${id}`).catch((err) => {
+    const cat = await serverGet(`/api/cats/${id}`).catch((err) => {
       if (/not found/i.test(err.message)) return null;
       throw err;
     });
+
+    return cat ? withCreatedAtDate(cat) : null;
   }
 
   const query = `
@@ -110,6 +119,7 @@ export async function getCat(id) {
                     items {
                         id
                         name
+                        created_at
                         column_values {
                             id
                             type
@@ -337,10 +347,18 @@ export async function linkBondedCats(catIds) {
   );
 }
 
-export async function updateCatFelvFivStatus(catId, felvFivStatus) {
-  return changeCat(catId, { felvFivStatus }, () =>
-    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.FELV_FIV_STATUS, {
-      label: felvFivStatus,
+export async function updateCatFelvStatus(catId, felvStatus) {
+  return changeCat(catId, { felvStatus }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.FELV_STATUS, {
+      label: felvStatus,
+    }),
+  );
+}
+
+export async function updateCatFivStatus(catId, fivStatus) {
+  return changeCat(catId, { fivStatus }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.FIV_STATUS, {
+      label: fivStatus,
     }),
   );
 }
@@ -407,7 +425,8 @@ export async function createCat(input, files = {}) {
     indoorOnly: CATS.COLUMNS.INDOOR_ONLY,
     vaccinated: CATS.COLUMNS.VACCINATED,
     neutered: CATS.COLUMNS.NEUTERED,
-    felvFivStatus: CATS.COLUMNS.FELV_FIV_STATUS,
+    felvStatus: CATS.COLUMNS.FELV_STATUS,
+    fivStatus: CATS.COLUMNS.FIV_STATUS,
     medicationRequired: CATS.COLUMNS.MEDICATION_REQUIRED,
   };
 

@@ -61,7 +61,7 @@ function TaskCard({ task, titleOptions, users, onUpdate, showLinks = false, high
     const [toggling, setToggling] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const { formatDateString } = useDateFormat();
+    const { formatDate, formatDateString } = useDateFormat();
 
     const [title, setTitle] = useState(task.title);
     const [description, setDescription] = useState(task.description ?? '');
@@ -446,6 +446,12 @@ function TaskCard({ task, titleOptions, users, onUpdate, showLinks = false, high
                         {task.status === TASKS_STATUS_OPTIONS.STATUS.WAITING && task.waitingReason && (
                             <Typography variant="body2" color="text.secondary">
                                 Waiting Reason: {task.waitingReason}
+                            </Typography>
+                        )}
+
+                        {task.createdAt && (
+                            <Typography variant="body2" color="text.secondary">
+                                Created: {formatDate(task.createdAt)}
                             </Typography>
                         )}
                     </Box>

@@ -56,7 +56,11 @@ export async function getAllUsersFull() {
   if (await inDatabase()) {
     const users = await serverGet("/api/admin/users");
 
-    return users.map((user) => ({ ...user, lastLogin: user.lastLogin ? new Date(user.lastLogin) : null }));
+    return users.map((user) => ({
+      ...user,
+      lastLogin: user.lastLogin ? new Date(user.lastLogin) : null,
+      createdAt: user.createdAt ? new Date(user.createdAt) : null,
+    }));
   }
 
   const query = `
@@ -65,6 +69,7 @@ export async function getAllUsersFull() {
                 items_page(limit: 500) {
                     items {
                         id
+                        created_at
                         column_values(ids: [
                             "${USERS.COLUMNS.FIRST_NAME}",
                             "${USERS.COLUMNS.LAST_NAME}",

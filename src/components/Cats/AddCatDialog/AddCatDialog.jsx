@@ -22,6 +22,7 @@ import {
 } from "../../../services/CatsService";
 import { getRescuers } from "../../../services/RescuersService";
 import { getMaxBondedCats } from "../../../services/AppSettingsService";
+import { CATS_STATUS_OPTIONS } from "../../../constants/statuses/catsStatuses";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
@@ -66,7 +67,8 @@ const initialForm = {
   medicalSummary: "",
   vaccinated: "",
   neutered: "",
-  felvFivStatus: "",
+  felvStatus: CATS_STATUS_OPTIONS.FELV_STATUS.NOT_TESTED_YET,
+  fivStatus: CATS_STATUS_OPTIONS.FIV_STATUS.NOT_TESTED_YET,
   medicationRequired: "",
   microchipNumber: "",
 };

@@ -28,6 +28,7 @@ async function changeTask(taskId, changes, mondayChange) {
 const TASK_ITEM_FIELDS = `
     id
     name
+    created_at
     column_values {
         id
         type
@@ -43,9 +44,15 @@ const TASK_ITEM_FIELDS = `
     }
 `;
 
+// The database sends createdAt as an ISO string (JSON has no Date type);
+// Monday mode's mapTask() already gives a Date, straight from `created_at`.
+function withCreatedAtDate(task) {
+  return { ...task, createdAt: task.createdAt ? new Date(task.createdAt) : null };
+}
+
 export async function getTasks() {
   if (await inDatabase()) {
-    return serverGet("/api/tasks");
+    return (await serverGet("/api/tasks")).map(withCreatedAtDate);
   }
 
   const query = `
@@ -112,17 +119,19 @@ export async function createTask(
   { title, status, priority, dueDate, ownerId, waitingReason, description },
 ) {
   if (await inDatabase()) {
-    return serverPost("/api/tasks", {
-      catId: catId ? String(catId) : null,
-      applicationId: applicationId ? String(applicationId) : null,
-      title,
-      status,
-      priority,
-      dueDate: dueDate || null,
-      ownerId: ownerId ?? null,
-      waitingReason: status === TASKS_STATUS_OPTIONS.STATUS.WAITING ? waitingReason ?? "" : "",
-      description: description ?? "",
-    });
+    return withCreatedAtDate(
+      await serverPost("/api/tasks", {
+        catId: catId ? String(catId) : null,
+        applicationId: applicationId ? String(applicationId) : null,
+        title,
+        status,
+        priority,
+        dueDate: dueDate || null,
+        ownerId: ownerId ?? null,
+        waitingReason: status === TASKS_STATUS_OPTIONS.STATUS.WAITING ? waitingReason ?? "" : "",
+        description: description ?? "",
+      }),
+    );
   }
 
   const columnValues = {
@@ -161,7 +170,9 @@ export async function createTask(
 
 export async function getTask(taskId) {
   if (await inDatabase()) {
-    return serverGet(`/api/tasks/${taskId}`);
+    const task = await serverGet(`/api/tasks/${taskId}`);
+
+    return task ? withCreatedAtDate(task) : null;
   }
 
   const query = `

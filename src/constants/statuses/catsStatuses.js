@@ -59,11 +59,17 @@ export const CATS_STATUS_OPTIONS = {
     YES: "Yes",
     NO: "No",
   },
-  FELV_FIV_STATUS: {
+  FELV_STATUS: {
     PENDING: "Pending",
     POSITIVE: "Positive",
     NEGATIVE: "Negative",
-    UNKNOWN: "Unknown",
+    NOT_TESTED_YET: "Not Tested Yet",
+  },
+  FIV_STATUS: {
+    PENDING: "Pending",
+    POSITIVE: "Positive",
+    NEGATIVE: "Negative",
+    NOT_TESTED_YET: "Not Tested Yet",
   },
   MEDICATION_REQUIRED: {
     YES: "Yes",

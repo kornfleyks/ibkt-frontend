@@ -31,6 +31,7 @@ import TasksTab from '../../components/Tasks/TasksTab';
 import ActivityTab from '../../components/ActivityLog/ActivityTab';
 import { CATS_STATUS_OPTIONS } from '../../constants/statuses/catsStatuses';
 import { CATS } from '../../constants/boards/cats';
+import useDateFormat from '../../hooks/useDateFormat';
 
 const STATUS_OPTIONS = Object.values(CATS_STATUS_OPTIONS.STATUS);
 
@@ -118,6 +119,7 @@ function CatWorkspace() {
     const [cat, setCat] = useState(null);
     const [tab, setTab] = useTabParam(workspaceTabs);
     const { showLoading, hideLoading } = useLoading();
+    const { formatDate } = useDateFormat();
 
     async function loadCat() {
         showLoading('Loading cat...');
@@ -175,7 +177,8 @@ function CatWorkspace() {
 
                             <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1, mb: 2 }}>
                                 <StatusChipEditor cat={cat} onCatUpdate={handleCatUpdate} />
-                                <Chip label={`FeLV/FIV: ${cat.felvFivStatus}`} color="success" size="small" />
+                                <Chip label={`FeLV: ${cat.felvStatus}`} color="success" size="small" />
+                                <Chip label={`FIV: ${cat.fivStatus}`} color="success" size="small" />
                             </Stack>
 
                             <Divider sx={{ mb: 2 }} />
@@ -183,6 +186,7 @@ function CatWorkspace() {
                             <Stack>
                                 <InfoRow label="Rescuer" value={cat.rescuer} />
                                 <InfoRow label="Age" value={`${cat.age} years`} />
+                                <InfoRow label="Created" value={cat.createdAt ? formatDate(cat.createdAt) : 'N/A'} />
                             </Stack>
                         </Box>
                     </Stack>

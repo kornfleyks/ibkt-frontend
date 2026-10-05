@@ -14,6 +14,7 @@ export function mapMondayActiveApplication(item) {
   return {
     id: item.id,
     name: item.name,
+    createdAt: item.created_at ? new Date(item.created_at) : null,
 
     email: columns[ACTIVE_APPLICATIONS.COLUMNS.EMAIL]?.text ?? "",
     phone: columns[ACTIVE_APPLICATIONS.COLUMNS.PHONE]?.text ?? "",

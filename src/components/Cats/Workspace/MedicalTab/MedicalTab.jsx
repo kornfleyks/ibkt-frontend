@@ -15,14 +15,16 @@ import {
   updateCatNeutered,
   updateCatMedicationRequired,
   updateCatMicrochipNumber,
-  updateCatFelvFivStatus,
+  updateCatFelvStatus,
+  updateCatFivStatus,
 } from "../../../../services/CatsService";
 import { CATS_STATUS_OPTIONS } from "../../../../constants/statuses/catsStatuses";
 
 const VACCINATED_OPTIONS = Object.values(CATS_STATUS_OPTIONS.VACCINATED);
 const NEUTERED_OPTIONS = Object.values(CATS_STATUS_OPTIONS.NEUTERED);
 const MEDICATION_REQUIRED_OPTIONS = Object.values(CATS_STATUS_OPTIONS.MEDICATION_REQUIRED);
-const FELV_FIV_OPTIONS = Object.values(CATS_STATUS_OPTIONS.FELV_FIV_STATUS);
+const FELV_OPTIONS = Object.values(CATS_STATUS_OPTIONS.FELV_STATUS);
+const FIV_OPTIONS = Object.values(CATS_STATUS_OPTIONS.FIV_STATUS);
 
 // Vaccinated/Neutered are 3-value (Planned/Yes/No), so they can't be shown
 // with the plain Yes/No BooleanStatus - Planned falls back to its own label.
@@ -157,13 +159,24 @@ function MedicalTab({ cat, onCatUpdate }) {
             />
 
             <EditableInfoRow
-              label="FIV / FeLV"
-              displayValue={cat.felvFivStatus}
-              getEditValue={() => cat.felvFivStatus}
-              renderEditor={SelectEditor(FELV_FIV_OPTIONS)}
+              label="FeLV Status"
+              displayValue={cat.felvStatus}
+              getEditValue={() => cat.felvStatus}
+              renderEditor={SelectEditor(FELV_OPTIONS)}
               onSave={async (value) => {
-                await updateCatFelvFivStatus(cat.id, value);
-                onCatUpdate({ felvFivStatus: value });
+                await updateCatFelvStatus(cat.id, value);
+                onCatUpdate({ felvStatus: value });
+              }}
+            />
+
+            <EditableInfoRow
+              label="FIV Status"
+              displayValue={cat.fivStatus}
+              getEditValue={() => cat.fivStatus}
+              renderEditor={SelectEditor(FIV_OPTIONS)}
+              onSave={async (value) => {
+                await updateCatFivStatus(cat.id, value);
+                onCatUpdate({ fivStatus: value });
               }}
             />
           </CardContent>

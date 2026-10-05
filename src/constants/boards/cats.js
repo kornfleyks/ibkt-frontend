@@ -24,7 +24,9 @@ export const CATS = {
     MEDICAL_SUMMARY: "long_text_mm47ctkd", // Medical Summary | long_text
     VACCINATED: "color_mm4gtytz", // Vaccinated | status
     NEUTERED: "color_mm4gbvyr", // Neutered | status
-    FELV_FIV_STATUS: "color_mm4ga5k1", // FeLV/FIV Status | status
+    FELV_FIV_STATUS_OLD: "color_mm4ga5k1", // FeLV/FIV Status (old) | status
+    FELV_STATUS: "color_mm7va5j", // FeLV Status | status
+    FIV_STATUS: "color_mm7vbc0p", // FIV Status | status
     MEDICATION_REQUIRED: "color_mm4gfj7k", // Medication Required | status
     MEDICAL_DOCUMENTS: "file_mm475fxh", // Medical Documents | file
     PASSPORT_COMPLETE: "boolean_mm47akbx", // Passport Complete | checkbox

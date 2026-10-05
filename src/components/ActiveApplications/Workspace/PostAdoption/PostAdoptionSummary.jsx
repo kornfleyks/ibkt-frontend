@@ -32,7 +32,7 @@ function StatusChip({ label, value, colors }) {
 // application's (a bonded group is several; the record's own Linked Cat
 // holds one, and is empty on records made on Monday).
 function PostAdoptionSummary({ applicationId, linkedCats, record, save }) {
-  const { formatDateString } = useDateFormat();
+  const { formatDateString, formatDateTime } = useDateFormat();
   const today = todayLocal();
   const next = nextCheckIn(record, today);
   const overdue = overdueCount(record, today);
@@ -78,6 +78,11 @@ function PostAdoptionSummary({ applicationId, linkedCats, record, save }) {
               value={<LinkedCatChips cats={linkedCats} clickable emptyText="Not matched yet" />}
             />
             <InfoRow label="Location" labelWidth={LABEL_WIDTH} value={[record.city, record.country].filter(Boolean).join(", ") || "Not set"} />
+            <InfoRow
+              label="Created"
+              labelWidth={LABEL_WIDTH}
+              value={record.createdAt ? formatDateTime(new Date(record.createdAt)) : "N/A"}
+            />
           </Grid>
 
           <Grid size={{ xs: 12, md: 6 }}>

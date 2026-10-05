@@ -48,7 +48,8 @@ export const CAT_FIELDS = {
   medicalSummary: { column: C.MEDICAL_SUMMARY, write: "longText" },
   vaccinated: { column: C.VACCINATED, empty: "No", write: "status" },
   sterilized: { column: C.NEUTERED, empty: "No", write: "status" },
-  felvFivStatus: { column: C.FELV_FIV_STATUS, empty: "Unknown", write: "status" },
+  felvStatus: { column: C.FELV_STATUS, empty: "Not Tested Yet", write: "status" },
+  fivStatus: { column: C.FIV_STATUS, empty: "Not Tested Yet", write: "status" },
   medicationRequired: { column: C.MEDICATION_REQUIRED, read: "equals", value: "Yes", write: "status", shownBy: "medicationRequiredText" },
   medicationRequiredText: { column: C.MEDICATION_REQUIRED },
   passportComplete: { column: C.PASSPORT_COMPLETE, read: "checked" },
@@ -72,7 +73,7 @@ export const CAT_FIELDS = {
 // Fields a new cat may be given (the Add Cat form).
 const CREATE_FIELDS = [
   "gender", "energyLevel", "lapCat", "childFriendly", "catFriendly", "dogFriendly", "indoorOnly", "vaccinated",
-  "sterilized", "felvFivStatus", "medicationRequired", "personalitySummary", "specialNotes", "medicalSummary",
+  "sterilized", "felvStatus", "fivStatus", "medicationRequired", "personalitySummary", "specialNotes", "medicalSummary",
   "breed", "colour", "fosterContact", "fosterLocation", "microchipNumber", "age", "rescuerId",
 ];
 
@@ -150,7 +151,12 @@ export function registerCatRoutes(app, { requireAuth }) {
 
         if (body.rescuerId && !(await exists("rescuers", body.rescuerId))) throw new InputError("Unknown rescuer.");
 
-        const values = { status: CATS_STATUS_OPTIONS.STATUS.INTAKE, ...only(body, CREATE_FIELDS) };
+        const values = {
+          status: CATS_STATUS_OPTIONS.STATUS.INTAKE,
+          felvStatus: CATS_STATUS_OPTIONS.FELV_STATUS.NOT_TESTED_YET,
+          fivStatus: CATS_STATUS_OPTIONS.FIV_STATUS.NOT_TESTED_YET,
+          ...only(body, CREATE_FIELDS),
+        };
         const record = await createRecord(TABLE, CAT_FIELDS, { name: name.slice(0, 255), values });
 
         logCreated({ actor: actorOf(req), table: TABLE, boardName: "Cats", record, raw: values });

@@ -14,7 +14,7 @@ import { logActivity } from "./activityLog.js";
 // endpoints (userAdmin.js, index.js). Nothing here returns password data.
 //
 //   GET  /api/users/names        [{ id, name }]
-//   GET  /api/admin/users        [{ id, firstName, lastName, email, role, accountStatus, lastLogin }]
+//   GET  /api/admin/users        [{ id, firstName, lastName, email, role, accountStatus, lastLogin, createdAt }]
 //   POST /api/admin/users/:id    any of { firstName, lastName, email, role }
 
 const U = USERS.COLUMNS;
@@ -38,6 +38,7 @@ function adminView(user) {
     role: user.role,
     accountStatus: user.accountStatus,
     lastLogin: user.lastLoginIso,
+    createdAt: user.createdAt,
   };
 }
 

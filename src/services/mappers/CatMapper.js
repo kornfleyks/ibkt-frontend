@@ -8,6 +8,7 @@ export function mapCat(item) {
   return {
     id: item.id,
     name: item.name,
+    createdAt: item.created_at ? new Date(item.created_at) : null,
     status: columns[CATS.COLUMNS.STATUS]?.text || "N/A",
     gender: columns[CATS.COLUMNS.GENDER]?.text || "N/A",
     breed: columns[CATS.COLUMNS.BREED]?.text || "N/A",
@@ -21,7 +22,8 @@ export function mapCat(item) {
     personalitySummary: columns[CATS.COLUMNS.PERSONALITY_SUMMARY]?.text ?? "",
     vaccinated: columns[CATS.COLUMNS.VACCINATED]?.text || "No",
     sterilized: columns[CATS.COLUMNS.NEUTERED]?.text || "No",
-    felvFivStatus: columns[CATS.COLUMNS.FELV_FIV_STATUS]?.text || "Unknown",
+    felvStatus: columns[CATS.COLUMNS.FELV_STATUS]?.text || "Not Tested Yet",
+    fivStatus: columns[CATS.COLUMNS.FIV_STATUS]?.text || "Not Tested Yet",
     medicationRequired:
       columns[CATS.COLUMNS.MEDICATION_REQUIRED]?.text === "Yes",
     passportComplete: getCheckboxValue(columns[CATS.COLUMNS.PASSPORT_COMPLETE]),

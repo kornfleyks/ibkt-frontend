@@ -454,7 +454,7 @@ function UserRow({ user, isSelf, viewerCanDelete, onRequestRole, onRequestAction
     // status, and never offered for yourself or a Super Admin account
     // (server-enforced too: server/userAdmin.js).
     const canDelete = viewerCanDelete && !isSelf && !isSuperAdminAccount;
-    const { formatDateTime } = useDateFormat();
+    const { formatDate, formatDateTime } = useDateFormat();
     // You can't take your own account out of action - block, suspend or
     // archive (the server refuses any status but Active for yourself).
     const actions = isSuperAdminAccount
@@ -503,6 +503,10 @@ function UserRow({ user, isSelf, viewerCanDelete, onRequestRole, onRequestAction
 
             <TableCell sx={{ whiteSpace: 'nowrap' }} title={user.lastLogin ? formatDateTime(user.lastLogin) : undefined}>
                 {formatRelativeTime(user.lastLogin) ?? 'Never'}
+            </TableCell>
+
+            <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                {user.createdAt ? formatDate(user.createdAt) : 'N/A'}
             </TableCell>
 
             <TableCell>
@@ -768,6 +772,7 @@ function Users() {
                                                 <TableCell>Role</TableCell>
                                                 <TableCell>Status</TableCell>
                                                 <TableCell>Last login</TableCell>
+                                                <TableCell>Created</TableCell>
                                                 <TableCell>Password</TableCell>
                                                 <TableCell>Actions</TableCell>
                                             </TableRow>

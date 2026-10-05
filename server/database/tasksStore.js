@@ -33,7 +33,7 @@ async function columns() {
 function selectTasks({ table, names }) {
   const c = Object.fromEntries(Object.entries(names).map(([key, name]) => [key, `t.${ident(name)}`]));
 
-  return `select t.monday_item_id, t.name, ${c.title} as title, ${c.status} as status, ${c.priority} as priority,
+  return `select t.monday_item_id, t.name, t.monday_created_at, ${c.title} as title, ${c.status} as status, ${c.priority} as priority,
             ${c.dueDate} as due_date, ${c.ownerId} as owner, ${c.linkedCatId} as cat,
             ${c.linkedApplicationId} as application,
             ${c.waitingReason} as waiting_reason, ${c.description} as description,
@@ -51,6 +51,7 @@ function toTask(row) {
   return {
     id: String(row.monday_item_id),
     itemName: row.name ?? "",
+    createdAt: row.monday_created_at,
     title: row.title?.length ? row.title.join(", ") : "N/A",
     status: row.status || "N/A",
     priority: row.priority || "N/A",

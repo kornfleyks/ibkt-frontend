@@ -58,7 +58,7 @@ function readValue(spec, type, main, extraValue, names) {
   }
 }
 
-// Rows of `table` -> records ({ id, name, ...fields }).
+// Rows of `table` -> records ({ id, name, createdAt, ...fields }).
 export async function readRecords(table, fields, { where = "", params = [], order = "monday_item_id" } = {}) {
   const board = await boardFields(table);
   const { rows } = await query(`select * from ${ident(table)} ${where ? `where ${where}` : ""} order by ${order}`, params);
@@ -68,7 +68,7 @@ export async function readRecords(table, fields, { where = "", params = [], orde
   const names = await namesOf(linkedIdsIn(rows, [...new Set(linkFields)]));
 
   return rows.map((row) => {
-    const record = { id: String(row.monday_item_id), name: row.name ?? "" };
+    const record = { id: String(row.monday_item_id), name: row.name ?? "", createdAt: row.monday_created_at };
 
     for (const [key, spec] of Object.entries(fields)) {
       if (spec.column === "name") {

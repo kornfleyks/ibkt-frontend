@@ -39,7 +39,7 @@ function readValue(spec, column) {
 
 function toRecord(item, fields) {
   const columns = new Map(item.column_values.map((column) => [column.id, column]));
-  const record = { id: String(item.id), name: item.name ?? "" };
+  const record = { id: String(item.id), name: item.name ?? "", createdAt: item.created_at ?? null };
 
   for (const [key, spec] of Object.entries(fields)) {
     record[key] = spec.column === "name" ? item.name ?? "" : readValue(spec, columns.get(spec.column));
@@ -107,7 +107,7 @@ export async function readMondayRecord(boardId, fields, itemId) {
   const data = await mondayDirectRequest(
     `query ($ids: [ID!], $columnIds: [String!]) {
       items(ids: $ids) {
-        id name board { id }
+        id name created_at board { id }
         column_values(ids: $columnIds) { id text ... on BoardRelationValue { linked_item_ids display_value } }
       }
     }`,

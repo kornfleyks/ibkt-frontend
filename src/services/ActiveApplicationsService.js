@@ -89,9 +89,15 @@ export const ADOPTION_EDITABLE_FIELDS = {
   },
 };
 
+// The database sends createdAt as an ISO string (JSON has no Date type);
+// Monday mode's mapper already gives a Date, straight from `created_at`.
+function withCreatedAtDate(application) {
+  return { ...application, createdAt: application.createdAt ? new Date(application.createdAt) : null };
+}
+
 export async function getActiveApplications() {
   if (await inDatabase()) {
-    return serverGet("/api/applications");
+    return (await serverGet("/api/applications")).map(withCreatedAtDate);
   }
 
   // The BoardRelationValue fragment is required for Linked Cat - without it
@@ -103,6 +109,7 @@ export async function getActiveApplications() {
                     items {
                         id
                         name
+                        created_at
                         column_values {
                             id
                             type
@@ -132,10 +139,12 @@ export async function getActiveApplications() {
 
 export async function getActiveApplication(id) {
   if (await inDatabase()) {
-    return serverGet(`/api/applications/${id}`).catch((err) => {
+    const application = await serverGet(`/api/applications/${id}`).catch((err) => {
       if (/not found/i.test(err.message)) return null;
       throw err;
     });
+
+    return application ? withCreatedAtDate(application) : null;
   }
 
   const query = `
@@ -149,6 +158,7 @@ export async function getActiveApplication(id) {
                     items {
                         id
                         name
+                        created_at
                         column_values {
                             id
                             type

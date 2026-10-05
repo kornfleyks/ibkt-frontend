@@ -34,11 +34,15 @@ async function select(where = "", params = []) {
 
   picks.push(`${ident(extra(U.PHONE))} as "phoneCountry"`, `${ident(extra(U.LAST_LOGIN))} as "lastLoginTime"`);
 
-  const { rows } = await query(`select monday_item_id, name, ${picks.join(", ")} from ${ident(table)} ${where} order by monday_item_id`, params);
+  const { rows } = await query(
+    `select monday_item_id, name, monday_created_at, ${picks.join(", ")} from ${ident(table)} ${where} order by monday_item_id`,
+    params,
+  );
 
   return rows.map((row) => ({
     id: String(row.monday_item_id),
     name: row.name ?? "",
+    createdAt: row.monday_created_at,
     firstName: row.firstName ?? "",
     lastName: row.lastName ?? "",
     email: row.email ?? "",

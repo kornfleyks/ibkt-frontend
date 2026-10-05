@@ -14,5 +14,6 @@ export function mapUser(item) {
     role: columns[USERS.COLUMNS.ROLE]?.text || "",
     accountStatus: columns[USERS.COLUMNS.ACCOUNT_STATUS]?.text || "",
     lastLogin: parseUtcDateTime(columns[USERS.COLUMNS.LAST_LOGIN]?.value),
+    createdAt: item.created_at ? new Date(item.created_at) : null,
   };
 }

@@ -12,9 +12,11 @@ import Avatar from "@mui/material/Avatar";
 import { useNavigate } from "react-router-dom";
 import { getAdoptionStageColor } from "../../utils/adoptionStageColor";
 import LinkedCatChips from "../Common/LinkedCatChips";
+import useDateFormat from "../../hooks/useDateFormat";
 
 function ActiveApplicationCard({ application }) {
   const navigate = useNavigate();
+  const { formatDate } = useDateFormat();
 
   return (
     <Card
@@ -72,6 +74,12 @@ function ActiveApplicationCard({ application }) {
             <Typography variant="body2" sx={{ mt: 1 }}>
               Case Owner: {application.caseOwner || "—"}
             </Typography>
+
+            {application.createdAt && (
+              <Typography variant="body2" color="text.secondary">
+                Created: {formatDate(application.createdAt)}
+              </Typography>
+            )}
 
             {/* Not clickable: the whole card is already a link. Always
                 rendered, so cards with and without a cat share the layout. */}

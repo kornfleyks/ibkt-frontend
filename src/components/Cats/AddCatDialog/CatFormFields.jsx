@@ -255,10 +255,19 @@ function CatFormFields({ form, setField, files, setFile, breedOptions, colourOpt
 
           <Grid size={{ xs: 12, md: 3 }}>
             <SelectField
-              label="FeLV/FIV Status"
-              value={form.felvFivStatus}
-              onChange={(value) => setField("felvFivStatus", value)}
-              options={Object.values(CATS_STATUS_OPTIONS.FELV_FIV_STATUS)}
+              label="FeLV Status"
+              value={form.felvStatus}
+              onChange={(value) => setField("felvStatus", value)}
+              options={Object.values(CATS_STATUS_OPTIONS.FELV_STATUS)}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 3 }}>
+            <SelectField
+              label="FIV Status"
+              value={form.fivStatus}
+              onChange={(value) => setField("fivStatus", value)}
+              options={Object.values(CATS_STATUS_OPTIONS.FIV_STATUS)}
             />
           </Grid>
 

@@ -10,9 +10,11 @@ import {
 
 import { PetsIcon } from "../../icons";
 import { useNavigate } from "react-router-dom";
+import useDateFormat from "../../../hooks/useDateFormat";
 
 function CatCard({ cat }) {
   const navigate = useNavigate();
+  const { formatDate } = useDateFormat();
 
   return (
     <Card
@@ -70,6 +72,12 @@ function CatCard({ cat }) {
             >
               Rescuer: {cat.rescuer}
             </Typography>
+
+            {cat.createdAt && (
+              <Typography variant="body2" color="text.secondary">
+                Created: {formatDate(cat.createdAt)}
+              </Typography>
+            )}
           </Box>
         </Stack>
       </CardContent>

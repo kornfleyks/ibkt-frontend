@@ -7,6 +7,7 @@ export function mapTask(item) {
 
   return {
     id: item.id,
+    createdAt: item.created_at ? new Date(item.created_at) : null,
     title: columns[TASKS.COLUMNS.TASK]?.text || "N/A",
     status: columns[TASKS.COLUMNS.STATUS]?.text || "N/A",
     priority: columns[TASKS.COLUMNS.PRIORITY]?.text || "N/A",

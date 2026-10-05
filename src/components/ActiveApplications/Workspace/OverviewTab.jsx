@@ -8,6 +8,7 @@ import LinkedCatChips from "../../Common/LinkedCatChips";
 import UserPicker from "../../Common/UserPicker";
 import AiReviewCard from "./AiReview/AiReviewCard";
 import useCanAssignCaseOwner from "../../../hooks/useCanAssignCaseOwner";
+import useDateFormat from "../../../hooks/useDateFormat";
 import {
   assignCaseOwner,
   assignVolunteer,
@@ -88,6 +89,8 @@ function AssignedVolunteerRow({ application, onApplicationChange }) {
 }
 
 function OverviewTab({ application, onApplicationChange }) {
+  const { formatDate } = useDateFormat();
+
   return (
     <Grid container spacing={3}>
       <Grid
@@ -116,6 +119,8 @@ function OverviewTab({ application, onApplicationChange }) {
         }}
       >
         <SectionCard title="Case Information" sx={{ height: "100%" }}>
+          <InfoRow labelWidth={LABEL_WIDTH} label="Created" value={application.createdAt ? formatDate(application.createdAt) : "N/A"} />
+
           <InfoRow labelWidth={LABEL_WIDTH} label="Adoption Stage" value={application.adoptionStage} />
 
           <InfoRow labelWidth={LABEL_WIDTH} label="Priority" value={application.priority} />
