@@ -7,13 +7,16 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Stack,
+  Switch,
   TextField,
   Tooltip,
   Typography,
@@ -40,6 +43,66 @@ const SECTIONS = [
   { category: "internal", title: "Internal / to do", empty: "No internal notes." },
 ];
 
+const ALL_FILTER = "all";
+const FILTER_LABELS = { question: "Questions", flag: "Flags", internal: "Internal" };
+
+// Open work first, finished work last.
+const STATUS_ORDER = { open: 0, answered: 1, resolved: 2 };
+
+const SHOW_RESOLVED_KEY = "ibkt.reviewItems.showResolved";
+
+// Storage can be unavailable (private mode, blocked site data) - the toggle
+// then simply isn't remembered, it still works for the visit.
+function readShowResolved() {
+  try {
+    return window.localStorage.getItem(SHOW_RESOLVED_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function writeShowResolved(value) {
+  try {
+    window.localStorage.setItem(SHOW_RESOLVED_KEY, String(value));
+  } catch {
+    // Not remembered - see readShowResolved.
+  }
+}
+
+const PRIORITY_OPTIONS = ["high", "medium", "low"];
+const PRIORITY_LABELS = { high: "High", medium: "Medium", low: "Low" };
+const PRIORITY_COLORS = { high: "error", medium: "warning", low: "default" };
+// The filter value for items with no priority set.
+const NO_PRIORITY = "none";
+// High first, unset last.
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+
+function priorityRank(item) {
+  return PRIORITY_ORDER[item.priority] ?? PRIORITY_OPTIONS.length;
+}
+
+function PriorityField({ value, onChange, label }) {
+  return (
+    <TextField
+      select
+      size="small"
+      label={label}
+      value={value ?? ""}
+      onChange={(event) => onChange(event.target.value || null)}
+      sx={{ minWidth: 118 }}
+    >
+      <MenuItem value="">
+        <em>None</em>
+      </MenuItem>
+      {PRIORITY_OPTIONS.map((priority) => (
+        <MenuItem key={priority} value={priority}>
+          {PRIORITY_LABELS[priority]}
+        </MenuItem>
+      ))}
+    </TextField>
+  );
+}
+
 const STATUS_OPTIONS = ["open", "answered", "resolved"];
 const STATUS_LABELS = { open: "Open", answered: "Answered", resolved: "Resolved" };
 const STATUS_COLORS = { open: "warning", answered: "info", resolved: "success" };
@@ -47,6 +110,7 @@ const STATUS_COLORS = { open: "warning", answered: "info", resolved: "success" }
 function NewItemDialog({ category, open, onClose, onCreated }) {
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
+  const [priority, setPriority] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -55,6 +119,7 @@ function NewItemDialog({ category, open, onClose, onCreated }) {
 
     setTitle("");
     setDetail("");
+    setPriority(null);
     setError(null);
     onClose();
   }
@@ -69,7 +134,7 @@ function NewItemDialog({ category, open, onClose, onCreated }) {
     setError(null);
 
     try {
-      const item = await createReviewItem({ category, title, detail });
+      const item = await createReviewItem({ category, title, detail, priority });
       onCreated(item);
       close();
     } catch (err) {
@@ -101,6 +166,7 @@ function NewItemDialog({ category, open, onClose, onCreated }) {
             minRows={2}
             fullWidth
           />
+          <PriorityField label="Priority" value={priority} onChange={setPriority} />
           {error && <Alert severity="error">{error}</Alert>}
         </Stack>
       </DialogContent>
@@ -153,62 +219,123 @@ function DeleteConfirm({ item, onClose, onDeleted }) {
 
 function ReviewItemCard({ item, onChange, onDelete }) {
   const { formatDateTime } = useDateFormat();
+  const [expanded, setExpanded] = useState(false);
+
+  const [saveError, setSaveError] = useState(null);
 
   async function save(changes) {
-    const updated = await updateReviewItem(item.id, changes);
-    onChange(updated);
+    setSaveError(null);
+
+    try {
+      const updated = await updateReviewItem(item.id, changes);
+      onChange(updated);
+    } catch (err) {
+      console.error("Failed to save the item:", err);
+      setSaveError(err?.message || "Failed to save.");
+      // RecordField awaits onSave to know whether the edit stuck.
+      throw err;
+    }
   }
 
   return (
     <Card variant="outlined">
-      <CardContent>
+      <CardContent sx={{ "&:last-child": { pb: 2 } }}>
         <Stack spacing={1}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 600 }}>{item.title}</Typography>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            role="button"
+            tabIndex={0}
+            aria-expanded={expanded}
+            onClick={() => setExpanded((current) => !current)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setExpanded((current) => !current);
+              }
+            }}
+            sx={{ alignItems: "center", cursor: "pointer" }}
+          >
+            <Chip
+              size="small"
+              label={STATUS_LABELS[item.status]}
+              color={STATUS_COLORS[item.status]}
+              sx={{ flexShrink: 0 }}
+            />
+            {item.priority && (
+              <Chip
+                size="small"
+                variant="outlined"
+                label={PRIORITY_LABELS[item.priority]}
+                color={PRIORITY_COLORS[item.priority]}
+                sx={{ flexShrink: 0 }}
+              />
+            )}
+            <Typography noWrap sx={{ fontWeight: 600, flexShrink: 0, maxWidth: "60%" }}>
+              {item.title}
+            </Typography>
+            {!expanded && item.answer && (
+              <Typography noWrap variant="body2" color="text.secondary" sx={{ minWidth: 0 }}>
+                {item.answer}
+              </Typography>
+            )}
+          </Stack>
+
+          <Collapse in={expanded} unmountOnExit>
+            <Stack spacing={1} sx={{ pt: 1 }}>
+              {saveError && <Alert severity="error">{saveError}</Alert>}
+
               {item.detail && (
                 <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap" }}>
                   {item.detail}
                 </Typography>
               )}
-            </Box>
 
-            <Stack direction="row" spacing={1} sx={{ alignItems: "center", flexShrink: 0 }}>
-              <TextField
-                select
-                size="small"
-                value={item.status}
-                onChange={(event) => save({ status: event.target.value })}
-                sx={{ minWidth: 118 }}
-              >
-                {STATUS_OPTIONS.map((status) => (
-                  <MenuItem key={status} value={status}>
-                    <Chip size="small" label={STATUS_LABELS[status]} color={STATUS_COLORS[status]} />
-                  </MenuItem>
-                ))}
-              </TextField>
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center", justifyContent: "space-between" }}>
+                <TextField
+                  select
+                  size="small"
+                  value={item.status}
+                  onChange={(event) => save({ status: event.target.value }).catch(() => {})}
+                  sx={{ minWidth: 118 }}
+                >
+                  {STATUS_OPTIONS.map((status) => (
+                    <MenuItem key={status} value={status}>
+                      <Chip size="small" label={STATUS_LABELS[status]} color={STATUS_COLORS[status]} />
+                    </MenuItem>
+                  ))}
+                </TextField>
 
-              <Tooltip title="Delete">
-                <IconButton size="small" onClick={() => onDelete(item)} aria-label={`Delete ${item.title}`}>
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+                <PriorityField
+                  label="Priority"
+                  value={item.priority}
+                  onChange={(priority) => save({ priority }).catch(() => {})}
+                />
+
+                <Box sx={{ flex: 1 }} />
+
+                <Tooltip title="Delete">
+                  <IconButton size="small" onClick={() => onDelete(item)} aria-label={`Delete ${item.title}`}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+
+              <RecordField
+                label="Answer / notes"
+                value={item.answer}
+                kind="longText"
+                onSave={(value) => save({ answer: value })}
+              />
+
+              {item.answeredAt && (
+                <Typography variant="caption" color="text.secondary">
+                  Last answered {formatDateTime(new Date(item.answeredAt))}
+                  {item.answeredByName ? ` by ${item.answeredByName}` : ""}
+                </Typography>
+              )}
             </Stack>
-          </Stack>
-
-          <RecordField
-            label="Answer / notes"
-            value={item.answer}
-            kind="longText"
-            onSave={(value) => save({ answer: value })}
-          />
-
-          {item.answeredAt && (
-            <Typography variant="caption" color="text.secondary">
-              Last answered {formatDateTime(new Date(item.answeredAt))}
-              {item.answeredByName ? ` by ${item.answeredByName}` : ""}
-            </Typography>
-          )}
+          </Collapse>
         </Stack>
       </CardContent>
     </Card>
@@ -221,6 +348,9 @@ function ReviewItems() {
   const [error, setError] = useState(null);
   const [addingFor, setAddingFor] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [filter, setFilter] = useState(ALL_FILTER);
+  const [priorityFilter, setPriorityFilter] = useState(ALL_FILTER);
+  const [showResolved, setShowResolved] = useState(readShowResolved);
 
   useEffect(() => {
     let cancelled = false;
@@ -259,6 +389,21 @@ function ReviewItems() {
     setDeleting(null);
   }
 
+  function updateShowResolved(value) {
+    setShowResolved(value);
+    writeShowResolved(value);
+  }
+
+  const allItems = items ?? [];
+  const resolvedCount = allItems.filter((item) => item.status === "resolved").length;
+  const shownItems = showResolved ? allItems : allItems.filter((item) => item.status !== "resolved");
+  const matchesPriority = (item) =>
+    priorityFilter === ALL_FILTER || (item.priority ?? NO_PRIORITY) === priorityFilter;
+  // Category chip counts respect the priority filter, and priority chip
+  // counts respect the category filter, so each shows what clicking yields.
+  const visibleItems = shownItems.filter(matchesPriority);
+  const priorityChipItems = shownItems.filter((item) => filter === ALL_FILTER || item.category === filter);
+
   return (
     <>
       <PageHeader
@@ -274,8 +419,75 @@ function ReviewItems() {
         </Stack>
       ) : (
         <Stack spacing={4}>
-          {SECTIONS.map((section) => {
-            const sectionItems = (items ?? []).filter((item) => item.category === section.category);
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ flexWrap: "wrap", rowGap: 1, alignItems: "center", justifyContent: "space-between" }}
+          >
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1 }}>
+              <Chip
+                label={`All (${visibleItems.length})`}
+                color={filter === ALL_FILTER ? "primary" : "default"}
+                variant={filter === ALL_FILTER ? "filled" : "outlined"}
+                onClick={() => setFilter(ALL_FILTER)}
+              />
+              {SECTIONS.map((section) => {
+                const count = visibleItems.filter((item) => item.category === section.category).length;
+                const selected = filter === section.category;
+
+                return (
+                  <Chip
+                    key={section.category}
+                    label={`${FILTER_LABELS[section.category]} (${count})`}
+                    color={selected ? "primary" : "default"}
+                    variant={selected ? "filled" : "outlined"}
+                    onClick={() => setFilter(section.category)}
+                  />
+                );
+              })}
+            </Stack>
+
+            <FormControlLabel
+              control={<Switch size="small" checked={showResolved} onChange={(event) => updateShowResolved(event.target.checked)} />}
+              label={`Show resolved (${resolvedCount})`}
+            />
+          </Stack>
+
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", rowGap: 1, alignItems: "center" }}>
+            <Typography variant="body2" color="text.secondary">
+              Priority
+            </Typography>
+            {[
+              { value: ALL_FILTER, label: "All", count: priorityChipItems.length },
+              ...PRIORITY_OPTIONS.map((priority) => ({
+                value: priority,
+                label: PRIORITY_LABELS[priority],
+                count: priorityChipItems.filter((item) => item.priority === priority).length,
+              })),
+              { value: NO_PRIORITY, label: "None", count: priorityChipItems.filter((item) => !item.priority).length },
+            ].map((option) => {
+              const selected = priorityFilter === option.value;
+
+              return (
+                <Chip
+                  key={option.value}
+                  size="small"
+                  label={`${option.label} (${option.count})`}
+                  color={selected ? "primary" : "default"}
+                  variant={selected ? "filled" : "outlined"}
+                  onClick={() => setPriorityFilter(option.value)}
+                />
+              );
+            })}
+          </Stack>
+
+          {SECTIONS.filter((section) => filter === ALL_FILTER || filter === section.category).map((section) => {
+            const sectionItems = visibleItems
+              .filter((item) => item.category === section.category)
+              .sort(
+                (a, b) =>
+                  (STATUS_ORDER[a.status] ?? 0) - (STATUS_ORDER[b.status] ?? 0) || priorityRank(a) - priorityRank(b),
+              );
 
             return (
               <Stack key={section.category} spacing={2}>

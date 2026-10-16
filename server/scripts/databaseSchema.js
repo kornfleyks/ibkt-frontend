@@ -325,6 +325,8 @@ await transaction(async (run) => {
     updated_at timestamptz not null default now()
   )`);
   await run("create index if not exists review_items_category on review_items (category, created_at)");
+  // Optional: null means no priority set.
+  await run("alter table review_items add column if not exists priority text check (priority in ('high', 'medium', 'low'))");
 
   // Each referee's "Reference Check - IBKT" answers about an application
   // (jotform/referenceCheck/handler.js, referenceChecks/). App-only: never

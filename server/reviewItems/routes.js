@@ -8,31 +8,34 @@ import { listReviewItems, createReviewItem, updateReviewItem, deleteReviewItem }
 // README "Review items").
 //
 //   GET    /api/review-items           { items }
-//   POST   /api/review-items           { category, title, detail? } -> { item }
-//   POST   /api/review-items/:id       { category?, title?, detail?, status?, answer? } -> { item }
+//   POST   /api/review-items           { category, title, detail?, priority? } -> { item }
+//   POST   /api/review-items/:id       { category?, title?, detail?, status?, priority? (null clears), answer? } -> { item }
 //   DELETE /api/review-items/:id       -> { deleted: true }
 
 const CATEGORIES = new Set(["question", "flag", "internal"]);
 const STATUSES = new Set(["open", "answered", "resolved"]);
+const PRIORITIES = new Set(["high", "medium", "low"]);
 const ID_PATTERN = /^\d+$/;
 
 async function create(req) {
-  const { category, title, detail } = req.body ?? {};
+  const { category, title, detail, priority } = req.body ?? {};
 
   if (!CATEGORIES.has(category)) throw new HttpError(400, "category must be one of question, flag, internal.");
   if (!String(title ?? "").trim()) throw new HttpError(400, "A title is required.");
+  if (priority != null && !PRIORITIES.has(priority)) throw new HttpError(400, "priority must be one of high, medium, low.");
 
-  return { item: await createReviewItem({ category, title: title.trim(), detail }) };
+  return { item: await createReviewItem({ category, title: title.trim(), detail, priority }) };
 }
 
 async function update(req) {
   if (!ID_PATTERN.test(req.params.id)) throw new HttpError(400, "Invalid id.");
 
-  const { category, title, detail, status, answer: answerText } = req.body ?? {};
+  const { category, title, detail, status, priority, answer: answerText } = req.body ?? {};
 
   if (category !== undefined && !CATEGORIES.has(category)) throw new HttpError(400, "category must be one of question, flag, internal.");
   if (status !== undefined && !STATUSES.has(status)) throw new HttpError(400, "status must be one of open, answered, resolved.");
   if (title !== undefined && !String(title).trim()) throw new HttpError(400, "The title can't be empty.");
+  if (priority != null && !PRIORITIES.has(priority)) throw new HttpError(400, "priority must be one of high, medium, low.");
 
   const changes = {};
 
@@ -40,6 +43,7 @@ async function update(req) {
   if (title !== undefined) changes.title = title.trim();
   if (detail !== undefined) changes.detail = detail;
   if (status !== undefined) changes.status = status;
+  if (priority !== undefined) changes.priority = priority;
   if (answerText !== undefined) changes.answer = answerText;
 
   const actorName = `${req.user.firstName} ${req.user.lastName}`.trim();

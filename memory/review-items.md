@@ -9,6 +9,10 @@ Built on request (2026-10-04, for a client call that day): `server/reviewItems/`
 
 Categories: question (ask the client), flag (things to tell them), internal (to-do, not for the client). Each item has a title, optional detail, a status (open/answered/resolved, auto-bumped to answered when an answer is saved, reopened if the answer is cleared), and an answer/notes field. Seeded 2026-10-04 (`scripts/seedReviewItems.js`) with the 9 items prepared for that call: app-vs-Jotform ownership question, UAE form delivery, Wix DNS access, the Google Drive OAuth token left on the disabled Mask Covers form, Jotform storage over the plan limit, 7 unused forms to confirm deletable, 3 missing webhooks (Reference Check + both contracts), 11 unmatched submissions, and the Users-board role cleanup (internal).
 
+List UX (2026-10-16): category filter chips (All/Questions/Flags/Internal, counts), items are collapsed one-line rows that expand on click, sorted open > answered > resolved within a section, and resolved items are hidden behind a "Show resolved (N)" switch remembered in localStorage (`ibkt.reviewItems.showResolved`). The category filter itself is not remembered.
+
+Priority (2026-10-16): optional `priority` column (high/medium/low, null = none; existing items stay unset), added by an idempotent `alter table` in `server/scripts/databaseSchema.js` (must be run against the DB). Priority chip row filters alongside category; sort within a section is status, then priority (unset last).
+
 **Why:** the user wanted a durable place to track questions/flags across client calls instead of re-deriving them each time.
 
 **How to apply:** when prepping for another client call, add new items via the page itself (or a one-off script like seedReviewItems.js) rather than just telling the user in chat - that's the point of the page. Related: [[application-update-not-guarded]] (same roles+emails gating pattern as App Settings)

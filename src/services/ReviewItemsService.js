@@ -2,7 +2,8 @@ import { serverGet, serverPost, serverDelete } from "./MondayService";
 
 // A standing punch-list for client calls (server/reviewItems/). Each item:
 // { id, category: "question" | "flag" | "internal", title, detail,
-//   status: "open" | "answered" | "resolved", answer, answeredByName,
+//   status: "open" | "answered" | "resolved",
+//   priority: "high" | "medium" | "low" | null, answer, answeredByName,
 //   answeredAt, createdAt, updatedAt }.
 
 export async function getReviewItems() {
@@ -11,13 +12,14 @@ export async function getReviewItems() {
   return items;
 }
 
-export async function createReviewItem({ category, title, detail }) {
-  const { item } = await serverPost("/api/review-items", { category, title, detail });
+export async function createReviewItem({ category, title, detail, priority }) {
+  const { item } = await serverPost("/api/review-items", { category, title, detail, priority });
 
   return item;
 }
 
-// changes: any of { category, title, detail, status, answer }.
+// changes: any of { category, title, detail, status, priority, answer }
+// (priority null clears it).
 export async function updateReviewItem(id, changes) {
   const { item } = await serverPost(`/api/review-items/${id}`, changes);
 
