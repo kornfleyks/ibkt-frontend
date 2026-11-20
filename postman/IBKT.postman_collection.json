@@ -2672,6 +2672,1363 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Rescuer onboarding",
+      "item": [
+        {
+          "name": "Submit rescuer application (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/rescuer-applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "rescuer-applications"
+              ]
+            },
+            "description": "No sign-in. Body { answers, website }: answers per src/constants/forms/rescuerApplicationForm.js (every agreement statement must be Yes), website is the bot trap and must be empty. Always { ok: true } for a valid form, whether or not the email already has an application or account. 400 with { fields } for invalid answers, 429 after 5 applications per address per hour, 503 without the database.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {\n    \"firstName\": \"Test\",\n    \"lastName\": \"Rescuer\",\n    \"email\": \"test@example.com\",\n    \"phone\": {\n      \"country\": \"GB\",\n      \"number\": \"7700900123\"\n    },\n    \"whatsapp\": \"\",\n    \"country\": \"United Kingdom\",\n    \"city\": \"Leeds\",\n    \"contactMethod\": \"Email\",\n    \"catsDescription\": \"3 cats a year\",\n    \"groupName\": \"\",\n    \"howHeard\": \"\",\n    \"notes\": \"\",\n    \"a1\": \"Yes\",\n    \"a2\": \"Yes\",\n    \"a3\": \"Yes\",\n    \"a4\": \"Yes\",\n    \"a5\": \"Yes\",\n    \"a6\": \"Yes\",\n    \"vetPermission\": \"Yes\",\n    \"mediaUsage\": \"Yes\",\n    \"medicalDisclosure\": \"Yes\",\n    \"financialResponsibility\": \"Yes\",\n    \"declaration\": \"Yes\",\n    \"typedName\": \"Test Rescuer\"\n  },\n  \"website\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List rescuer applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuer-applications?status=Pending",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuer-applications"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "Pending",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Admin only. Newest first, with the full answers. Optional ?status=Pending|Approved|Rejected."
+          },
+          "response": []
+        },
+        {
+          "name": "Get rescuer application",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuer-applications/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuer-applications",
+                "1"
+              ]
+            },
+            "description": "Admin only. 404 when it does not exist."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve rescuer application",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuer-applications/1/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuer-applications",
+                "1",
+                "approve"
+              ]
+            },
+            "description": "Admin only. Creates the Rescuers record (Active, consents Yes), a Rescuer login linked to it with an unusable password, and a 7-day set-password link, then emails the link. Answers { ok, rescuerId, userId, email: { status, error? } } - the approval stands even if the email failed (use resend-link). Safe to repeat after a failure: already-made records are reused. 409 when it is not Pending or an account with the email exists. 409 when Users/Rescuers are still kept on Monday on this server."
+          },
+          "response": []
+        },
+        {
+          "name": "Reject rescuer application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuer-applications/1/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuer-applications",
+                "1",
+                "reject"
+              ]
+            },
+            "description": "Admin only. Body { reason } (required, up to 1000 characters) - included in the rejection email. 409 when it is not Pending.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"We are not taking new rescuers in your area right now.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add rescuer (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/rescuers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "rescuers"
+              ]
+            },
+            "description": "Admin only. Creates a rescuer directly (no application): Rescuers record, login, 7-day set-password link emailed. No agreement answers are recorded. Body { firstName, lastName, email, phone: { country, number }, whatsapp, country, city, contactMethod, notes }; first name, last name and email required. 409 for an existing account email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"Rescuer\",\n  \"email\": \"test@example.com\",\n  \"phone\": {\n    \"country\": \"GB\",\n    \"number\": \"7700900123\"\n  },\n  \"country\": \"United Kingdom\",\n  \"city\": \"Leeds\",\n  \"contactMethod\": \"Email\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Resend rescuer sign-in link",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/rescuers/1/resend-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "rescuers",
+                "1",
+                "resend-link"
+              ]
+            },
+            "description": "Admin only. A fresh 7-day set-password link for an Active rescuer (replaces any earlier link). 404 when the user is not a Rescuer."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Rescuer portal",
+      "item": [
+        {
+          "name": "Portal options",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuer-portal/options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuer-portal",
+                "options"
+              ]
+            },
+            "description": "Rescuer role only (sign in with the rescuer sign-in: Login body { email, password, portal: \"rescuer\" }). { breed: [...], colour: [...] }. 403 for any other role."
+          },
+          "response": []
+        },
+        {
+          "name": "My cats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuer-portal/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuer-portal",
+                "cats"
+              ]
+            },
+            "description": "Rescuer only. The signed-in rescuer's own cats, newest first: { id, name, status, addedAt, photoCount, videoCount, documentCount, canAddFiles }. The rescuer comes from the login (Users > Linked Rescuer), never from the request. 403 when the rescuer record is not Active."
+          },
+          "response": []
+        },
+        {
+          "name": "Add cat (rescuer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuer-portal/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuer-portal",
+                "cats"
+              ]
+            },
+            "description": "Rescuer only. Creates a cat: status Intake, linked to the signed-in rescuer, FeLV/FIV Not Tested Yet. Only the allowed fields are read (gender, age, breed, colour, personality, energy, lap/child/cat/dog friendly, indoor only, vaccinated, sterilized, felv/fiv, medication, medical summary, special notes, microchip, foster contact/location); anything else (status, rescuerId, adoptionReady ...) is ignored. A breed or colour not on the list is saved in Special Notes. 400 for invalid values, 429 after 20 cats in 24 hours.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test cat\",\n  \"gender\": \"Female\",\n  \"age\": 2,\n  \"breed\": \"stray\",\n  \"colour\": \"black\",\n  \"personalitySummary\": \"Friendly\",\n  \"medicalSummary\": \"Healthy\",\n  \"vaccinated\": \"Yes\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Upload cat file (rescuer)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/rescuer-portal/cats/1/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "rescuer-portal",
+                "cats",
+                "1",
+                "files"
+              ]
+            },
+            "description": "Rescuer only, multipart: kind = photos | videos | medicalDocuments, file. Only your own cat, only while its status is Intake (409 after), within the caps (photos 5 x 10 MB, video 1 x 20 MB, medical documents 3 x 10 MB) and allowed types (src/constants/rescuerPortal.js). 404 for someone else's cat.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "kind",
+                  "value": "photos",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Public forms",
+      "item": [
+        {
+          "name": "Submit public form (public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/forms/reference-check",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "forms",
+                "reference-check"
+              ]
+            },
+            "description": "No sign-in. The app copy of a Jotform form: :formKey is pre-adoption, adoption-form, uae-adoption-form or reference-check (docs/public-forms.md). Body { answers, applicationId?, website }: answers keyed by question key per src/constants/forms/publicForms.js; a file question carries the tokens from Upload public form file; applicationId only for the two adoption forms (from the Send Adoption Form link); website is the bot trap and must be empty. The answers are checked, converted to a Jotform submission and applied to the application by the same handler as the Jotform webhook, in the background. { ok: true } once saved, also when no application matches (the Admins are told). 400 with { fields }, 404 for an unknown form, 429 after 10 submissions per address per hour, 503 without the database.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {\n    \"candidateName\": {\n      \"first\": \"Test\",\n      \"last\": \"Applicant\"\n    },\n    \"refereeName\": {\n      \"first\": \"Test\",\n      \"last\": \"Referee\"\n    },\n    \"refereePhone\": {\n      \"country\": \"GB\",\n      \"number\": \"7700900123\"\n    },\n    \"refereeEmail\": \"referee@example.com\",\n    \"howLongKnown\": \"5 years, friend\",\n    \"responsible\": \"Yes, very\",\n    \"financiallyEquipped\": \"Yes\",\n    \"interactionWithAnimals\": \"Kind with animals\",\n    \"healthIssues\": \"None\",\n    \"homeAndRoutine\": \"Works from home\",\n    \"opinion\": \"Excellent\",\n    \"notRightTime\": \"No\",\n    \"criminalHistory\": \"No\",\n    \"contactConsent\": \"Yes\",\n    \"signature\": \"Test Referee\",\n    \"signedOn\": \"2026-11-11\"\n  },\n  \"website\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Upload public form file (public)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/form-uploads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "form-uploads"
+              ]
+            },
+            "description": "No sign-in. multipart/form-data, one file in the field file (at most 10 MB; pdf, doc, docx, xls, xlsx, csv, txt, rtf, zip, mp3, wma, mpg, flv, avi, jpg, jpeg, png, gif). Answers { token, name }; the token (ibkt-upload:<id>) goes into the file question of the form answers. An unused file is deleted after 48 hours. 400 for a refused file, 429 after 60 uploads per address per hour.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Screening extra calls",
+      "item": [
+        {
+          "name": "Add extra call",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id/screening/calls",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                ":id",
+                "screening",
+                "calls"
+              ]
+            },
+            "description": "Adds the next extra call (Call 3, then 4, ...) to the application. Admins and the application Case Owner. Answers { call: { call, date, summary, createdBy, createdAt, files, texts } }. 400 at 20 extra calls, 409 when two people add at once, 503 without the database. docs/screening-extra-calls.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update extra call",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id/screening/calls/3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                ":id",
+                "screening",
+                "calls",
+                "3"
+              ]
+            },
+            "description": "Changes the date (YYYY-MM-DD, or empty to clear) and/or the summary of an extra call. Calls 1 and 2 are changed as the application own fields. 400 for a bad date or no change, 404 when the call is not on the application.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-11-11\",\n  \"summary\": \"Summary of the call\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete extra call",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id/screening/calls/3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                ":id",
+                "screening",
+                "calls",
+                "3"
+              ]
+            },
+            "description": "Deletes an extra call with its transcript files (removed from Monday first) and pasted transcripts. Calls 1 and 2 cannot be deleted."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Adoption Ready gate",
+      "item": [
+        {
+          "name": "Cat readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/readiness",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "readiness"
+              ]
+            },
+            "description": "What the cat still needs before it can be set to Adoption Ready, from its real values. Answers { ready, problems: [{ key, group, label, detail? }] }, 404 for an unknown cat. docs/adoption-ready-gate.md."
+          }
+        },
+        {
+          "name": "Set a cat to Adoption Ready (override)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id"
+              ]
+            },
+            "description": "Setting status to Adoption Ready when the cat is not ready answers 409 { error, code: NOT_READY, problems, canOverride }. An Admin or Super Admin can add overrideReason (at most 500 characters) to set it anyway; the reason and what was missing are logged in the Activity Log. A cat that is already Adoption Ready, Reserved or Adopted is not checked.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Adoption Ready\",\n  \"overrideReason\": \"Photos are coming from the foster tomorrow.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cat update check",
+      "item": [
+        {
+          "name": "Cat update clock",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/update-clock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "update-clock"
+              ]
+            },
+            "description": "The update check of a cat waiting for a home: { applies, flag, afterMonths, overdueAfterDays, readySince, dueAt, requestedAt, overdueAt, lastReceived: { at, note, by } | null }. applies is false unless the cat is Adoption Ready. 404 for an unknown cat. docs/cat-update-check.md."
+          }
+        },
+        {
+          "name": "Update received",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/update-received",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "update-received"
+              ]
+            },
+            "description": "News about the cat arrived: restarts the 3 month clock, closes any open request and sets the Update Requested flag to Received. Optional note, at most 500 characters. 400 for a cat that is not Adoption Ready or a note that is too long, 404 for an unknown cat. Answers the new state, as the update clock.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"The foster says the cat is well.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Post-adoption reminders",
+      "item": [
+        {
+          "name": "Chased again",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id/post-adoption/:recordId/chase",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                ":id",
+                "post-adoption",
+                ":recordId",
+                "chase"
+              ]
+            },
+            "description": "Records that the adopter was chased again about a check-in that is Sent and unanswered: one more attempt (attempt 2, then 3), today as the last check-in sent, and the chase count goes up. checkIn is the check-in key: 24h, 72h, week1, week2, week3, week4, month3, month6 or year1. 400 when the check-in is not Sent, is unknown, or already had 3 attempts. Answers { record, chase } (chase: the attempts by check-in). docs/post-adoption-reminders.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkIn\": \"24h\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Testimonial step",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id/post-adoption/:recordId/testimonial",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                ":id",
+                "post-adoption",
+                ":recordId",
+                "testimonial"
+              ]
+            },
+            "description": "One step of the testimonial request. action is request (Requested, attempt 1), chase (one more attempt, at most 3), receive (needs text, optional mayPublish true or false), decline, update (text and/or mayPublish of a Received one) or reset (removes it). 400 for a step the current status does not allow. Answers { testimonial } (null after reset). GET /api/applications/:id/post-adoption also answers testimonial. docs/testimonial-requests.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"receive\",\n  \"text\": \"We love our cat.\",\n  \"mayPublish\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Travel tab",
+      "item": [
+        {
+          "name": "Get travel record",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id/travel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                ":id",
+                "travel"
+              ]
+            },
+            "description": "The application travel record, or { record: null } when none was started. Admins and the application Case Owner only. docs/travel-tab.md."
+          }
+        },
+        {
+          "name": "Start travel",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id/travel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                ":id",
+                "travel"
+              ]
+            },
+            "description": "Creates the travel record (status Planning), linked to the application and its cat. travelDate is optional (YYYY-MM-DD). 409 when the application already has one. Answers { record }. docs/travel-tab.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"travelDate\": \"2026-12-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Change travel record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/applications/:id/travel/:recordId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "applications",
+                ":id",
+                "travel",
+                ":recordId"
+              ]
+            },
+            "description": "Changes writable fields: status, travelDate, arrivalDate, crateSize, crateWeight, weightUnit (kg or lb), flightNumber, departureAirport, arrivalAirport, travelNotes. A weight with no unit gets kg; an empty weight clears the unit. 400 for a weight of 0 or less, an unknown label, or an arrival date before the travel date. Answers { record }. docs/travel-tab.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"crateWeight\": 4.5,\n  \"weightUnit\": \"kg\",\n  \"crateSize\": \"Medium\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get travel record of a cat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/travel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "travel"
+              ]
+            },
+            "description": "The Travel tab of the cat page: the travel record of the application the cat is matched to. Answers { record, application: { id, name } }. Both are null for a cat with no application, and record is null when the application has none (it is started on the application). 403 for a user who is not an Admin or that application's Case Owner. docs/travel-tab.md."
+          }
+        },
+        {
+          "name": "Change travel record from a cat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/travel/:recordId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "travel",
+                ":recordId"
+              ]
+            },
+            "description": "Changes the same record from the cat page, with the same fields, rules and access as the application route. 404 when the cat has no application or the record is not on its application. Answers { record }. docs/travel-tab.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"flightNumber\": \"TK 1234\",\n  \"crateWeight\": 4.5,\n  \"weightUnit\": \"kg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cat Passport",
+      "item": [
+        {
+          "name": "Set passport dates",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id"
+              ]
+            },
+            "description": "The Cat Passport fields of a cat, saved with the normal cat update. Dates are YYYY-MM-DD, or null to clear (an empty string is refused): dateOfBirth, microchipImplantDate, firstTricat, boosterTricat, rabiesVaccination, lastDewormed. passportComplete is true or false and is required by the Adoption Ready check. Any staff role may set them; the microchip number stays Admin only. Answers the cat. docs/cat-passport.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dateOfBirth\": \"2025-06-15\",\n  \"microchipImplantDate\": \"2025-08-01\",\n  \"firstTricat\": \"2025-08-20\",\n  \"boosterTricat\": \"2025-09-10\",\n  \"rabiesVaccination\": \"2025-12-05\",\n  \"lastDewormed\": \"2026-01-30\",\n  \"passportComplete\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Foster onboarding",
+      "item": [
+        {
+          "name": "Public foster application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/foster-applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "foster-applications"
+              ]
+            },
+            "description": "No sign-in. The answers of the Foster Compliance form (src/constants/forms/fosterApplicationForm.js). Leave website empty (a bot trap). Always answers { ok: true } when the answers are valid, including for an email that already has an application. 400 with a fields object for invalid answers, 429 after 5 applications from one address in an hour. docs/foster-onboarding.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {\n    \"firstName\": \"Jane\",\n    \"lastName\": \"Doe\",\n    \"email\": \"jane@example.com\",\n    \"phone\": {\n      \"country\": \"GB\",\n      \"number\": \"7700900123\"\n    },\n    \"f1\": \"Yes\"\n  },\n  \"website\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List foster applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-applications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-applications"
+              ]
+            },
+            "description": "Admins. Optional ?status=Pending|Approved|Rejected. Newest first."
+          }
+        },
+        {
+          "name": "Get a foster application",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-applications/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-applications",
+                ":id"
+              ]
+            },
+            "description": "Admins. The application with all its answers."
+          }
+        },
+        {
+          "name": "Approve a foster application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-applications/:id/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-applications",
+                ":id",
+                "approve"
+              ]
+            },
+            "description": "Admins. Creates the Fosters record and the login (role Foster), saves the agreement as Signed, emails a set-password link valid 7 days. Safe to repeat after a failure. 409 when not Pending or when fosters are not in DATABASE_BOARDS. Answers { ok, fosterId, userId, email: { status } }.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reject a foster application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-applications/:id/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-applications",
+                ":id",
+                "reject"
+              ]
+            },
+            "description": "Admins. The reason (up to 1000 characters) is emailed to the applicant.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"We have no cats to place in your area.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Add Foster",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/fosters",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "fosters"
+              ]
+            },
+            "description": "Admins. Creates a foster directly with no application: the Fosters record, the login and the set-password email. No agreement is recorded. 409 when the email has an account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"email\": \"jane@example.com\",\n  \"city\": \"London\",\n  \"country\": \"United Kingdom\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Resend foster sign-in link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/fosters/:userId/resend-link",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "fosters",
+                ":userId",
+                "resend-link"
+              ]
+            },
+            "description": "Admins. A fresh 7 day set-password link for an Active foster.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Foster options for a cat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/foster-options",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                "foster-options"
+              ]
+            },
+            "description": "Staff. The Active fosters a cat can be given to: [{ id, name, city }], by name. Needs fosters in DATABASE_BOARDS."
+          }
+        },
+        {
+          "name": "Give a cat to a foster",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id"
+              ]
+            },
+            "description": "Staff. Sets the cat's foster with linkedFosterId (an Active foster's id), or null to clear it. 400 for an unknown or Inactive foster. The cat answers linkedFoster (the name) and linkedFosterId. docs/foster-onboarding.md.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"linkedFosterId\": \"1234567890\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Foster portal: my cats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-portal/cats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-portal",
+                "cats"
+              ]
+            },
+            "description": "A signed-in Foster only (sign in with portal: foster). The cats assigned to them with the newest profile state: { profile: { id, status, submittedAt, rejectReason } | null }."
+          }
+        },
+        {
+          "name": "Foster portal: one cat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-portal/cats/:id",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-portal",
+                "cats",
+                ":id"
+              ]
+            },
+            "description": "A Foster's own cat: { cat, files, counts, profile }. 404 for a cat that is not assigned to them."
+          }
+        },
+        {
+          "name": "Foster portal: send a file",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-portal/cats/:id/files",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-portal",
+                "cats",
+                ":id",
+                "files"
+              ]
+            },
+            "description": "Multipart: kind (photos, videos, passport or vetReport) and file. Goes to the cat's Foster Uploads (pending) column on Monday. Limits: 10 photos of 10 MB, 5 videos of 20 MB, 1 passport, 3 vet reports, 25 files. 409 while a profile is waiting for review."
+          }
+        },
+        {
+          "name": "Foster portal: remove a file",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-portal/cats/:id/files/:assetId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-portal",
+                "cats",
+                ":id",
+                "files",
+                ":assetId"
+              ]
+            },
+            "description": "Removes one of the foster's own pending files. 409 while a profile is waiting for review."
+          }
+        },
+        {
+          "name": "Foster portal: send the Kitty Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/foster-portal/cats/:id/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "foster-portal",
+                "cats",
+                ":id",
+                "profile"
+              ]
+            },
+            "description": "Sends the profile for review: { answers } of the Kitty Profile form (src/constants/forms/fosterProfileForm.js). Needs at least 6 photos and 3 videos sent first. 400 with fields or the missing files, 409 when a profile is already waiting. Staff get a bell notification.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": {\n    \"howLong\": \"Three months\",\n    \"household\": \"Quiet\",\n    \"otherAnimals\": \"No\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Foster profiles of a cat",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/foster-profiles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "foster-profiles"
+              ]
+            },
+            "description": "Staff. Every Kitty Profile a foster sent for the cat, newest first, with the answers and the files (a waiting profile's files have links)."
+          }
+        },
+        {
+          "name": "Foster profile proposal",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/foster-profiles/:profileId/proposal",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "foster-profiles",
+                ":profileId",
+                "proposal"
+              ]
+            },
+            "description": "Staff. What Apply would change: [{ key, label, kind, options, current, proposed, defaultApply, tooLong }]. 409 unless the profile is Pending."
+          }
+        },
+        {
+          "name": "Apply a foster profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/foster-profiles/:profileId/apply",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "foster-profiles",
+                ":profileId",
+                "apply"
+              ]
+            },
+            "description": "Staff. Changes only the chosen cat fields (personalitySummary, specialNotes, medicalSummary, childFriendly, catFriendly, dogFriendly, lapCat, energyLevel, indoorOnly, vaccinated, sterilized, felvStatus, fivStatus, medicationRequired) and, with files true, copies the foster's files into the cat's Photos, Videos, Passport File and Medical Documents columns. A text over 2000 characters is refused (Monday keeps no more). Answers { ok, applied, files }.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fields\": {\n    \"childFriendly\": \"Yes\",\n    \"personalitySummary\": \"A calm, affectionate cat.\"\n  },\n  \"files\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Send a foster profile back",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cats/:id/foster-profiles/:profileId/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cats",
+                ":id",
+                "foster-profiles",
+                ":profileId",
+                "reject"
+              ]
+            },
+            "description": "Staff. The reason (required, up to 1000 characters) is shown to the foster, who can change the profile and the files and send it again.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Please add clearer photos of the face.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   ]
 }

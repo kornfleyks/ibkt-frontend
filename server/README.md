@@ -593,6 +593,121 @@ to the setting. `GET /api/admin/monday-api-version` (Admin only) returns the
 status. To update: read Monday's release notes for the new version, test, then
 change the setting.
 
+## Post-adoption reminders (`postAdoption/reminders.js`, `chaseStore.js`)
+
+Design: `docs/post-adoption-reminders.md`. A daily check (3 minutes after the server starts, then every 24 hours, `startPostAdoptionReminders` in `index.js`) reminds the record's owner when a check-in is due and when to chase again every 3 days, and stops chasing after 3 unanswered attempts (check-in No Response, Stop chasing on, Escalation Required Yes). Staff still contact the adopter themselves. State is in the app-only table `post_adoption_chase`.
+
+- `POST /api/applications/:id/post-adoption/:recordId/chase` - `{ checkIn: "24h" | "72h" | "week1" ... }`: one more attempt on a Sent check-in; refused after 3 attempts. Answers `{ record, chase }`.
+- `GET /api/applications/:id/post-adoption` and `POST .../:recordId` also answer `chase`: `{ [checkInKey]: { attempts, lastSentOn, reminders, lastRemindedOn, escalatedAt } }`.
+
+## Testimonial requests (`postAdoption/testimonial*.js`)
+
+Design: `docs/testimonial-requests.md`. Staff record that a testimonial was requested from the adopter, chase it and keep the text. The states are Not requested, Requested, Received, Declined and No response; the rules are in `testimonialRules.js`. The daily post-adoption check also reminds the owner every 3 days (3 requests at most, then No response, `testimonialReminders.js`). State is in the app-only table `post_adoption_testimonial`.
+
+- `POST /api/applications/:id/post-adoption/:recordId/testimonial` - `{ action: "request" | "chase" | "receive" | "decline" | "update" | "reset", text?, mayPublish? }` -> `{ testimonial }` (null after a reset).
+- `GET /api/applications/:id/post-adoption` also answers `testimonial`.
+
+## Travel tab (`travel/`)
+
+Design: `docs/travel-tab.md`. An application's travel record (the Travel tab on the application page), in database or Monday mode like post-adoption (`store.js` picks by `DATABASE_BOARDS`). Admins and the application's Case Owner only. The rules in `rules.js`: the crate weight is above 0 and kept with a unit (kg or lb, kg when none is given, cleared with the weight), and the arrival date is not before the travel date.
+
+- `GET /api/applications/:id/travel` - `{ record | null }`.
+- `POST /api/applications/:id/travel` - start: `{ travelDate? }` -> `{ record }` (status Planning, linked to the application and its cat); 409 when one exists.
+- `POST /api/applications/:id/travel/:recordId` - changes to status, travelDate, arrivalDate, crateSize, crateWeight, weightUnit, flightNumber, departureAirport, arrivalAirport, travelNotes -> `{ record }`.
+- `GET /api/cats/:id/travel` - the Travel tab of the cat page: `{ record | null, application: { id, name } | null }`, the record of the application the cat is matched to, with the same access rule (403 otherwise). `POST /api/cats/:id/travel/:recordId` changes it with the same rules.
+
+## Foster onboarding (`fosterOnboarding/`, docs/foster-onboarding.md)
+
+Phase 2 (2026-11-17), the same flow as the rescuer onboarding. Needs `fosters` in `DATABASE_BOARDS`.
+
+- `POST /api/public/foster-applications` - public, `{ answers, website }`: the copy of the Foster Compliance form; bot trap, 5 per address per hour, always answers `{ ok }`.
+- `GET /api/foster-applications[?status=]`, `GET /api/foster-applications/:id`, `POST /api/foster-applications/:id/approve`, `POST /api/foster-applications/:id/reject` `{ reason }` - Admins.
+- `POST /api/admin/fosters` (Add Foster) and `POST /api/admin/fosters/:userId/resend-link` - Admins.
+- Foster is a portal-only role: `POST /api/login` takes `portal: "rescuer" | "foster"` and each portal's page lets only its own role in; a foster is refused on staff routes with 403 `PORTAL_ONLY`.
+
+## Foster profile review (`fosterPortal/review.js`, `mapping.js`, docs/foster-onboarding.md)
+
+Phase 5 (2026-11-17). For staff (any role that can open the cat). Needs `fosters` in `DATABASE_BOARDS`.
+
+- `GET /api/cats/:id/foster-profiles` - every profile sent for the cat, newest first, with the answers and the files (a waiting profile's files have links).
+- `GET /api/cats/:id/foster-profiles/:profileId/proposal` - what Apply would change, `[{ key, label, kind, options?, current, proposed, defaultApply, tooLong }]`; 409 unless Pending.
+- `POST /api/cats/:id/foster-profiles/:profileId/apply` - `{ fields: { key: value }, files: true | false }`: changes only the chosen cat fields (a text must fit 2000 characters, a select must be one of its options), copies the files into the cat's own columns and clears the pending column. Safe to repeat after a failure. Answers `{ ok, applied, files }`.
+- `POST /api/cats/:id/foster-profiles/:profileId/reject` - `{ reason }`: the foster sees it and can send the profile again; their files stay.
+
+## Foster portal (`fosterPortal/`, docs/foster-onboarding.md)
+
+Phase 4 (2026-11-17). For a signed-in Foster only (the foster is found from their login; a cat that is not assigned to them answers 404). Needs `fosters` in `DATABASE_BOARDS`.
+
+- `GET /api/foster-portal/cats` - their cats with the newest profile state. `GET /api/foster-portal/cats/:id` - one cat, the files sent so far and the newest profile.
+- `POST /api/foster-portal/cats/:id/files` - multipart `{ kind: photos | videos | passport | vetReport, file }` to the cat's Foster Uploads (pending) column on Monday. `DELETE /api/foster-portal/cats/:id/files/:assetId`. Both are refused (409) while a profile is waiting for review.
+- `POST /api/foster-portal/cats/:id/profile` - `{ answers }`: sends the Kitty Profile. 400 with `fields` for invalid answers or with the missing files named (at least 6 photos and 3 videos), 409 when one is already waiting. Saved in `foster_cat_profiles` as Pending; staff are notified.
+
+## Foster of a cat (`cats.js`, docs/foster-onboarding.md)
+
+Phase 3 (2026-11-17). `POST /api/cats/:id` also accepts `linkedFosterId` (an Active foster's id, or null to clear; 400 for an unknown or Inactive foster), and the cat answers `linkedFoster` (the name) and `linkedFosterId`. `GET /api/cats/foster-options` answers `[{ id, name, city }]`, the Active fosters by name. Both need `fosters` in `DATABASE_BOARDS`.
+
+## Fosters board (docs/foster-onboarding.md)
+
+Foster onboarding and the Foster portal are being built in phases. Phase 1 (2026-11-17) created the Fosters board on Monday and the Linked Foster columns on the Cats and Users boards (`scripts/createFostersBoard.js`), added the board to the database mirror (`database/mondaySchema.js`) and created the app table `foster_applications`. Add `fosters` to `DATABASE_BOARDS` to use it. Every app table must be listed in `scripts/databaseSchema.js`, which enables row-level security on each one.
+
+## Cat Passport (`cats.js`)
+
+Design: `docs/cat-passport.md`. The passport values of a cat are cat fields, edited in the Passport section of the Medical tab. `POST /api/cats/:id` now also accepts the dates `dateOfBirth`, `microchipImplantDate`, `firstTricat`, `boosterTricat`, `rabiesVaccination` and `lastDewormed` (YYYY-MM-DD, or null to clear) and the checkbox `passportComplete` (true or false), which the Adoption Ready check requires. Any staff role may set them. There is no public form: the Jotform Cat Passport form still exists and is only logged.
+
+## Cat update check (`catUpdates/`)
+
+Design: `docs/cat-update-check.md`. A cat Adoption Ready for 3 months gets its Update Requested flag set and the Admins and Volunteers are notified; someone records the news and the clock restarts. State is in the app-only table `cat_update_clock`. A daily check starts 2 minutes after the server starts (`startCatUpdateChecks` in `index.js`), and `changeCat` starts or ends a cat's clock when its status changes.
+
+- `GET /api/cats/:id/update-clock` - `{ applies, flag, afterMonths, overdueAfterDays, readySince, dueAt, requestedAt, overdueAt, lastReceived }`; `applies` is false unless the cat is Adoption Ready.
+- `POST /api/cats/:id/update-received` - `{ note? }` (at most 500 characters): restarts the clock, closes the request, sets the flag to Received. 400 for a cat that is not Adoption Ready.
+- `POST /api/cats/:id` refuses `updateRequested`: only the check and Update received set it.
+
+## Adoption Ready gate (`adoptionReadyGate.js`, `cats.js`)
+
+Design: `docs/adoption-ready-gate.md`. A cat can be set to Adoption Ready only when `src/constants/catReadiness.js` finds nothing missing (profile, medical, passport, at least 6 photos and 3 videos).
+
+- `GET /api/cats/:id/readiness` - `{ ready, problems: [{ key, group, label, detail? }] }`, from the cat's real values.
+- `POST /api/cats/:id` with `{ status: "Adoption Ready" }` answers 409 `{ error, code: "NOT_READY", problems, canOverride }` when something is missing. An Admin can send `overrideReason` to set it anyway; the reason and what was missing go in the Activity Log. A cat already Adoption Ready, Reserved or Adopted is not checked, and neither are changes the server makes itself (Matching).
+
+## Screening extra calls (`screening/`)
+
+Design: `docs/screening-extra-calls.md`. An application's Screening tab has Call 1 and Call 2 on their own Monday columns, and any number (up to 20) of extra calls from Call 3 on. An extra call's date and summary are in the app-only table `application_calls`, its pasted transcripts in `call_transcripts`, and its transcript files in the Monday file column Additional Call Transcripts (each file's call is its `file_uploads.document_type`, `call-3`). Admins and the application's Case Owner only.
+
+- `POST /api/applications/:id/screening/calls` - adds the next extra call.
+- `POST /api/applications/:id/screening/calls/:call` - `{ date?, summary? }`, for an extra call.
+- `DELETE /api/applications/:id/screening/calls/:call` - deletes an extra call with its files and pasted transcripts.
+- `GET /api/applications/:id/screening` also answers `extraCalls`. The file and text routes under `/calls/:call` accept any existing call.
+- `POST /api/applications/:id/ai/reviews` accepts `{ kind: "call_<n>_review" }` for an extra call; accepting it saves the AI's `callSummary` to that call.
+
+## Public forms (`publicForms/`)
+
+Design: `docs/public-forms.md`. The app's own copies of four Jotform forms (Pre-Adoption, Adoption Form and References, UAE Adoption Form & Agreement, Reference Check), open to anyone with the link. A submission is checked against the same form definition the page draws (`src/constants/forms/publicForms.js`), converted to the answer shape of a Jotform submission (`toJotformAnswers.js`), stored in `jotform_submissions` (id `app-<uuid>`, `received_via` `app`) and applied by the form's existing handler in `jotform/`, so the application ends up the same as with Jotform.
+
+- `POST /api/public/forms/:formKey` - `{ answers, applicationId?, website }`; no sign-in; bot trap field, 10 per address per hour (kept in memory, so it starts again at a restart). Answers `{ ok: true }` once the submission is saved; the handler then runs in the background, and anything it did not finish is handled again at the next server start (`processWaitingSubmissions`). No matching application still answers ok: the Admins get an unmatched notification.
+- `POST /api/public/form-uploads` - one file (multipart field `file`), at most 10 MB, Jotform's type list without `html`; 60 per address per hour. Files wait in the server's temporary folder (`uploadStore.js`) under an `ibkt-upload:<uuid>` token, are copied into the application's file column by `jotform/uploads.js` and then deleted; an unused file is deleted after 48 hours.
+
+## Rescuer onboarding (`rescuerOnboarding/`, `mail/rescuerEmails.js`)
+
+Design: `docs/rescuer-onboarding.md`. A public form saves an application (table `rescuer_applications`, app-only); an Admin approves or rejects it on the Rescuers page.
+
+- `POST /api/public/rescuer-applications` - no sign-in; bot trap field, 5 per address per hour, same answer for every valid form.
+- `GET /api/rescuer-applications[?status=]`, `GET /api/rescuer-applications/:id` - Admin.
+- `POST /api/rescuer-applications/:id/approve` - makes the Rescuers record (Active, consents Yes), a Rescuer login linked to it with an unusable password, and a 7-day set-password link, then emails it. Repeating after a failure reuses what was made (`rescuer_id` / `user_id` on the application); a `processing_at` claim stops two clicks both approving.
+- `POST /api/rescuer-applications/:id/reject` - `{ reason }`, included in the email.
+- `POST /api/admin/rescuers` - "Add Rescuer", same creation without an application (no consents recorded).
+- `POST /api/admin/rescuers/:userId/resend-link` - a fresh 7-day link.
+
+The set-password link reuses the password reset storage (`passwordReset/tokens.js`, longer expiry) and `POST /api/password-reset/confirm`. Emails go through Mailgun (`mail/`) and need `APP_BASE_URL` (the app's public address including any sub-path, no trailing slash); without it the email step fails with that message and the rest still works. A Rescuer cannot be created through the Users page's Add User (`CREATABLE_ROLES`).
+
+## Rescuer portal (`rescuerPortal/`)
+
+What a signed-in Rescuer may do. Rescuers are refused on every other route (`requireAuth` denies portal-only roles, `server/auth.js`); these use `requireAnyAuth` and check the role themselves. Who the rescuer is comes from their login (Users > Linked Rescuer, which must point at an Active Rescuers record), never from the request.
+
+- `GET /api/rescuer-portal/options` - breed and colour lists.
+- `GET /api/rescuer-portal/cats` - their own cats (name, status, date, file counts; read-only).
+- `POST /api/rescuer-portal/cats` - add a cat: only the allowed fields are read, status Intake, linked to them (`createCatFromInput` in `cats.js`, shared with staff Add Cat). A breed/colour off the lists goes in Special Notes. 20 cats per rescuer per 24 hours.
+- `POST /api/rescuer-portal/cats/:id/files` - `kind` = photos | videos | medicalDocuments plus `file`; their own cat, only while it is Intake, within the caps in `src/constants/rescuerPortal.js` (shared with the Add Cat page).
+
 ## Setup
 
 ```

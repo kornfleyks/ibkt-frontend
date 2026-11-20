@@ -27,6 +27,16 @@ export async function findByApplication(applicationId) {
   return records[0] ?? null;
 }
 
+// Every record whose status is one of `statuses` (the daily reminder check).
+export async function listOpenRecords(statuses) {
+  const { field } = await boardFields(TABLE);
+
+  return readRecords(TABLE, POST_ADOPTION_FIELDS, {
+    where: `${ident(field(POST_ADOPTION_FIELDS.status.column))} = any($1::text[])`,
+    params: [statuses],
+  });
+}
+
 export async function createPostAdoption({ name, values, applicationId, catId }) {
   const record = await createRecord(TABLE, ALL_FIELDS, {
     name,

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import useAuth from "../hooks/useAuth";
+import { isPortalOnlyRole } from "../constants/roles";
 import {
   getNotifications,
   markNotificationRead,
@@ -21,7 +22,8 @@ const EMPTY = { notifications: [], unreadCount: 0 };
 // empty list instead of briefly showing the previous user's.
 function NotificationsProvider({ children }) {
   const { user } = useAuth();
-  const userId = user?.id ?? null;
+  // The rescuer portal has no notifications (and the server refuses them).
+  const userId = user && !isPortalOnlyRole(user.role) ? user.id : null;
 
   return (
     <NotificationsStore key={userId ?? "signed-out"} userId={userId}>

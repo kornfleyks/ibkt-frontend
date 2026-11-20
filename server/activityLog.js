@@ -1,6 +1,7 @@
 import { CATS } from "../src/constants/boards/cats.js";
 import { USERS } from "../src/constants/boards/users.js";
 import { RESCUERS } from "../src/constants/boards/rescuers.js";
+import { FOSTERS } from "../src/constants/boards/fosters.js";
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
 import { TRAVEL } from "../src/constants/boards/travel.js";
 import { POST_ADOPTION } from "../src/constants/boards/postAdoption.js";
@@ -14,6 +15,7 @@ import { getActivityLogPageSize } from "./appSettings.js";
 import { mapActivityLogEntry } from "../src/services/mappers/ActivityLogMapper.js";
 import { isDatabaseBoard, isCopyTrusted } from "./database/switches.js";
 import * as stored from "./database/activityStore.js";
+import { redactActivity } from "./sensitiveFields.js";
 
 const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
@@ -27,6 +29,7 @@ const BOARD_REGISTRY = {
   [CATS.BOARD_ID]: { name: "Cats", columns: CATS.COLUMNS },
   [USERS.BOARD_ID]: { name: "Users", columns: USERS.COLUMNS },
   [RESCUERS.BOARD_ID]: { name: "Rescuers", columns: RESCUERS.COLUMNS },
+  [FOSTERS.BOARD_ID]: { name: "Fosters", columns: FOSTERS.COLUMNS },
   [ACTIVE_APPLICATIONS.BOARD_ID]: { name: "Active Applications", columns: ACTIVE_APPLICATIONS.COLUMNS },
   [TRAVEL.BOARD_ID]: { name: "Travel", columns: TRAVEL.COLUMNS },
   [POST_ADOPTION.BOARD_ID]: { name: "Post-Adoption", columns: POST_ADOPTION.COLUMNS },
@@ -417,7 +420,9 @@ export function registerActivityRoutes(app, { requireAuth }) {
     }
 
     try {
-      res.json(await listActivity({ boardId, itemId }));
+      // A sensitive field's old and new value (a cat's microchip number) are
+      // hidden from roles that may not see it (sensitiveFields.js).
+      res.json(redactActivity(await listActivity({ boardId, itemId }), req.user.role));
     } catch (err) {
       if (err.rateLimited) {
         return res.status(429).json({ error: err.message, retryAfterSeconds: err.retryAfterSeconds });

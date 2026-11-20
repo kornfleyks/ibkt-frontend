@@ -1,4 +1,4 @@
-import { readAuth, clearAuth, updateStoredRole, setSignOutReason, inactiveAccountReason, PASSWORD_CHANGED_REASON } from './authStorage';
+import { readAuth, clearAuth, updateStoredRole, setSignOutReason, inactiveAccountReason, PASSWORD_CHANGED_REASON, NOT_STAFF_REASON } from './authStorage';
 import { syncUsageFromResponse } from './mondayUsage';
 
 // All Monday requests go through our own server, which holds the API
@@ -35,6 +35,8 @@ async function handleUnauthorized(response) {
             setSignOutReason(inactiveAccountReason());
         } else if (body?.code === 'PASSWORD_CHANGED') {
             setSignOutReason(PASSWORD_CHANGED_REASON);
+        } else if (body?.code === 'NOT_STAFF') {
+            setSignOutReason(NOT_STAFF_REASON);
         }
     } catch {
         // Not JSON - a plain expired session, nothing to explain.
@@ -42,7 +44,9 @@ async function handleUnauthorized(response) {
 
     clearAuth();
 
-    const loginUrl = `${import.meta.env.BASE_URL}login`.replace(/\/+/g, '/');
+    // A rescuer is sent back to the rescuer sign-in page, not the staff one.
+    const inPortal = /\/rescuer(\/|$)/.test(window.location.pathname);
+    const loginUrl = `${import.meta.env.BASE_URL}${inPortal ? 'rescuer/login' : 'login'}`.replace(/\/+/g, '/');
 
     if (!window.location.pathname.endsWith('/login')) {
         window.location.href = loginUrl;

@@ -24,7 +24,11 @@ import { PHOTO_EXTENSIONS } from '../../../constants/forms/preAdoptionForm';
 // `error` its message. Photos are File objects kept by the dialog.
 // `readOnly` (Preview): every field is disabled (and read-only); the
 // Preview dialog keeps the disabled text readable.
-function PreAdoptionQuestion({ question, value, onChange = () => {}, error, disabled = false, readOnly = false }) {
+// `extensions` limits the file picker (default: the Jotform list). Types used
+// only by the public forms (constants/forms/publicForms.js): "date" (a
+// YYYY-MM-DD string), "agreement" (`value` is the array of paragraphs to
+// show, read-only) and a "fullName" with its own box labels (`labels`).
+function PreAdoptionQuestion({ question, value, onChange = () => {}, error, disabled = false, readOnly = false, extensions = PHOTO_EXTENSIONS }) {
     const { label, subLabel, options, required } = question;
     const helper = error || subLabel;
     const locked = disabled || readOnly;
@@ -33,6 +37,38 @@ function PreAdoptionQuestion({ question, value, onChange = () => {}, error, disa
     switch (question.type) {
         case 'note':
             return <Alert severity="info">{label}</Alert>;
+
+        case 'agreement':
+            return (
+                <Box>
+                    <Typography variant="h6" component="h2" sx={{ mb: 1 }}>
+                        {label}
+                    </Typography>
+                    <Stack spacing={1.5} sx={{ p: 2, border: 1, borderColor: 'divider', borderRadius: 1, maxHeight: 420, overflowY: 'auto' }}>
+                        {(Array.isArray(value) ? value : []).map((paragraph) => (
+                            <Typography key={paragraph} variant="body2">
+                                {paragraph}
+                            </Typography>
+                        ))}
+                    </Stack>
+                </Box>
+            );
+
+        case 'date':
+            return (
+                <TextField
+                    fullWidth
+                    type="date"
+                    required={required}
+                    label={label}
+                    value={value ?? ''}
+                    disabled={locked}
+                    error={Boolean(error)}
+                    helperText={helper}
+                    onChange={(event) => onChange(event.target.value)}
+                    slotProps={{ ...textSlot, inputLabel: { shrink: true } }}
+                />
+            );
 
         case 'select':
             return (
@@ -61,7 +97,8 @@ function PreAdoptionQuestion({ question, value, onChange = () => {}, error, disa
         case 'radio':
             return (
                 <FormControl required={required} error={Boolean(error)} disabled={locked}>
-                    <FormLabel>{label}</FormLabel>
+                    {/* pre-line keeps the line breaks of a statement with a list (the foster form). */}
+                    <FormLabel sx={{ whiteSpace: 'pre-line' }}>{label}</FormLabel>
                     <RadioGroup value={value ?? ''} onChange={(event) => onChange(event.target.value)}>
                         {options.map((option) => (
                             <FormControlLabel key={option} value={option} control={<Radio size="small" />} label={option} />
@@ -135,8 +172,8 @@ function PreAdoptionQuestion({ question, value, onChange = () => {}, error, disa
                 <FormControl required={required} error={Boolean(error)} disabled={locked} fullWidth>
                     <FormLabel sx={{ mb: 1.5 }}>{label}</FormLabel>
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                        <TextField fullWidth required={required} label="First Name" value={name.first} disabled={locked} slotProps={textSlot} error={Boolean(error) && !name.first?.trim()} onChange={(event) => onChange({ ...name, first: event.target.value })} />
-                        <TextField fullWidth required={required} label="Last Name" value={name.last} disabled={locked} slotProps={textSlot} error={Boolean(error) && !name.last?.trim()} onChange={(event) => onChange({ ...name, last: event.target.value })} />
+                        <TextField fullWidth required={required} label={question.labels?.first ?? 'First Name'} value={name.first} disabled={locked} slotProps={textSlot} error={Boolean(error) && !name.first?.trim()} onChange={(event) => onChange({ ...name, first: event.target.value })} />
+                        <TextField fullWidth required={required} label={question.labels?.last ?? 'Last Name'} value={name.last} disabled={locked} slotProps={textSlot} error={Boolean(error) && !name.last?.trim()} onChange={(event) => onChange({ ...name, last: event.target.value })} />
                     </Stack>
                     {error && <FormHelperText>{error}</FormHelperText>}
                 </FormControl>
@@ -223,7 +260,7 @@ function PreAdoptionQuestion({ question, value, onChange = () => {}, error, disa
                                 hidden
                                 multiple
                                 type="file"
-                                accept={PHOTO_EXTENSIONS.map((extension) => `.${extension}`).join(',')}
+                                accept={extensions.map((extension) => `.${extension}`).join(',')}
                                 onChange={(event) => {
                                     onChange([...files, ...Array.from(event.target.files ?? [])]);
                                     event.target.value = '';

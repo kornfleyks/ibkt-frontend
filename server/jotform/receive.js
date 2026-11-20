@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { getSubmission } from "./client.js";
 import { formKindOf } from "./forms.js";
 import { saveSubmission, claimSubmission, setSubmissionStatus, waitingSubmissions } from "./submissionsStore.js";
@@ -57,6 +58,23 @@ export async function receiveSubmission(submissionId, { via, expectedFormId = nu
   await processSubmission(saved, { quiet });
 
   return { status: "saved", submission: saved };
+}
+
+// A submission made in the app's own public forms (server/publicForms,
+// docs/public-forms.md): `answers` already in Jotform's shape. It is kept in
+// jotform_submissions like one fetched from Jotform (id "app-<uuid>", via
+// "app", the Jotform form id it copies) and then handled by the same
+// handler. Answers once it is saved; the handler runs in the background,
+// and a submission it did not finish stays "received" or "failed" and is
+// handled again by processWaitingSubmissions at the next server start.
+export async function saveAppSubmission({ formId, answers }) {
+  const now = new Date().toISOString().slice(0, 19).replace("T", " ");
+
+  return saveSubmission({
+    submission: { id: `app-${randomUUID()}`, form_id: formId, created_at: now, updated_at: now, answers },
+    formKind: formKindOf(formId),
+    via: "app",
+  });
 }
 
 // Runs the handler for a "received" submission, if its kind has one.

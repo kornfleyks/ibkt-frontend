@@ -11,13 +11,14 @@ export class HttpError extends Error {
 
 // Runs a route's work and answers with its result as JSON; errors map to
 // 400 (InputError), their own status (HttpError, StoreError), 429 (Monday's
-// rate limit), 502 (Monday refused) or 500.
+// rate limit), 502 (Monday refused) or 500. An InputError may carry `fields`
+// ({ key: message }, the problems of a form), which are sent with the message.
 export function answer(res, work, what = "request") {
   work
     .then((result) => res.json(result))
     .catch((err) => {
       if (err instanceof HttpError || err instanceof StoreError) return res.status(err.status).json({ error: err.message });
-      if (err instanceof InputError) return res.status(400).json({ error: err.message });
+      if (err instanceof InputError) return res.status(400).json({ error: err.message, ...(err.fields ? { fields: err.fields } : {}) });
       if (err.rateLimited) return res.status(429).json({ error: err.message, retryAfterSeconds: err.retryAfterSeconds });
       if (err.mondayErrors) return res.status(502).json({ error: err.message });
 

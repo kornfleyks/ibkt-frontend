@@ -16,6 +16,7 @@ import {
   comparePassword,
   signToken,
   requireAuth,
+  requireAnyAuth,
   requireAdmin,
 } from "./auth.js";
 import {
@@ -48,6 +49,15 @@ import { registerCommunicationRoutes, communicationBoardOfItem } from "./communi
 import { registerTaskRoutes } from "./tasks.js";
 import { registerAccountRoutes } from "./account.js";
 import { registerPasswordResetRoutes } from "./passwordReset/routes.js";
+import { registerRescuerOnboardingRoutes } from "./rescuerOnboarding/routes.js";
+import { registerRescuerPortalRoutes } from "./rescuerPortal/routes.js";
+import { registerFosterOnboardingRoutes } from "./fosterOnboarding/routes.js";
+import { registerFosterPortalRoutes } from "./fosterPortal/routes.js";
+import { registerFosterReviewRoutes } from "./fosterPortal/review.js";
+import { registerPublicFormRoutes } from "./publicForms/routes.js";
+import { registerCatUpdateRoutes } from "./catUpdates/routes.js";
+import { startCatUpdateChecks } from "./catUpdates/check.js";
+import { startPostAdoptionReminders } from "./postAdoption/reminders.js";
 import { sendRegistrationPendingEmail } from "./mail/accountEmails.js";
 import { registerMailgunWebhookRoutes } from "./mail/webhookRoutes.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
@@ -62,7 +72,7 @@ import { registerSyncRoutes } from "./database/syncRoutes.js";
 import { startSyncSchedule } from "./database/sync.js";
 import { MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER } from "../src/constants/mondayApiUsage.js";
 import { ACTIVE_APPLICATIONS } from "../src/constants/boards/activeApplications.js";
-import { isAdminRole } from "../src/constants/roles.js";
+import { isAdminRole, portalOfRole, isStaffRole, PORTAL_NAMES } from "../src/constants/roles.js";
 import { proxyRefusal, stripSensitive } from "./mondayProxyGuard.js";
 import { isDatabaseEnabled, getQueryCount } from "./database/db.js";
 import { isDatabaseBoardId, databaseBoards } from "./database/switches.js";
@@ -73,6 +83,7 @@ import { registerApplicationRoutes } from "./applications.js";
 import { registerPreAdoptionRoutes } from "./preAdoption/routes.js";
 import { registerContractRoutes, CONTRACT_FILE_COLUMN_ID } from "./contracts.js";
 import { registerPostAdoptionRoutes } from "./postAdoption/routes.js";
+import { registerTravelRoutes } from "./travel/routes.js";
 import { PHOTOS_COLUMN_ID as POST_ADOPTION_PHOTOS_COLUMN_ID } from "./postAdoption/fields.js";
 import { registerScreeningRoutes, TRANSCRIPT_COLUMNS, VIDEO_COLUMN_ID } from "./screening/routes.js";
 import { registerAiReviewRoutes } from "./aiReview/routes.js";
@@ -116,6 +127,9 @@ const PROTECTED_FILE_COLUMNS = [
   { columnId: TRANSCRIPT_COLUMNS[1], error: "Call transcripts can only be changed from the application's Screening tab." },
   { columnId: TRANSCRIPT_COLUMNS[2], error: "Call transcripts can only be changed from the application's Screening tab." },
   { columnId: VIDEO_COLUMN_ID, error: "The home video can only be changed from the application's Screening tab." },
+  ...(ACTIVE_APPLICATIONS.COLUMNS.ADDITIONAL_CALL_TRANSCRIPTS
+    ? [{ columnId: ACTIVE_APPLICATIONS.COLUMNS.ADDITIONAL_CALL_TRANSCRIPTS, error: "Call transcripts can only be changed from the application's Screening tab." }]
+    : []),
   { columnId: ACTIVE_APPLICATIONS.COLUMNS.AF_ID_DOCUMENTS, error: "ID documents come only from the applicant's Adoption Form (Jotform)." },
 ];
 
@@ -271,6 +285,10 @@ function sendRateLimited(res, err) {
 
 const app = express();
 
+// Behind Render's proxy: lets req.ip be the caller's address (the public
+// rescuer application form limits applications per address).
+app.set("trust proxy", 1);
+
 // X-User-Role is set by requireAuth so the app can pick up a role change live.
 app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role", MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER] }));
 // 2 MB: a pasted call transcript (Screening tab) can pass the 100 KB default.
@@ -306,7 +324,7 @@ app.use((req, res, next) => {
 });
 
 app.post("/api/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, portal } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required." });
@@ -338,6 +356,32 @@ app.post("/api/login", async (req, res) => {
 
     if (!ACTIVE_ACCOUNT_STATUSES.has(user.accountStatus)) {
       return res.status(403).json({ error: "This account is not active yet." });
+    }
+
+    // Each audience has its own sign-in page (the rescuer portal, the foster
+    // portal and the staff app). Checked only after the password was right, so
+    // it never tells a stranger which emails exist. `portal` is the name a
+    // portal's page sends (src/constants/roles.js PORTALS); the staff page
+    // sends none.
+    const userPortal = portalOfRole(user.role)?.name ?? null;
+    // A name that is not a portal's (or none) is the staff page.
+    const requestedPortal = PORTAL_NAMES.includes(portal) ? portal : null;
+
+    if (userPortal !== requestedPortal) {
+      const doorOf = (name) => `${name[0].toUpperCase()}${name.slice(1)}s sign in on the ${name} sign-in page.`;
+
+      return res.status(403).json({
+        error: requestedPortal
+          ? `This sign-in page is for ${requestedPortal}s. ${userPortal ? doorOf(userPortal) : "Staff sign in on the main sign-in page."}`
+          : doorOf(userPortal),
+      });
+    }
+
+    // Only staff roles use the staff app; Adopter and any other role have no
+    // portal yet (docs/role-lockdown.md), so there is nothing for them to sign
+    // in to. The portal roles were handled above.
+    if (!requestedPortal && !isStaffRole(user.role)) {
+      return res.status(403).json({ error: "This account type can't sign in to the app yet. Contact IBKT if you think this is a mistake." });
     }
 
     clearAttempts(email);
@@ -437,7 +481,7 @@ app.post("/api/register", async (req, res) => {
 // Sessions are stateless JWTs - there's no server-side state to invalidate
 // here. This endpoint exists purely so a logout produces an Activity Log
 // entry, the same way a login does.
-app.post("/api/logout", requireAuth, (req, res) => {
+app.post("/api/logout", requireAnyAuth, (req, res) => {
   const actorName = `${req.user.firstName} ${req.user.lastName}`.trim();
 
   logActivity({
@@ -501,7 +545,7 @@ registerUserAdminRoutes(app, { requireAuth, requireAdmin });
 registerWebhookRoutes(app);
 registerMailgunWebhookRoutes(app);
 registerJotformRoutes(app);
-registerSessionEventRoutes(app, { requireAuth });
+registerSessionEventRoutes(app, { requireAnyAuth });
 registerNotificationRoutes(app, { requireAuth });
 registerSettingsRoutes(app, { requireAuth, requireAdmin });
 registerActivityRoutes(app, { requireAuth });
@@ -511,6 +555,7 @@ registerApplicationRoutes(app, { requireAuth });
 registerPreAdoptionRoutes(app, { requireAuth });
 registerContractRoutes(app, { requireAuth });
 registerPostAdoptionRoutes(app, { requireAuth });
+registerTravelRoutes(app, { requireAuth });
 registerScreeningRoutes(app, { requireAuth });
 registerAiReviewRoutes(app, { requireAuth });
 registerAdoptionFormRoutes(app, { requireAuth });
@@ -522,6 +567,13 @@ registerUserRoutes(app, { requireAuth, requireAdmin });
 registerCommunicationRoutes(app, { requireAuth });
 registerAccountRoutes(app, { requireAuth });
 registerPasswordResetRoutes(app);
+registerRescuerOnboardingRoutes(app, { requireAuth, requireAdmin });
+registerFosterOnboardingRoutes(app, { requireAuth, requireAdmin });
+registerRescuerPortalRoutes(app, { requireAnyAuth });
+registerFosterPortalRoutes(app, { requireAnyAuth });
+registerFosterReviewRoutes(app, { requireAuth });
+registerPublicFormRoutes(app);
+registerCatUpdateRoutes(app, { requireAuth });
 registerMondayApiVersionRoutes(app, { requireAuth, requireAdmin });
 registerHealthRoutes(app, { requireAuth, requireAdmin });
 registerDatabaseHealthRoutes(app, { requireAuth, requireAdmin });
@@ -901,6 +953,10 @@ app.listen(PORT, () => {
         .catch((err) => console.error("Jotform: handling waiting submissions failed.", err));
       // The safety net for missed webhooks: every 30 minutes (jotform/poll.js).
       startJotformChecks();
+      // Daily: ask for news about cats waiting for a home (catUpdates/check.js).
+      startCatUpdateChecks();
+      // Daily: remind the staff of post-adoption check-ins (postAdoption/reminders.js).
+      startPostAdoptionReminders();
     }
   });
   startMondayApiVersionChecks();

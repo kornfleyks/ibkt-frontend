@@ -104,7 +104,8 @@ export function fromJotform(submissionAnswers) {
         answers[question.key] = list(value);
         break;
       case "file":
-        photoUrls = list(value).filter((url) => /^https:\/\//.test(url));
+        // Jotform links, and the app's own public form uploads (publicForms/uploadStore.js).
+        photoUrls = list(value).filter((url) => /^(https:\/\/|ibkt-upload:)/.test(url));
         break;
       default:
         if (text(value)) answers[question.key] = text(value);

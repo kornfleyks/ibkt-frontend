@@ -14,9 +14,29 @@ function fileForm(file, note) {
   return formData;
 }
 
-// { calls: { 1: { files, texts }, 2: { files, texts } }, video: [files] }
+// { calls: { 1: { files, texts }, 2: { files, texts } }, video: [files],
+//   extraCalls: [{ call, date, summary, createdBy, createdAt, files, texts }] }
 export function getScreening(applicationId) {
   return serverGet(base(applicationId));
+}
+
+// Adds the next extra call (Call 3, then 4, ...). Answers it.
+export async function addExtraCall(applicationId) {
+  const { call } = await serverPost(`${base(applicationId)}/calls`, {});
+
+  return call;
+}
+
+// changes: { date?: "YYYY-MM-DD" | "", summary?: string }. Answers the call as saved.
+export async function updateExtraCall(applicationId, call, changes) {
+  const { call: saved } = await serverPost(`${base(applicationId)}/calls/${call}`, changes);
+
+  return saved;
+}
+
+// Deletes the call with its files and pasted transcripts.
+export function deleteExtraCall(applicationId, call) {
+  return serverDelete(`${base(applicationId)}/calls/${call}`);
 }
 
 export async function uploadTranscriptFile(applicationId, call, file, { note } = {}) {

@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { isAdminRole } from "../src/constants/roles.js";
+import { isAdminRole, portalOfRole, isStaffRole } from "../src/constants/roles.js";
 import { getSessionExpiryHours } from "./appSettings.js";
 import { getAccountState, applyAccountChange } from "./accountState.js";
 import { passwordStampOf } from "./passwordStamp.js";
@@ -348,55 +348,87 @@ export async function signToken(user, { session } = {}) {
   return jwt.sign(claims, JWT_SECRET, { expiresIn: `${sessionExpiryHours}h` });
 }
 
-export function requireAuth(req, res, next) {
-  const header = req.headers.authorization || "";
-  const [scheme, token] = header.split(" ");
+// The refusal of a role that may not use the staff app, or null when it may.
+// Only staff roles (isStaffRole) may. A portal role (Rescuer, Foster) gets 403
+// PORTAL_ONLY (it has its own pages); any other role (Adopter, one added later,
+// none) gets 401 NOT_STAFF, which signs a session of that role out in the app,
+// like a suspended account.
+function staffRefusal(role) {
+  if (isStaffRole(role)) return null;
 
-  if (scheme !== "Bearer" || !token) {
-    return res.status(401).json({ error: "Not authenticated." });
-  }
+  const portal = portalOfRole(role);
 
-  let payload;
+  if (portal) return { status: 403, body: { error: `This account can only use the ${portal.name} portal.`, code: "PORTAL_ONLY" } };
 
-  try {
-    payload = jwt.verify(token, JWT_SECRET);
-  } catch {
-    return res.status(401).json({ error: "Invalid or expired session." });
-  }
-
-  // The token only proves who this is; whether the account is still Active
-  // and what role it has now come from the live account state (updated in
-  // memory, not read from Monday per request - see accountState.js). So a
-  // suspension or role change applies on the very next request.
-  getAccountState(payload.sub)
-    .then((state) => {
-      if (!state) {
-        return res.status(401).json({ error: "This account no longer exists.", code: "ACCOUNT_INACTIVE" });
-      }
-
-      if (state.accountStatus !== "Active") {
-        return res.status(401).json({ error: "This account is not active.", code: "ACCOUNT_INACTIVE" });
-      }
-
-      // Made with a password that has since changed. Tokens from before
-      // stamps existed carry no `pwd` and stay valid until they expire.
-      if (payload.pwd && state.passwordStamp && payload.pwd !== state.passwordStamp) {
-        return res.status(401).json({ error: "Your password was changed. Sign in again.", code: "PASSWORD_CHANGED" });
-      }
-
-      req.user = { ...payload, role: state.role };
-      // Lets the frontend pick up a role change without a new login.
-      res.set("X-User-Role", state.role);
-      next();
-    })
-    .catch((err) => {
-      // Monday unreachable and the user not yet in memory: fall back to the
-      // token's own claims rather than locking everyone out.
-      console.error("requireAuth: account state lookup failed, using token claims.", err.message);
-      req.user = payload;
-      next();
-    });
+  return { status: 401, body: { error: "This account type can't use the app yet.", code: "NOT_STAFF" } };
 }
+
+// `allowPortalOnly` false (requireAuth, the default for every route) lets
+// only staff roles through (staffRefusal); true (requireAnyAuth) lets every
+// signed-in account through, for the few routes any of them may use (log out,
+// the session stream, the rescuer portal).
+function authenticate({ allowPortalOnly }) {
+  return function (req, res, next) {
+    const header = req.headers.authorization || "";
+    const [scheme, token] = header.split(" ");
+
+    if (scheme !== "Bearer" || !token) {
+      return res.status(401).json({ error: "Not authenticated." });
+    }
+
+    let payload;
+
+    try {
+      payload = jwt.verify(token, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ error: "Invalid or expired session." });
+    }
+
+    // The token only proves who this is; whether the account is still Active
+    // and what role it has now come from the live account state (updated in
+    // memory, not read from Monday per request - see accountState.js). So a
+    // suspension or role change applies on the very next request.
+    getAccountState(payload.sub)
+      .then((state) => {
+        if (!state) {
+          return res.status(401).json({ error: "This account no longer exists.", code: "ACCOUNT_INACTIVE" });
+        }
+
+        if (state.accountStatus !== "Active") {
+          return res.status(401).json({ error: "This account is not active.", code: "ACCOUNT_INACTIVE" });
+        }
+
+        // Made with a password that has since changed. Tokens from before
+        // stamps existed carry no `pwd` and stay valid until they expire.
+        if (payload.pwd && state.passwordStamp && payload.pwd !== state.passwordStamp) {
+          return res.status(401).json({ error: "Your password was changed. Sign in again.", code: "PASSWORD_CHANGED" });
+        }
+
+        const refusal = allowPortalOnly ? null : staffRefusal(state.role);
+
+        if (refusal) return res.status(refusal.status).json(refusal.body);
+
+        req.user = { ...payload, role: state.role };
+        // Lets the frontend pick up a role change without a new login.
+        res.set("X-User-Role", state.role);
+        next();
+      })
+      .catch((err) => {
+        // Monday unreachable and the user not yet in memory: fall back to the
+        // token's own claims rather than locking everyone out.
+        console.error("requireAuth: account state lookup failed, using token claims.", err.message);
+        const refusal = allowPortalOnly ? null : staffRefusal(payload.role);
+
+        if (refusal) return res.status(refusal.status).json(refusal.body);
+
+        req.user = payload;
+        next();
+      });
+  };
+}
+
+export const requireAuth = authenticate({ allowPortalOnly: false });
+export const requireAnyAuth = authenticate({ allowPortalOnly: true });
 
 // Must run after requireAuth, which populates req.user.
 export function requireAdmin(req, res, next) {

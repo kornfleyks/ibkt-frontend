@@ -18,6 +18,7 @@ export const USERS = {
     LINKED_RESCUER_ID: "lookup_mm49dav0", // Linked Rescuer ID | mirror
     LINKED_ADOPTER: "board_relation_mm492rdy", // Linked Adopter | board_relation
     LINKED_ADOPTER_ID: "lookup_mm49psw5", // Linked Adopter ID | mirror
+    LINKED_FOSTER: "board_relation_mm96nnvd", // Linked Foster | board_relation
     LAST_LOGIN: "date_mm7hpabe", // Last Login | date
     LAST_ACTIVITY: "date_mm49c29a", // Last Activity | date
     LOGIN_TOKEN: "text_mm49fq5a", // Login Token | text
@@ -30,5 +31,6 @@ export const USERS = {
   RELATIONS: {
     LINKED_RESCUER: ["5098375508"],
     LINKED_ADOPTER: ["5098444415"],
+    LINKED_FOSTER: ["5108067329"],
   },
 };

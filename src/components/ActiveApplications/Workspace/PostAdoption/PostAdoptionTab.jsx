@@ -6,7 +6,8 @@ import CheckInTimeline from "./CheckInTimeline";
 import UpdatesSection from "./UpdatesSection";
 import PhotosSection from "./PhotosSection";
 import AiSection from "./AiSection";
-import { getApplicationPostAdoption, updatePostAdoption } from "../../../../services/PostAdoptionService";
+import TestimonialSection from "./TestimonialSection";
+import { getApplicationPostAdoption, updatePostAdoption, chasePostAdoption, changePostAdoptionTestimonial } from "../../../../services/PostAdoptionService";
 
 // The application's post-adoption record: summary, check-ins, updates and
 // escalation, photos and videos, and the AI review. Every change goes to
@@ -15,6 +16,10 @@ import { getApplicationPostAdoption, updatePostAdoption } from "../../../../serv
 function PostAdoptionTab({ application }) {
   const [record, setRecord] = useState(null);
   const [photos, setPhotos] = useState([]);
+  // The chase attempts of the check-ins being chased, by check-in key.
+  const [chase, setChase] = useState({});
+  // The testimonial request, or null when there is none.
+  const [testimonial, setTestimonial] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -31,6 +36,8 @@ function PostAdoptionTab({ application }) {
         if (!cancelled) {
           setRecord(data.record);
           setPhotos(data.photos);
+          setChase(data.chase ?? {});
+          setTestimonial(data.testimonial ?? null);
         }
       } catch (err) {
         console.error("Failed to load post-adoption:", err);
@@ -53,9 +60,43 @@ function PostAdoptionTab({ application }) {
     setError(null);
 
     try {
-      setRecord(await updatePostAdoption(application.id, record.id, changes));
+      const saved = await updatePostAdoption(application.id, record.id, changes);
+
+      setRecord(saved.record);
+      setChase(saved.chase ?? {});
     } catch (err) {
       console.error("Failed to save post-adoption:", err);
+      setError(err?.message || "Something went wrong while saving.");
+      throw err;
+    }
+  }
+
+  // "Chased again" on one check-in. Throws on failure, like save.
+  async function chaseAgain(checkInKey) {
+    setError(null);
+
+    try {
+      const saved = await chasePostAdoption(application.id, record.id, checkInKey);
+
+      setRecord(saved.record);
+      setChase(saved.chase ?? {});
+    } catch (err) {
+      console.error("Failed to record the chase:", err);
+      setError(err?.message || "Something went wrong while saving.");
+      throw err;
+    }
+  }
+
+  // One step of the testimonial request. Throws on failure, like save.
+  async function changeTestimonial(body) {
+    setError(null);
+
+    try {
+      const saved = await changePostAdoptionTestimonial(application.id, record.id, body);
+
+      setTestimonial(saved.testimonial);
+    } catch (err) {
+      console.error("Failed to save the testimonial:", err);
       setError(err?.message || "Something went wrong while saving.");
       throw err;
     }
@@ -78,6 +119,8 @@ function PostAdoptionTab({ application }) {
         onStarted={(data) => {
           setRecord(data.record);
           setPhotos(data.photos);
+          setChase({});
+          setTestimonial(null);
         }}
       />
     );
@@ -88,8 +131,9 @@ function PostAdoptionTab({ application }) {
       {error && <Alert severity="error">{error}</Alert>}
 
       <PostAdoptionSummary applicationId={application.id} linkedCats={application.linkedCats ?? []} record={record} save={save} />
-      <CheckInTimeline record={record} save={save} />
+      <CheckInTimeline record={record} save={save} chase={chase} onChaseAgain={chaseAgain} />
       <UpdatesSection record={record} save={save} />
+      <TestimonialSection testimonial={testimonial} onAction={changeTestimonial} />
       <PhotosSection applicationId={application.id} recordId={record.id} photos={photos} onPhotosChange={setPhotos} />
       <AiSection record={record} />
     </Stack>

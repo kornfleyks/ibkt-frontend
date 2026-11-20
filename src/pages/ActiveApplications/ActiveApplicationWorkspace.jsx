@@ -4,6 +4,7 @@ import OverviewTab from "../../components/ActiveApplications/Workspace/OverviewT
 import ContractsTab from "../../components/ActiveApplications/Workspace/ContractsTab";
 import PaymentsTab from "../../components/ActiveApplications/Workspace/PaymentsTab";
 import PostAdoptionTab from "../../components/ActiveApplications/Workspace/PostAdoption/PostAdoptionTab";
+import TravelTab from "../../components/ActiveApplications/Workspace/Travel/TravelTab";
 import PageHeader from "../../components/PageHeader";
 import { getActiveApplication } from "../../services/ActiveApplicationsService";
 import { useLoading } from "../../context/LoadingContext";
@@ -133,6 +134,7 @@ function ActiveApplicationWorkspace() {
           onApplicationChange={(updates) => setApplication((current) => ({ ...current, ...updates }))}
         />
       )}
+      {activeApplicationWorkspaceTabs[tab].slug === "travel" && <TravelTab application={application} />}
       {activeApplicationWorkspaceTabs[tab].slug === "contracts" && (
         <ContractsTab
           application={application}

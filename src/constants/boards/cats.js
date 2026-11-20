@@ -32,6 +32,12 @@ export const CATS = {
     PASSPORT_COMPLETE: "boolean_mm47akbx", // Passport Complete | checkbox
     PASSPORT_FILE: "file_mm47x7a4", // Passport File | file
     MICROCHIP_NUMBER: "text_mm471e4c", // Microchip Number | text
+    DATE_OF_BIRTH: "date_mm474yd0", // Date of Birth | date
+    MICROCHIP_IMPLANT_DATE: "date_mm96eq5d", // Microchip Implant Date | date
+    FIRST_TRICAT: "date_mm96715e", // First Tricat | date
+    BOOSTER_TRICAT: "date_mm96vqer", // Booster Tricat | date
+    RABIES_VACCINATION: "date_mm96s549", // Rabies Vaccination | date
+    LAST_DEWORMED: "date_mm9621eb", // Last Dewormed | date
     PHOTOS: "file_mm47aj59", // Photos | file
     VIDEOS: "file_mm476nkg", // Videos | file
     MEDIA_COMPLETE: "boolean_mm47t7p0", // Media Complete | checkbox
@@ -50,6 +56,8 @@ export const CATS = {
     LINKED_POST_ADOPTION_MANAGEMENT_ID: "lookup_mm49yhah", // Linked Post-Adoption Management ID | mirror
     AGE: "numeric_mm4yymz3", // Age | numeric
     BONDED_WITH: "board_relation_mm7eepfj", // Bonded With | board_relation
+    LINKED_FOSTER: "board_relation_mm96w8tm", // Linked Foster | board_relation
+    FOSTER_UPLOADS: "file_mm96hzqm", // Foster Uploads (pending) | file
   },
   RELATIONS: {
     LINKED_RESCUER: ["5098375508"],
@@ -58,5 +66,6 @@ export const CATS = {
     LINKED_TRAVEL_MANAGEMENT: ["5098462214"],
     LINKED_POST_ADOPTION_MANAGEMENT: ["5098487184"],
     BONDED_WITH: ["5098369241"],
+    LINKED_FOSTER: ["5108067329"],
   },
 };

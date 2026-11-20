@@ -24,6 +24,8 @@ import { CATS_STATUS_OPTIONS } from '../constants/statuses/catsStatuses';
 import { searchText } from '../utils/searchText';
 
 import { useLoading } from '../context/LoadingContext';
+import useAuth from '../hooks/useAuth';
+import { canSeeSensitiveFields } from '../constants/roles';
 import useTabParam from '../hooks/useTabParam';
 import { slugify } from '../utils/slugify';
 
@@ -37,6 +39,8 @@ const TABS = [
 ];
 
 function Cats() {
+
+    const { user } = useAuth();
 
     const [cats, setCats] = useState([]);
     const [addCatOpen, setAddCatOpen] = useState(false);
@@ -159,7 +163,7 @@ function Cats() {
                     id="cats-search"
                     size="small"
                     label="Search cats"
-                    placeholder="Name, breed, colour, microchip, rescuer..."
+                    placeholder={canSeeSensitiveFields(user?.role) ? 'Name, breed, colour, microchip, rescuer...' : 'Name, breed, colour, rescuer...'}
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     sx={{ width: '100%', maxWidth: 420 }}

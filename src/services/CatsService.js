@@ -195,12 +195,54 @@ export async function updateCatRescuer(catId, rescuerId) {
   );
 }
 
-export async function updateCatStatus(catId, status) {
-  return changeCat(catId, { status }, () =>
+// The foster looking after a cat (null clears it). Only an Active foster is
+// accepted, which the server checks (docs/foster-onboarding.md).
+export async function updateCatFoster(catId, fosterId) {
+  return changeCat(catId, { linkedFosterId: fosterId ?? null }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.LINKED_FOSTER, { item_ids: fosterId ? [Number(fosterId)] : [] }),
+  );
+}
+
+// [{ id, name, city }]: the Active fosters a cat can be given to. Needs the
+// server's database (fosters are not kept on Monday).
+export function getFosterOptions() {
+  return serverGet("/api/cats/foster-options");
+}
+
+// Setting a cat to Adoption Ready when it is not ready is refused (409): the
+// error's `details` is { code: "NOT_READY", problems, canOverride } (see
+// notReadyDetails). An Admin can pass `overrideReason` to set it anyway.
+export async function updateCatStatus(catId, status, { overrideReason } = {}) {
+  return changeCat(catId, { status, ...(overrideReason ? { overrideReason } : {}) }, () =>
     changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.STATUS, {
       label: status,
     }),
   );
+}
+
+// { problems, canOverride } when `error` is the refusal to set a cat to
+// Adoption Ready, else null.
+export function notReadyDetails(error) {
+  return error?.details?.code === "NOT_READY" ? { problems: error.details.problems ?? [], canOverride: Boolean(error.details.canOverride) } : null;
+}
+
+// The cat's update check (server/catUpdates/): { applies, flag, afterMonths,
+// overdueAfterDays, readySince, dueAt, requestedAt, overdueAt, lastReceived:
+// { at, note, by } | null }. `applies` is false for a cat that is not Adoption Ready.
+export function getCatUpdateClock(catId) {
+  return serverGet(`/api/cats/${catId}/update-clock`);
+}
+
+// News about the cat arrived (optional note): the clock restarts and the flag
+// becomes Received. Answers the new state, as getCatUpdateClock.
+export function recordCatUpdateReceived(catId, note = "") {
+  return serverPost(`/api/cats/${catId}/update-received`, { note });
+}
+
+// { ready, problems: [{ key, group, label, detail? }] }: what the cat still
+// needs before it can be set to Adoption Ready (server/cats.js).
+export function getCatReadiness(catId) {
+  return serverGet(`/api/cats/${catId}/readiness`);
 }
 
 export async function updateCatName(catId, name) {
@@ -360,6 +402,30 @@ export async function updateCatFivStatus(catId, fivStatus) {
     changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.FIV_STATUS, {
       label: fivStatus,
     }),
+  );
+}
+
+// The Cat Passport dates (docs/cat-passport.md), by the cat field they are
+// saved under. An empty value clears the date.
+const PASSPORT_DATE_COLUMNS = {
+  dateOfBirth: CATS.COLUMNS.DATE_OF_BIRTH,
+  microchipImplantDate: CATS.COLUMNS.MICROCHIP_IMPLANT_DATE,
+  firstTricat: CATS.COLUMNS.FIRST_TRICAT,
+  boosterTricat: CATS.COLUMNS.BOOSTER_TRICAT,
+  rabiesVaccination: CATS.COLUMNS.RABIES_VACCINATION,
+  lastDewormed: CATS.COLUMNS.LAST_DEWORMED,
+};
+
+export async function updateCatPassportDate(catId, field, date) {
+  return changeCat(catId, { [field]: date || null }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, PASSPORT_DATE_COLUMNS[field], date ? { date } : {}),
+  );
+}
+
+// The "Passport marked complete" checkbox, which the Adoption Ready check requires.
+export async function updateCatPassportComplete(catId, complete) {
+  return changeCat(catId, { passportComplete: complete }, () =>
+    changeMondayColumnValue(CATS.BOARD_ID, catId, CATS.COLUMNS.PASSPORT_COMPLETE, { checked: complete ? "true" : "false" }),
   );
 }
 

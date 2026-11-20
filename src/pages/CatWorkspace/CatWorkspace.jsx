@@ -19,13 +19,16 @@ import {
 } from '@mui/material';
 import { PetsIcon, EditIcon, CheckIcon, CloseIcon } from '../../components/icons';
 import PageHeader from '../../components/PageHeader';
-import { getCat, updateCatStatus } from '../../services/CatsService';
+import { getCat } from '../../services/CatsService';
+import AdoptionReadyDialog from '../../components/Cats/AdoptionReadyDialog';
+import useCatStatusChange from '../../hooks/useCatStatusChange';
 import { useLoading } from '../../context/LoadingContext';
 import OverviewTab from '../../components/Cats/Workspace/OverviewTab';
 import MedicalTab from '../../components/Cats/Workspace/MedicalTab';
 import DocumentsTab from '../../components/Cats/Workspace/DocumentsTab';
 import InfoRow from '../../components/Common/InfoRow';
 import { workspaceTabs } from '../../config/workspaceTabs';
+import CatTravelTab from '../../components/Cats/Workspace/CatTravelTab';
 import CommunicationsTab from '../../components/Communications/CommunicationsTab';
 import TasksTab from '../../components/Tasks/TasksTab';
 import ActivityTab from '../../components/ActivityLog/ActivityTab';
@@ -39,6 +42,7 @@ function StatusChipEditor({ cat, onCatUpdate }) {
     const [editing, setEditing] = useState(false);
     const [status, setStatus] = useState(cat.status);
     const [saving, setSaving] = useState(false);
+    const { change, notReady, override, cancel } = useCatStatusChange(cat, onCatUpdate);
 
     function startEditing() {
         setStatus(cat.status);
@@ -48,15 +52,9 @@ function StatusChipEditor({ cat, onCatUpdate }) {
     async function handleSave() {
         setSaving(true);
 
-        try {
-            await updateCatStatus(cat.id, status);
-            onCatUpdate({ status });
-            setEditing(false);
-        } catch (err) {
-            console.error('Failed to update status:', err);
-        } finally {
-            setSaving(false);
-        }
+        if (await change(status)) setEditing(false);
+
+        setSaving(false);
     }
 
     if (!editing) {
@@ -87,30 +85,44 @@ function StatusChipEditor({ cat, onCatUpdate }) {
     }
 
     return (
-        <Stack direction="row" alignItems="center" spacing={0.5}>
-            <TextField
-                select
-                size="small"
-                sx={{ minWidth: 170 }}
-                disabled={saving}
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-            >
-                {STATUS_OPTIONS.map((option) => (
-                    <MenuItem key={option} value={option}>
-                        {option}
-                    </MenuItem>
-                ))}
-            </TextField>
+        <>
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+                <TextField
+                    select
+                    size="small"
+                    sx={{ minWidth: 170 }}
+                    disabled={saving}
+                    value={status}
+                    onChange={(event) => setStatus(event.target.value)}
+                >
+                    {STATUS_OPTIONS.map((option) => (
+                        <MenuItem key={option} value={option}>
+                            {option}
+                        </MenuItem>
+                    ))}
+                </TextField>
 
-            <IconButton size="small" onClick={handleSave} disabled={saving} aria-label="Save status">
-                {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
-            </IconButton>
+                <IconButton size="small" onClick={handleSave} disabled={saving} aria-label="Save status">
+                    {saving ? <CircularProgress size={16} sx={{ color: 'text.secondary' }} /> : <CheckIcon fontSize="small" />}
+                </IconButton>
 
-            <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
-                <CloseIcon fontSize="small" />
-            </IconButton>
-        </Stack>
+                <IconButton size="small" onClick={() => setEditing(false)} disabled={saving} aria-label="Cancel">
+                    <CloseIcon fontSize="small" />
+                </IconButton>
+            </Stack>
+
+            <AdoptionReadyDialog
+                open={Boolean(notReady)}
+                catName={cat.name}
+                problems={notReady?.problems ?? []}
+                canOverride={Boolean(notReady?.canOverride)}
+                onCancel={cancel}
+                onOverride={async (reason) => {
+                    await override(reason);
+                    setEditing(false);
+                }}
+            />
+        </>
     );
 }
 
@@ -151,7 +163,7 @@ function CatWorkspace() {
         documents: <DocumentsTab cat={cat} onCatUpdate={handleCatUpdate} />,
         communications: <CommunicationsTab boardId={CATS.BOARD_ID} itemId={cat.id} />,
         tasks: <TasksTab link={{ catId: cat.id }} noun="cat" pageKey="catTasks" />,
-        travel: <Typography>Travel Coming Soon</Typography>,
+        travel: <CatTravelTab cat={cat} />,
         'post-adoption': <Typography>Post Adoption Coming Soon</Typography>,
         activity: <ActivityTab boardId={CATS.BOARD_ID} itemId={cat.id} />
     };

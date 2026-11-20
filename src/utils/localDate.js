@@ -18,3 +18,10 @@ export function daysBetween(from, to) {
 
   return Math.round((toUtc(to) - toUtc(from)) / 86_400_000);
 }
+
+// "YYYY-MM-DD" plus a number of days, as "YYYY-MM-DD".
+export function addDays(date, days) {
+  const [year, month, day] = date.split("-").map(Number);
+
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}

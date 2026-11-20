@@ -19,8 +19,10 @@ async function postJson(path, body) {
   return result;
 }
 
-export function login(email, password) {
-  return postJson("/api/login", { email, password });
+// `portal: "rescuer"` from the rescuer sign-in page: the server only lets a
+// rescuer in there, and only lets non-rescuers in on the main page.
+export function login(email, password, portal) {
+  return postJson("/api/login", { email, password, ...(portal ? { portal } : {}) });
 }
 
 export function register({ firstName, lastName, email, password, inviteCode }) {

@@ -1,7 +1,7 @@
-import { AI_REVIEW_FIELDS, AI_REVIEW_KINDS, AI_RUN_STATUS } from "../../../../constants/aiReviews";
+import { AI_REVIEW_FIELDS, AI_RUN_STATUS, aiReviewKind } from "../../../../constants/aiReviews";
 
 export function kindLabel(kind) {
-  return AI_REVIEW_KINDS[kind]?.label ?? kind;
+  return aiReviewKind(kind)?.label ?? kind;
 }
 
 export function fieldLabel(key) {

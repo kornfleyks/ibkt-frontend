@@ -45,13 +45,17 @@ export async function addFileToColumn(itemId, columnId, file) {
   return String(result.data.add_file_to_column.id);
 }
 
-// Leaves only `assetIds` in the column.
-export async function setColumnFiles(boardId, itemId, columnId, assetIds) {
+// Leaves only `files` ([{ assetId, name }]) in the column. Monday requires each
+// file's name (a call with only asset ids fails while any file remains). A file
+// that is in another file column of the item is copied into this one with a new
+// asset id (the original stays in its own column until that is set too), which
+// is how a file is moved from one column to another.
+export async function setColumnFiles(boardId, itemId, columnId, files) {
   await mondayDirectRequest(
     `mutation ($boardId: ID!, $itemId: ID!, $columnId: String!, $files: [FileInput!]!) {
       update_assets_on_item(board_id: $boardId, item_id: $itemId, column_id: $columnId, files: $files) { id }
     }`,
-    { boardId: String(boardId), itemId: String(itemId), columnId, files: assetIds.map((assetId) => ({ assetId: Number(assetId), fileType: "asset" })) },
+    { boardId: String(boardId), itemId: String(itemId), columnId, files: files.map((file) => ({ assetId: Number(file.assetId), fileType: "asset", name: file.name })) },
   );
 }
 

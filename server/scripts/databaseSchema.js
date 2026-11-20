@@ -207,14 +207,111 @@ await transaction(async (run) => {
   await run(`create table if not exists call_transcripts (
     id bigserial primary key,
     monday_item_id bigint not null,
-    call_number smallint not null check (call_number in (1, 2)),
+    call_number smallint not null check (call_number >= 1),
     body text not null,
     created_by_id text,
     created_by_name text,
     created_by_role text,
     created_at timestamptz not null default now()
   )`);
+  // Calls 3 and above (application_calls below) have transcripts too: the
+  // table first accepted only calls 1 and 2.
+  await run("alter table call_transcripts drop constraint if exists call_transcripts_call_number_check");
+  await run("alter table call_transcripts add constraint call_transcripts_call_number_check check (call_number >= 1)");
   await run("create index if not exists call_transcripts_item on call_transcripts (monday_item_id, call_number)");
+
+  // The post-adoption reminders (postAdoption/reminders.js,
+  // docs/post-adoption-reminders.md): for each check-in of a post-adoption
+  // record that is waiting, how many times it was chased and reminded. A row
+  // exists while the check-in is Sent or due and not sent, and is removed
+  // when its status changes to anything else. App-only: never sent to Monday.
+  await run(`create table if not exists post_adoption_chase (
+    record_id bigint not null,
+    check_in_key text not null,
+    attempts integer not null default 0,
+    last_sent_on date,
+    reminders integer not null default 0,
+    last_reminded_on date,
+    escalated_at timestamptz,
+    primary key (record_id, check_in_key)
+  )`);
+
+  // Testimonial requests (postAdoption/testimonial*.js, docs/testimonial-requests.md):
+  // one row per post-adoption record that has a request, with its state, the
+  // attempts and the testimonial text. A record with no row is Not requested.
+  // App-only: never sent to Monday.
+  await run(`create table if not exists post_adoption_testimonial (
+    record_id bigint primary key,
+    status text not null,
+    attempts integer not null default 0,
+    requested_on date,
+    last_requested_on date,
+    last_reminded_on date,
+    received_on date,
+    testimonial text not null default '',
+    may_publish boolean not null default false,
+    updated_at timestamptz not null default now(),
+    updated_by text
+  )`);
+
+  // Kitty Profiles sent by fosters (fosterPortal/, docs/foster-onboarding.md): one row
+  // per submission, with the answers and the list of files sent, until staff apply or
+  // reject it. The files wait on Monday (the cat's Foster Uploads (pending) column).
+  // A cat has at most one Pending profile (the unique index). App-only: never sent to Monday.
+  await run(`create table if not exists foster_cat_profiles (
+    id bigserial primary key,
+    cat_id bigint not null,
+    user_id bigint not null,
+    foster_id bigint not null,
+    status text not null default 'Pending',
+    answers jsonb not null,
+    files jsonb not null default '[]'::jsonb,
+    wording_version text not null,
+    submitted_at timestamptz not null default now(),
+    reviewed_by_id text,
+    reviewed_by_name text,
+    reviewed_at timestamptz,
+    reject_reason text
+  )`);
+  // Set while an Apply or a Reject is running, so two clicks cannot both act; and the cat fields an Apply changed.
+  await run("alter table foster_cat_profiles add column if not exists processing_at timestamptz");
+  await run("alter table foster_cat_profiles add column if not exists applied_fields jsonb");
+  await run("create unique index if not exists foster_cat_profiles_open on foster_cat_profiles (cat_id) where status = 'Pending'");
+  await run("create index if not exists foster_cat_profiles_cat on foster_cat_profiles (cat_id, submitted_at desc)");
+  await run("create index if not exists foster_cat_profiles_user on foster_cat_profiles (user_id)");
+
+  // The update check for cats waiting for a home (catUpdates/,
+  // docs/cat-update-check.md): one row per Adoption Ready cat, from the day it
+  // became ready, with the last update received and the request state.
+  // App-only: never sent to Monday (the Update Requested flag on the cat is).
+  await run(`create table if not exists cat_update_clock (
+    cat_id bigint primary key,
+    ready_since timestamptz not null default now(),
+    last_received_at timestamptz,
+    last_received_note text,
+    last_received_by text,
+    requested_at timestamptz,
+    overdue_at timestamptz
+  )`);
+
+  // The extra screening calls of an application, from Call 3 on (Calls 1 and
+  // 2 have their own columns on the Applications board): date and summary,
+  // with the transcripts in call_transcripts and in the "Additional Call
+  // Transcripts" file column (docs/screening-extra-calls.md). App-only: never
+  // sent to Monday.
+  await run(`create table if not exists application_calls (
+    id bigserial primary key,
+    monday_item_id bigint not null,
+    call_number smallint not null check (call_number >= 3),
+    call_date date,
+    summary text,
+    created_by_id text,
+    created_by_name text,
+    created_by_role text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (monday_item_id, call_number)
+  )`);
 
   // AI reviews of an application (server/aiReview/): each run keeps its
   // input and the AI's output. A draft becomes the application's values
@@ -223,7 +320,7 @@ await transaction(async (run) => {
     id bigserial primary key,
     board_id text not null,
     monday_item_id bigint not null,
-    kind text not null check (kind in ('form_review', 'call_1_review', 'call_2_review')),
+    kind text not null check (kind = 'form_review' or kind ~ '^call_[0-9]+_review$'),
     provider text not null,
     model text,
     input jsonb not null,
@@ -237,6 +334,10 @@ await transaction(async (run) => {
     decided_by_name text,
     decided_at timestamptz
   )`);
+  // The kinds first were form_review, call_1_review and call_2_review; any
+  // call number is allowed now (extra screening calls).
+  await run("alter table ai_runs drop constraint if exists ai_runs_kind_check");
+  await run("alter table ai_runs add constraint ai_runs_kind_check check (kind = 'form_review' or kind ~ '^call_[0-9]+_review$')");
   await run("create index if not exists ai_runs_item on ai_runs (board_id, monday_item_id, created_at desc)");
 
   // Jotform submissions received by the server (server/jotform/): full
@@ -287,6 +388,67 @@ await transaction(async (run) => {
     sent_at timestamptz not null default now()
   )`);
   await run("create index if not exists adoption_form_invites_application on adoption_form_invites (application_id, sent_at desc)");
+
+  // Rescuer onboarding applications (server/rescuerOnboarding/, docs/
+  // rescuer-onboarding.md): what the public form saved, and how an Admin
+  // decided. rescuer_id / user_id are the Rescuers and Users items made on
+  // approval. App-only: never sent to Monday. At most one Pending or
+  // Approved application per email (the unique index); a Rejected one
+  // doesn't block a new application.
+  await run(`create table if not exists rescuer_applications (
+    id bigserial primary key,
+    status text not null default 'Pending',
+    first_name text not null,
+    last_name text not null,
+    email text not null,
+    answers jsonb not null,
+    wording_version text not null,
+    ip_hash text,
+    submitted_at timestamptz not null default now(),
+    reviewed_by_id text,
+    reviewed_by_name text,
+    reviewed_at timestamptz,
+    reject_reason text,
+    rescuer_id bigint,
+    user_id bigint
+  )`);
+  // Set while an approval is running, so two clicks can't both approve.
+  await run("alter table rescuer_applications add column if not exists processing_at timestamptz");
+  await run(
+    "create unique index if not exists rescuer_applications_open_email on rescuer_applications (lower(email)) where status in ('Pending', 'Approved')",
+  );
+  await run("create index if not exists rescuer_applications_status on rescuer_applications (status, submitted_at desc)");
+  await run("create index if not exists rescuer_applications_ip on rescuer_applications (ip_hash, submitted_at desc)");
+
+  // Public foster applications (fosterOnboarding/, docs/foster-onboarding.md): one row per
+  // application, with every answer, until an Admin approves or rejects it. foster_id /
+  // user_id are the Fosters and Users items made on approval. App-only: never sent to
+  // Monday. At most one Pending or Approved application per email; a Rejected one does
+  // not block a new application.
+  await run(`create table if not exists foster_applications (
+    id bigserial primary key,
+    status text not null default 'Pending',
+    first_name text not null,
+    last_name text not null,
+    email text not null,
+    answers jsonb not null,
+    wording_version text not null,
+    ip_hash text,
+    submitted_at timestamptz not null default now(),
+    reviewed_by_id text,
+    reviewed_by_name text,
+    reviewed_at timestamptz,
+    reject_reason text,
+    foster_id bigint,
+    user_id bigint
+  )`);
+  // Set while an approval is running, so two clicks cannot both approve.
+  await run("alter table foster_applications add column if not exists processing_at timestamptz");
+  await run(
+    "create unique index if not exists foster_applications_open_email on foster_applications (lower(email)) where status in ('Pending', 'Approved')",
+  );
+  await run("create index if not exists foster_applications_status on foster_applications (status, submitted_at desc)");
+  await run("create index if not exists foster_applications_ip on foster_applications (ip_hash, submitted_at desc)");
 
   // Every email mail/accountEmails.js sent through Mailgun, and the latest
   // delivery event Mailgun's webhooks reported for it (mail/webhookRoutes.js
@@ -465,8 +627,9 @@ await transaction(async (run) => {
   }
 
   // Reachable only by this server's connection; Supabase's public API
-  // (anon / authenticated keys) gets nothing without policies.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "reference_checks", "review_items", "email_log", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  // (anon / authenticated keys) gets nothing without policies. Every app table
+  // is listed here, so add a new table to this list when creating it.
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "rescuer_applications", "foster_applications", "foster_cat_profiles", "reference_checks", "review_items", "email_log", "ai_runs", "application_calls", "call_transcripts", "cat_update_clock", "file_uploads", "jotform_submissions", "jotform_webhook_events", "post_adoption_chase", "post_adoption_testimonial", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });

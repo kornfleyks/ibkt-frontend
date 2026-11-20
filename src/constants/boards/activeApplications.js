@@ -41,6 +41,10 @@ export const ACTIVE_APPLICATIONS = {
     CALL_2_SUMMARY: "long_text_mm487q03", // Call 2 Summary | long_text
     CALL_2_DATE: "date_mm48jscw", // Call 2 Date | date
     CALL_2_TRANSCRIPT: "file_mm7mcbhg", // Call 2 Transcript | file
+    // The transcript files of Calls 3 and above, all in one column, each
+    // file's call number in its file_uploads document type ("call-3")
+    // (scripts/createAdditionalCallTranscriptColumn.js, docs/screening-extra-calls.md).
+    ADDITIONAL_CALL_TRANSCRIPTS: "file_mm90k84n", // Additional Call Transcripts | file
     VIDEO_SUBMITTED: "color_mm4g8c73", // Video Submitted | status
     VIDEO: "file_mm48ah45", // Video | file
     VIDEO_REVIEW_NOTES: "long_text_mm481hjf", // Video Review Notes | long_text

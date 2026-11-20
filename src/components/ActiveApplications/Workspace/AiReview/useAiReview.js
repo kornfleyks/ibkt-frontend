@@ -3,8 +3,10 @@ import { getAiReviewState, startAiReview, acceptAiReview, discardAiReview } from
 
 // The application's AI review state (open draft, history, whether AI is
 // available) and its actions. Used by the Overview's AI Review card and the
-// Screening tab. `onApplicationChange` receives the saved values when a
-// draft is accepted, so the page shows them at once.
+// Screening tab. `onApplicationChange` receives the saved values (and the
+// accepted run) when a draft is accepted, so the page shows them at once.
+// An extra call's review also saves `callSummary`, which belongs to that call
+// (see ScreeningTab).
 function useAiReview(applicationId, onApplicationChange) {
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -63,7 +65,7 @@ function useAiReview(applicationId, onApplicationChange) {
     act(async () => {
       const { values } = await acceptAiReview(applicationId, run.id);
 
-      onApplicationChange?.(values);
+      onApplicationChange?.(values, run);
       await reload();
       return true;
     });

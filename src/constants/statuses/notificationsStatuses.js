@@ -16,6 +16,23 @@ export const NOTIFICATIONS_STATUS_OPTIONS = {
     ESCALATION: "Escalation",
     // Created on the board the first time one is sent (create_labels_if_missing).
     API_VERSION: "API Version",
+    // A new rescuer application to review (Admins). Created on the board the
+    // first time one is sent (create_labels_if_missing).
+    RESCUER_APPLICATION: "Rescuer Application",
+    // A new foster application to review (Admins). Created on the board the
+    // first time one is sent (create_labels_if_missing).
+    FOSTER_APPLICATION: "Foster Application",
+    // A foster sent a Kitty Profile for a cat, to review and apply (staff).
+    // Created on the board the first time one is sent (create_labels_if_missing).
+    FOSTER_PROFILE: "Foster Profile",
+    // A cat has been Adoption Ready for 3 months (or its update request is
+    // overdue): ask the rescuer or foster for news (Admins and Volunteers).
+    // Created on the board the first time one is sent (create_labels_if_missing).
+    CAT_UPDATE: "Cat Update",
+    // A post-adoption check-in is due, or an adopter has not replied: contact
+    // them again (the record's owner). Created on the board the first time one
+    // is sent (create_labels_if_missing).
+    POST_ADOPTION_REMINDER: "Post-Adoption Reminder",
   },
   READ: {
     UNREAD: "Unread",

@@ -13,7 +13,9 @@ import { USER_STATUS_ACTIONS } from './userStatusActions';
 // USER_STATUS_ACTIONS), then Delete if the viewer is allowed it (`canDelete`
 // - server-enforced too, server/userAdmin.js). Each action only opens its
 // confirmation dialog or fires its request - nothing changes here.
-function UserActionsMenu({ user, actions, canDelete, onRequestAction, onRequestDelete, onSendTestEmail, onOpenDetails }) {
+// `extraActions` ([{ label, onClick }]) are a page's own items (e.g. the Rescuers
+// page's "Resend sign-in link"), listed after Send Test Email.
+function UserActionsMenu({ user, actions, extraActions = [], canDelete, onRequestAction, onRequestDelete, onSendTestEmail, onOpenDetails }) {
     const [anchorEl, setAnchorEl] = useState(null);
 
     function choose(callback) {
@@ -50,6 +52,12 @@ function UserActionsMenu({ user, actions, canDelete, onRequestAction, onRequestD
                 <MenuItem onClick={() => choose(() => onSendTestEmail(user))}>
                     <ListItemText>Send Test Email</ListItemText>
                 </MenuItem>
+
+                {extraActions.map((action) => (
+                    <MenuItem key={action.label} onClick={() => choose(action.onClick)}>
+                        <ListItemText>{action.label}</ListItemText>
+                    </MenuItem>
+                ))}
 
                 {actions.length > 0 && <Divider />}
 

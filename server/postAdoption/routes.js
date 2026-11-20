@@ -8,9 +8,16 @@ import { getItemSnapshot, getItemName, logActivity } from "../activityLog.js";
 import { listActiveAccounts } from "../accountState.js";
 import { notifyAssignmentChange, notifyUrgentEscalation } from "../notifications.js";
 import { actorOf, logChanges, logCreated, InputError } from "../database/boardRecords.js";
+import { isDatabaseEnabled } from "../database/db.js";
+import { CHECK_INS, CHECK_IN_STATUS } from "../../src/constants/postAdoptionCheckIns.js";
+import { MAX_ATTEMPTS } from "../../src/constants/postAdoptionReminders.js";
+import { markSent, clearRow, chasedAgain, rowsOfRecord } from "./chaseStore.js";
 import { POST_ADOPTION_FIELDS, TABLE, BOARD_ID, BOARD_NAME, PHOTOS_COLUMN_ID, isWritable } from "./fields.js";
 import { withRules, initialValues } from "./rules.js";
 import { postAdoptionStore } from "./store.js";
+import { TESTIMONIAL_ACTION } from "../../src/constants/testimonials.js";
+import { applyAction } from "./testimonialRules.js";
+import { getTestimonial, saveTestimonial, removeTestimonial } from "./testimonialStore.js";
 
 // An application's post-adoption record (the Post Adoption tab), in either
 // storage (store.js) with the same rules (rules.js). Admins and the
@@ -19,7 +26,9 @@ import { postAdoptionStore } from "./store.js";
 //   GET    /api/applications/:id/post-adoption                  { record | null, photos }
 //   GET    /api/applications/:id/post-adoption/owner-options    who may be the owner
 //   POST   /api/applications/:id/post-adoption                  start: { adoptionDate, arrivalDate? }
-//   POST   /api/applications/:id/post-adoption/:recordId        changes (writable fields)
+//   POST   /api/applications/:id/post-adoption/:recordId        changes (writable fields) -> { record, chase }
+//   POST   /api/applications/:id/post-adoption/:recordId/chase  { checkIn } - chased again (attempt + 1) -> { record, chase }
+//   POST   /api/applications/:id/post-adoption/:recordId/testimonial { action, text?, mayPublish? } -> { testimonial | null }
 //   POST   /api/applications/:id/post-adoption/:recordId/photos multipart: file, note?
 //   DELETE /api/applications/:id/post-adoption/:recordId/photos/:assetId
 //
@@ -69,11 +78,58 @@ async function recordOf(applicationId, recordId) {
   return record;
 }
 
+// { [checkInKey]: { attempts, lastSentOn, ... } } for the check-ins being
+// chased (chaseStore.js); empty without the database.
+async function chaseOf(recordId) {
+  if (!isDatabaseEnabled()) return {};
+
+  try {
+    return await rowsOfRecord(recordId);
+  } catch (err) {
+    console.error("Post-adoption: couldn't read the chase attempts.", err.message);
+
+    return {};
+  }
+}
+
+// A check-in whose status changed starts a new phase: marked Sent it is
+// attempt 1, any other status ends its chasing. Never throws: the change is
+// saved, and the reminders catch up (a Sent check-in with no row counts as
+// attempt 1).
+async function trackChase(before, after, date) {
+  if (!isDatabaseEnabled()) return;
+
+  for (const checkIn of CHECK_INS) {
+    if (after[checkIn.statusField] === before[checkIn.statusField]) continue;
+
+    try {
+      if (after[checkIn.statusField] === CHECK_IN_STATUS.SENT) await markSent(after.id, checkIn.key, date);
+      else await clearRow(after.id, checkIn.key);
+    } catch (err) {
+      console.error(`Post-adoption: couldn't update the chase of ${checkIn.key} on record ${after.id}.`, err.message);
+    }
+  }
+}
+
+// The record's testimonial request (testimonialStore.js), or null when there
+// is none or the database is not available.
+async function testimonialOf(recordId) {
+  if (!isDatabaseEnabled()) return null;
+
+  try {
+    return await getTestimonial(recordId);
+  } catch (err) {
+    console.error("Post-adoption: couldn't read the testimonial.", err.message);
+
+    return null;
+  }
+}
+
 async function getPostAdoption(applicationId) {
   const record = await postAdoptionStore().findByApplication(applicationId);
   const photos = record ? await listItemFiles(PHOTOS_COLUMN, record.id) : [];
 
-  return { record, photos };
+  return { record, photos, chase: record ? await chaseOf(record.id) : {}, testimonial: record ? await testimonialOf(record.id) : null };
 }
 
 async function startPostAdoption(req) {
@@ -137,6 +193,8 @@ async function changePostAdoption(req) {
 
   logChanges({ actor, table: TABLE, boardName: BOARD_NAME, fields: POST_ADOPTION_FIELDS, before, after, keys: Object.keys(changes) });
 
+  await trackChase(before, after, today());
+
   if (before.ownerId !== after.ownerId) {
     notifyAssignmentChange({
       kind: "postAdoption",
@@ -155,7 +213,87 @@ async function changePostAdoption(req) {
     notifyUrgentEscalation({ recipientIds: [...admins, ...(caseOwnerId ? [caseOwnerId] : [])], actor, target, link: tabLink(applicationId) });
   }
 
-  return { record: after };
+  return { record: after, chase: await chaseOf(after.id) };
+}
+
+// "Chased again": the adopter was contacted once more about a check-in that
+// is still Sent and unanswered. One more attempt, today's date as the last
+// check-in sent, and the chase count goes up (the same as marking it Sent).
+// After MAX_ATTEMPTS attempts there is nothing more to chase: a reply is
+// awaited, and the reminders stop chasing if none comes.
+async function chasePostAdoption(req) {
+  const { id: applicationId, recordId } = req.params;
+  const checkIn = CHECK_INS.find((entry) => entry.key === req.body?.checkIn);
+
+  if (!checkIn) throw new InputError("Unknown check-in.");
+  if (!isDatabaseEnabled()) throw new HttpError(503, "Chasing needs the app's database, which isn't set up on this server.");
+
+  const before = await recordOf(applicationId, recordId);
+
+  if (before[checkIn.statusField] !== CHECK_IN_STATUS.SENT) throw new InputError(`The ${checkIn.label} check-in isn't waiting for a reply (it must be Sent).`);
+
+  const attempts = (await rowsOfRecord(recordId))[checkIn.key]?.attempts || 1;
+
+  if (attempts >= MAX_ATTEMPTS) throw new InputError(`The ${checkIn.label} check-in has already had ${MAX_ATTEMPTS} attempts.`);
+
+  await chasedAgain(recordId, checkIn.key, today());
+
+  const changes = { lastCheckInSent: today(), chaseCount: (Number(before.chaseCount) || 0) + 1 };
+  const { after } = await postAdoptionStore().updatePostAdoption(recordId, changes);
+
+  logChanges({ actor: actorOf(req), table: TABLE, boardName: BOARD_NAME, fields: POST_ADOPTION_FIELDS, before, after, keys: Object.keys(changes) });
+  logActivity({
+    actorId: actorOf(req).id,
+    actorName: actorOf(req).name,
+    boardId: BOARD_ID,
+    boardName: BOARD_NAME,
+    itemId: after.id,
+    itemName: after.name,
+    actionType: "Updated",
+    description: `${actorOf(req).name} chased the ${checkIn.label} check-in again (attempt ${attempts + 1} of ${MAX_ATTEMPTS}) on ${after.name}`,
+    fieldChanged: checkIn.label,
+  });
+
+  return { record: after, chase: await chaseOf(after.id) };
+}
+
+const TESTIMONIAL_ACTIVITY = {
+  [TESTIMONIAL_ACTION.REQUEST]: "requested a testimonial",
+  [TESTIMONIAL_ACTION.CHASE]: "asked again for a testimonial",
+  [TESTIMONIAL_ACTION.RECEIVE]: "recorded the testimonial",
+  [TESTIMONIAL_ACTION.DECLINE]: "marked the testimonial as declined",
+  [TESTIMONIAL_ACTION.UPDATE]: "edited the testimonial",
+  [TESTIMONIAL_ACTION.RESET]: "reset the testimonial request",
+};
+
+// One step of the testimonial request: { action, text?, mayPublish? } (see
+// testimonialRules.js). The text is never written to the activity log.
+async function changeTestimonial(req) {
+  const { id: applicationId, recordId } = req.params;
+  const { action, ...input } = req.body ?? {};
+
+  if (!isDatabaseEnabled()) throw new HttpError(503, "Testimonials need the app's database, which isn't set up on this server.");
+
+  const record = await recordOf(applicationId, recordId);
+  const next = applyAction(await getTestimonial(recordId), action, input, today());
+  const actor = actorOf(req);
+  const saved = next ? await saveTestimonial(recordId, next, actor.name) : null;
+
+  if (!next) await removeTestimonial(recordId);
+
+  logActivity({
+    actorId: actor.id,
+    actorName: actor.name,
+    boardId: BOARD_ID,
+    boardName: BOARD_NAME,
+    itemId: record.id,
+    itemName: record.name,
+    actionType: "Updated",
+    description: `${actor.name} ${TESTIMONIAL_ACTIVITY[action]} on ${record.name}`,
+    fieldChanged: "Testimonial",
+  });
+
+  return { testimonial: saved };
 }
 
 function logPhotoActivity(actor, record, description, raw) {
@@ -215,6 +353,10 @@ export function registerPostAdoptionRoutes(app, { requireAuth }) {
   app.post(base, requireAuth, allowed, (req, res) => answer(res, startPostAdoption(req), "post-adoption"));
 
   app.post(`${base}/:recordId`, requireAuth, allowed, (req, res) => answer(res, changePostAdoption(req), "post-adoption"));
+
+  app.post(`${base}/:recordId/chase`, requireAuth, allowed, (req, res) => answer(res, chasePostAdoption(req), "post-adoption"));
+
+  app.post(`${base}/:recordId/testimonial`, requireAuth, allowed, (req, res) => answer(res, changeTestimonial(req), "post-adoption"));
 
   app.post(`${base}/:recordId/photos`, requireAuth, allowed, receiveFile, (req, res) => answer(res, uploadPhoto(req), "post-adoption"));
 

@@ -42,7 +42,8 @@ export async function getPostAdoptionCases() {
 
 const base = (applicationId) => `/api/applications/${applicationId}/post-adoption`;
 
-// { record | null, photos: [file details] }
+// { record | null, photos: [file details], testimonial: state | null, chase: { [checkInKey]: { attempts,
+// lastSentOn, ... } } } - chase has an entry for each check-in being chased.
 export function getApplicationPostAdoption(applicationId) {
   return serverGet(base(applicationId));
 }
@@ -52,12 +53,16 @@ export function startPostAdoption(applicationId, dates) {
   return serverPost(base(applicationId), dates);
 }
 
-// Answers the saved record, including anything the rules set (due dates,
-// Chase Count, Last Check-In Sent, ...).
-export async function updatePostAdoption(applicationId, recordId, changes) {
-  const { record } = await serverPost(`${base(applicationId)}/${recordId}`, changes);
+// Answers { record, chase }: the saved record, including anything the rules
+// set (due dates, Chase Count, Last Check-In Sent, ...), and the chase attempts.
+export function updatePostAdoption(applicationId, recordId, changes) {
+  return serverPost(`${base(applicationId)}/${recordId}`, changes);
+}
 
-  return record;
+// "Chased again" on a check-in that is Sent and unanswered (checkIn: its key,
+// e.g. "24h"): one more attempt. Answers { record, chase }.
+export function chasePostAdoption(applicationId, recordId, checkIn) {
+  return serverPost(`${base(applicationId)}/${recordId}/chase`, { checkIn });
 }
 
 // [{ id, name, role }]: active Admins and the application's Case Owner.
@@ -79,4 +84,12 @@ export async function uploadPostAdoptionPhoto(applicationId, recordId, file, { n
 
 export function deletePostAdoptionPhoto(applicationId, recordId, assetId) {
   return serverDelete(`${base(applicationId)}/${recordId}/photos/${assetId}`);
+}
+
+// One step of the testimonial request: { action: "request" | "chase" |
+// "receive" | "decline" | "update" | "reset", text?, mayPublish? } (the rules:
+// server/postAdoption/testimonialRules.js). Answers { testimonial }: the saved
+// state, or null after a reset.
+export function changePostAdoptionTestimonial(applicationId, recordId, body) {
+  return serverPost(`${base(applicationId)}/${recordId}/testimonial`, body);
 }

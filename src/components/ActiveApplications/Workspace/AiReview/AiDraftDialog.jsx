@@ -14,7 +14,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { AI_REVIEW_KINDS } from "../../../../constants/aiReviews";
+import { aiReviewKind } from "../../../../constants/aiReviews";
 import useDateFormat from "../../../../hooks/useDateFormat";
 import { kindLabel, fieldLabel, shownValue } from "./aiText";
 
@@ -27,7 +27,7 @@ function AiDraftDialog({ open, run, application, mock, busy, error, onAccept, on
 
   if (!run) return null;
 
-  const fields = AI_REVIEW_KINDS[run.kind]?.fields ?? Object.keys(run.output);
+  const fields = aiReviewKind(run.kind)?.fields ?? Object.keys(run.output);
 
   return (
     <Dialog open={open} onClose={busy ? undefined : onClose} maxWidth="lg" fullWidth>

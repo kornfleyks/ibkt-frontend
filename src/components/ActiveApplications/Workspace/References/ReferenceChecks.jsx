@@ -85,9 +85,14 @@ function ReferenceChecks({ applicationId }) {
 
                 {check.signatureUrl && (
                   <Typography variant="body2">
-                    <Link href={check.signatureUrl} target="_blank" rel="noopener noreferrer">
-                      View signature
-                    </Link>
+                    {/* A Jotform signature is an image link; one from the app's own form is the typed name. Only https is ever a link. */}
+                    {/^https:\/\//.test(check.signatureUrl) ? (
+                      <Link href={check.signatureUrl} target="_blank" rel="noopener noreferrer">
+                        View signature
+                      </Link>
+                    ) : (
+                      `Signed by ${check.signatureUrl}`
+                    )}
                     {check.signedOn ? ` · signed ${check.signedOn}` : ""}
                   </Typography>
                 )}

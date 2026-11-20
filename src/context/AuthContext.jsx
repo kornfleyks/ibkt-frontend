@@ -82,8 +82,8 @@ function AuthProvider({ children }) {
     });
   }, [token]);
 
-  async function login(email, password) {
-    const { token: nextToken, user, preferences } = await AuthService.login(email, password);
+  async function login(email, password, { portal } = {}) {
+    const { token: nextToken, user, preferences } = await AuthService.login(email, password, portal);
     const nextAuth = { token: nextToken, user, preferences: preferences ?? {} };
 
     setAuth(nextAuth);

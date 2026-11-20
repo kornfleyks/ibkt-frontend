@@ -1,13 +1,13 @@
 import { ACTIVE_APPLICATIONS } from "../../src/constants/boards/activeApplications.js";
-import { AI_REVIEW_FIELDS, AI_REVIEW_KINDS, AI_RUN_STATUS } from "../../src/constants/aiReviews.js";
+import { AI_REVIEW_FIELDS, AI_RUN_STATUS, FIRST_EXTRA_CALL, aiReviewKind } from "../../src/constants/aiReviews.js";
 import { HttpError } from "../httpAnswer.js";
 import { InputError } from "../database/boardRecords.js";
 import { isDatabaseEnabled } from "../database/db.js";
-import { listItemFiles } from "../itemFiles.js";
 import { mondayDirectRequest } from "../mondayClient.js";
 import { logActivity, getItemName } from "../activityLog.js";
 import { listTranscripts } from "../screening/transcriptsStore.js";
-import { TRANSCRIPT_COLUMNS } from "../screening/routes.js";
+import { getCall } from "../screening/callsStore.js";
+import { listCallFiles } from "../screening/routes.js";
 import { aiProvider, aiProviderName } from "./provider.js";
 import { readApplication, saveReviewFields } from "./applicationFields.js";
 import * as runs from "./runsStore.js";
@@ -29,9 +29,11 @@ function requireDatabase() {
 }
 
 function kindOf(kind) {
-  if (!Object.hasOwn(AI_REVIEW_KINDS, kind ?? "")) throw new InputError("Unknown review.");
+  const found = aiReviewKind(kind);
 
-  return AI_REVIEW_KINDS[kind];
+  if (!found) throw new InputError("Unknown review.");
+
+  return found;
 }
 
 function fieldsOf(kind) {
@@ -56,7 +58,7 @@ async function assetBytes(assetId) {
 async function transcriptsFor(applicationId, call) {
   const [texts, files] = await Promise.all([
     listTranscripts(applicationId, call),
-    listItemFiles({ table: "applications", boardId: BOARD_ID, columnId: TRANSCRIPT_COLUMNS[call] }, applicationId),
+    listCallFiles(applicationId, call),
   ]);
 
   return [
@@ -144,6 +146,8 @@ export async function startReview({ applicationId, kindKey, actor, uploader }) {
 
   if (!application) throw new HttpError(404, "Application not found.");
 
+  if (kind.call >= FIRST_EXTRA_CALL && !(await getCall(applicationId, kind.call))) throw new InputError(`Call ${kind.call} isn't on this application.`);
+
   const transcripts = kind.call ? await transcriptsFor(applicationId, kind.call) : [];
 
   if (kind.call && !transcripts.length) throw new InputError(`Add the Call ${kind.call} transcript first (upload a file or paste the text).`);
@@ -192,7 +196,8 @@ export async function acceptReview({ applicationId, runId, actor }) {
   if (run.status !== AI_RUN_STATUS.DRAFT) throw new HttpError(409, `That AI review is already ${run.status}.`);
 
   // Checked again: the output may predate a change to the field rules.
-  const values = checkOutput(kindOf(run.kind), run.output);
+  const kind = kindOf(run.kind);
+  const values = checkOutput(kind, run.output);
   const decided = await runs.decide({ boardId: BOARD_ID, applicationId, runId, status: AI_RUN_STATUS.ACCEPTED, by: actor });
 
   if (!decided) throw new HttpError(409, "That AI review was just decided by someone else.");
@@ -200,14 +205,14 @@ export async function acceptReview({ applicationId, runId, actor }) {
   let saved;
 
   try {
-    saved = await saveReviewFields(actor, applicationId, values);
+    saved = await saveReviewFields(actor, applicationId, values, { call: kind.call });
   } catch (err) {
     // Put the draft back so it can be accepted again once the save works.
     await runs.reopen(runId).catch((reopenErr) => console.error("AI review: couldn't reopen the draft.", reopenErr.message));
     throw err;
   }
 
-  log(actor, applicationId, `accepted the AI ${AI_REVIEW_KINDS[run.kind].label.toLowerCase()}`, { runId, kind: run.kind });
+  log(actor, applicationId, `accepted the AI ${kind.label.toLowerCase()}`, { runId, kind: run.kind });
 
   return { run: decided, values: saved ?? values };
 }
@@ -219,7 +224,7 @@ export async function discardReview({ applicationId, runId, actor }) {
 
   if (!run) throw new HttpError(409, "That AI review isn't an open draft any more.");
 
-  log(actor, applicationId, `discarded the AI ${AI_REVIEW_KINDS[run.kind].label.toLowerCase()}`, { runId, kind: run.kind });
+  log(actor, applicationId, `discarded the AI ${kindOf(run.kind).label.toLowerCase()}`, { runId, kind: run.kind });
 
   return { run };
 }

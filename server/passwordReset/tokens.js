@@ -23,9 +23,11 @@ function parseStored(stored) {
 
 // { code, stored, expiresAt } - `code` goes in the email, `stored` on the
 // Users board.
-export function createResetCode(now = Date.now()) {
+// `ttlMinutes` lets a code live longer than a password reset's (the
+// rescuer's first set-password link lasts days).
+export function createResetCode(now = Date.now(), ttlMinutes = RESET_CODE_TTL_MINUTES) {
   const code = crypto.randomBytes(32).toString("base64url");
-  const expiresAt = now + RESET_CODE_TTL_MINUTES * 60_000;
+  const expiresAt = now + ttlMinutes * 60_000;
 
   return { code, stored: `${hashOf(code)}${SEPARATOR}${expiresAt}`, expiresAt };
 }
@@ -49,4 +51,11 @@ export function codeMatches(stored, code, now = Date.now()) {
   const actual = Buffer.from(hashOf(code), "hex");
 
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+}
+
+// Monday's date-with-time format for a stored expiry, in UTC like Last Login.
+export function expiryColumnValue(epochMs) {
+  const iso = new Date(epochMs).toISOString();
+
+  return { date: iso.slice(0, 10), time: iso.slice(11, 19) };
 }

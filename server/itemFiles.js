@@ -120,7 +120,7 @@ export async function deleteItemFile(column, itemId, assetId) {
     column.boardId,
     itemId,
     column.columnId,
-    files.filter((file) => file.assetId !== target.assetId).map((file) => file.assetId),
+    files.filter((file) => file.assetId !== target.assetId).map((file) => ({ assetId: file.assetId, name: file.name })),
   );
 
   if (isDatabaseEnabled()) {

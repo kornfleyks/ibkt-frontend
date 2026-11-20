@@ -10,6 +10,7 @@ import {
 import BooleanStatus from "../../../Common/BooleanStatus";
 import SectionCard from "../../../Common/SectionCard";
 import EditableInfoRow from "../../../Common/EditableInfoRow";
+import PassportSection from "./PassportSection";
 import {
   updateCatVaccinated,
   updateCatNeutered,
@@ -19,6 +20,8 @@ import {
   updateCatFivStatus,
 } from "../../../../services/CatsService";
 import { CATS_STATUS_OPTIONS } from "../../../../constants/statuses/catsStatuses";
+import { canSeeSensitiveFields } from "../../../../constants/roles";
+import useAuth from "../../../../hooks/useAuth";
 
 const VACCINATED_OPTIONS = Object.values(CATS_STATUS_OPTIONS.VACCINATED);
 const NEUTERED_OPTIONS = Object.values(CATS_STATUS_OPTIONS.NEUTERED);
@@ -75,6 +78,9 @@ function SelectEditor(options) {
 }
 
 function MedicalTab({ cat, onCatUpdate }) {
+  const { user } = useAuth();
+  const canSeeMicrochip = canSeeSensitiveFields(user?.role);
+
   return (
     <Grid container spacing={3}>
       <Grid
@@ -139,24 +145,32 @@ function MedicalTab({ cat, onCatUpdate }) {
               Additional Information
             </Typography>
 
-            <EditableInfoRow
-              label="Microchip"
-              displayValue={cat.microchipNumber}
-              getEditValue={() => (cat.microchipNumber === "N/A" ? "" : cat.microchipNumber)}
-              renderEditor={(value, setValue, saving) => (
-                <TextField
-                  size="small"
-                  sx={{ flex: 1 }}
-                  disabled={saving}
-                  value={value}
-                  onChange={(event) => setValue(event.target.value)}
-                />
-              )}
-              onSave={async (value) => {
-                await updateCatMicrochipNumber(cat.id, value);
-                onCatUpdate({ microchipNumber: value });
-              }}
-            />
+            {canSeeMicrochip ? (
+              <EditableInfoRow
+                label="Microchip"
+                displayValue={cat.microchipNumber}
+                getEditValue={() => (cat.microchipNumber === "N/A" ? "" : cat.microchipNumber)}
+                renderEditor={(value, setValue, saving) => (
+                  <TextField
+                    size="small"
+                    sx={{ flex: 1 }}
+                    disabled={saving}
+                    value={value}
+                    onChange={(event) => setValue(event.target.value)}
+                  />
+                )}
+                onSave={async (value) => {
+                  await updateCatMicrochipNumber(cat.id, value);
+                  onCatUpdate({ microchipNumber: value });
+                }}
+              />
+            ) : (
+              // The server sends "Hidden" and refuses a change from this role.
+              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ py: 0.5 }}>
+                <Typography sx={{ minWidth: 120, flexShrink: 0, fontWeight: 600, color: "text.secondary" }}>Microchip</Typography>
+                <Typography sx={{ color: "text.secondary" }}>Hidden (only Admins can see it)</Typography>
+              </Stack>
+            )}
 
             <EditableInfoRow
               label="FeLV Status"
@@ -181,6 +195,10 @@ function MedicalTab({ cat, onCatUpdate }) {
             />
           </CardContent>
         </Card>
+      </Grid>
+
+      <Grid size={12}>
+        <PassportSection cat={cat} onCatUpdate={onCatUpdate} />
       </Grid>
     </Grid>
   );

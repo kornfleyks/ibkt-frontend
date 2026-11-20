@@ -75,6 +75,7 @@ export async function review({ kind, fields, inputs }) {
     suggestedNextAction: `${MARK} ${score < 35 ? "Request the home video." : score < 65 ? "Clarify the open points before the next step." : "Discuss with the team before continuing."}`,
     call1Summary: `${MARK} ${text ? `Call notes start: "${excerpt(text, 220)}"` : "No pasted transcript to summarise."}${transcriptNote(transcripts)}`,
     call2Summary: `${MARK} ${text ? `Call notes start: "${excerpt(text, 220)}"` : "No pasted transcript to summarise."}${transcriptNote(transcripts)}`,
+    callSummary: `${MARK} ${text ? `Call notes start: "${excerpt(text, 220)}"` : "No pasted transcript to summarise."}${transcriptNote(transcripts)}`,
   };
 
   const output = {};

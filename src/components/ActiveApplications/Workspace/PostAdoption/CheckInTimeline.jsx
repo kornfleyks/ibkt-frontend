@@ -1,29 +1,49 @@
 import { useState } from "react";
-import { Box, Chip, CircularProgress, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography, Alert } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, FormControlLabel, MenuItem, Stack, Switch, TextField, Typography, Alert } from "@mui/material";
 import SectionCard from "../../../Common/SectionCard";
 import { CHECK_INS, CHECK_IN_STATUS, isCheckInOverdue } from "../../../../constants/postAdoptionCheckIns";
+import { MAX_ATTEMPTS, REMINDER_INTERVAL_DAYS } from "../../../../constants/postAdoptionReminders";
 import { CHECK_IN_COLORS } from "./statusColors";
 import { POST_ADOPTION_STATUS_OPTIONS } from "../../../../constants/statuses/postAdoptionStatuses";
 import useDateFormat from "../../../../hooks/useDateFormat";
-import { todayLocal } from "../../../../utils/localDate";
+import { todayLocal, addDays } from "../../../../utils/localDate";
 
 const STATUS_OPTIONS = Object.values(CHECK_IN_STATUS);
 const COMPLETE = POST_ADOPTION_STATUS_OPTIONS.ALL_REQUIRED_CHECK_INS_COMPLETE.YES;
 
 // One check-in: its due date and status, both saved as soon as they change.
-function CheckInRow({ checkIn, record, save, muted }) {
+// A Sent check-in shows its chase attempts (`chase`: the row for this
+// check-in, if any) and a button to record that the adopter was chased again.
+function CheckInRow({ checkIn, record, save, muted, chase, onChaseAgain }) {
   const { formatDateString } = useDateFormat();
   const [saving, setSaving] = useState(false);
   const [editingDate, setEditingDate] = useState(false);
   const status = record[checkIn.statusField] || CHECK_IN_STATUS.NOT_DUE;
   const due = record[checkIn.dueField];
   const overdue = !muted && isCheckInOverdue(record[checkIn.statusField], due, todayLocal());
+  const waitingForReply = status === CHECK_IN_STATUS.SENT && !muted;
+  // Marked Sent before the attempts were counted: one attempt, on the last send date.
+  const attempts = chase?.attempts || 1;
+  const lastSent = chase?.lastSentOn || record.lastCheckInSent;
+  const nextOn = lastSent ? formatDateString(addDays(lastSent, REMINDER_INTERVAL_DAYS)) : null;
 
   async function change(changes) {
     setSaving(true);
 
     try {
       await save(changes);
+    } catch {
+      // The tab shows the error.
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function chaseAgain() {
+    setSaving(true);
+
+    try {
+      await onChaseAgain(checkIn.key);
     } catch {
       // The tab shows the error.
     } finally {
@@ -92,6 +112,25 @@ function CheckInRow({ checkIn, record, save, muted }) {
 
       {status !== CHECK_IN_STATUS.NOT_DUE && <Chip label={status} size="small" color={CHECK_IN_COLORS[status] ?? "default"} />}
       {overdue && <Chip label="Overdue" size="small" color="error" variant="outlined" />}
+
+      {waitingForReply && (
+        <>
+          <Chip label={`Attempt ${attempts} of ${MAX_ATTEMPTS}`} size="small" variant="outlined" />
+
+          {attempts < MAX_ATTEMPTS ? (
+            <Button size="small" variant="outlined" onClick={chaseAgain} disabled={saving}>
+              Chased again
+            </Button>
+          ) : null}
+
+          {nextOn && (
+            <Typography variant="caption" color="text.secondary">
+              {attempts < MAX_ATTEMPTS ? `Reminder to chase on ${nextOn}` : `No reply by ${nextOn} stops chasing`}
+            </Typography>
+          )}
+        </>
+      )}
+
       {saving && <CircularProgress size={16} sx={{ color: "text.secondary" }} />}
     </Box>
   );
@@ -99,8 +138,11 @@ function CheckInRow({ checkIn, record, save, muted }) {
 
 // The 9 check-ins in order. Marking one Sent records today as the last
 // check-in sent and adds to the chase count; Received records today as the
-// last response (the server does this, in both storage modes).
-function CheckInTimeline({ record, save }) {
+// last response (the server does this, in both storage modes). The server
+// also reminds the owner when a check-in is due and every 3 days while a Sent
+// one is unanswered, and stops chasing after 3 attempts
+// (docs/post-adoption-reminders.md).
+function CheckInTimeline({ record, save, chase = {}, onChaseAgain }) {
   const [savingStop, setSavingStop] = useState(false);
 
   async function toggleStopChasing(event) {
@@ -137,12 +179,20 @@ function CheckInTimeline({ record, save }) {
 
         <Stack spacing={0.5}>
           {CHECK_INS.map((checkIn) => (
-            <CheckInRow key={checkIn.key} checkIn={checkIn} record={record} save={save} muted={Boolean(record.stopChasing)} />
+            <CheckInRow
+              key={checkIn.key}
+              checkIn={checkIn}
+              record={record}
+              save={save}
+              muted={Boolean(record.stopChasing)}
+              chase={chase[checkIn.key]}
+              onChaseAgain={onChaseAgain}
+            />
           ))}
         </Stack>
 
         <Typography variant="caption" color="text.secondary">
-          Click a due date to change it. Sent sets the last check-in date and adds to the chase count; Received sets the last response date.
+          {`Click a due date to change it. Sent sets the last check-in date and adds to the chase count; Received sets the last response date. You are reminded when a check-in is due and every ${REMINDER_INTERVAL_DAYS} days while a Sent one has no reply. Press Chased again each time you contact the adopter. After ${MAX_ATTEMPTS} attempts with no reply, chasing stops and the adoption is escalated.`}
         </Typography>
       </Stack>
     </SectionCard>

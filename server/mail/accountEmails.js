@@ -30,7 +30,10 @@ function describe(status, { subject, to, error }) {
   }
 }
 
-async function sendOrLog(kind, label, { to, subject, text }, { userId, userName, actorId, actorName }) {
+// `target` overrides what the Activity Log entry is filed against (default:
+// the recipient's Users item), for emails to someone with no account yet
+// (mail/rescuerEmails.js). Then no user_id is kept on the email_log row.
+export async function sendOrLog(kind, label, { to, subject, text }, { userId, userName, actorId, actorName, target }) {
   let status;
   let error;
   let messageId;
@@ -51,9 +54,9 @@ async function sendOrLog(kind, label, { to, subject, text }, { userId, userName,
   }
 
   logActivity({
-    boardId: BOARD_ID,
-    boardName: BOARD_NAME,
-    itemId: userId,
+    boardId: target?.boardId ?? BOARD_ID,
+    boardName: target?.boardName ?? BOARD_NAME,
+    itemId: target?.itemId ?? userId,
     itemName: userName,
     actorId: actorId ?? userId,
     actorName: actorName ?? userName,
@@ -64,7 +67,7 @@ async function sendOrLog(kind, label, { to, subject, text }, { userId, userName,
   if (isDatabaseEnabled()) {
     recordSend({
       messageId,
-      userId,
+      userId: target ? null : userId,
       toAddress: to,
       subject,
       kind,

@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom";
 
 import useAuth from "../../hooks/useAuth";
-import { roleSatisfies } from "../../constants/roles";
+import { roleSatisfies, portalOfRole } from "../../constants/roles";
 
 function ProtectedRoute({ children, roles = [], emails = [] }) {
   const { isAuthenticated, user, roleChange } = useAuth();
@@ -14,6 +14,13 @@ function ProtectedRoute({ children, roles = [], emails = [] }) {
     // A live role change just removed access to this page: go somewhere
     // everyone can use (the role-change notice explains why) rather than
     // showing Forbidden for a page they were legitimately on.
+    // A portal-only role (Rescuer, Foster) has no staff pages at all: its home is its portal.
+    const portal = portalOfRole(user?.role);
+
+    if (portal) {
+      return <Navigate to={portal.home} replace />;
+    }
+
     return <Navigate to={roleChange ? "/dashboard" : "/forbidden"} replace />;
   }
 

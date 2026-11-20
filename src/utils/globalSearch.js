@@ -2,6 +2,8 @@
 // { key, group, label, secondary, to, haystack } - `haystack` is the
 // lower-cased text a query is matched against.
 
+import { HIDDEN_VALUE } from "../constants/roles";
+
 export const SEARCH_GROUPS = {
   CATS: "Cats",
   APPLICATIONS: "Applications",
@@ -12,9 +14,11 @@ export const SEARCH_GROUPS = {
 // Order the groups appear in the dropdown.
 const GROUP_ORDER = [SEARCH_GROUPS.PAGES, SEARCH_GROUPS.CATS, SEARCH_GROUPS.APPLICATIONS, SEARCH_GROUPS.TASKS];
 
-// Mappers fill missing text fields with "N/A" - never worth matching on.
+// Mappers fill missing text fields with "N/A", and the server answers a
+// sensitive value (a microchip number) as "Hidden" to roles that may not see
+// it - never worth matching on or showing.
 function present(value) {
-  return value && value !== "N/A" ? String(value) : "";
+  return value && value !== "N/A" && value !== HIDDEN_VALUE ? String(value) : "";
 }
 
 function joinSecondary(...parts) {

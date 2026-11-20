@@ -269,7 +269,7 @@ function isBlank(value) {
 // they're chosen (the dialog) - they're uploaded after the application
 // exists, not sent with the answers.
 export function questionError(question, answers) {
-  if (!isVisible(question, answers) || question.type === "note" || question.type === "file") {
+  if (!isVisible(question, answers) || question.type === "note" || question.type === "agreement" || question.type === "file") {
     return null;
   }
 

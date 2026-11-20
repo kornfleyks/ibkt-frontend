@@ -16,9 +16,10 @@ import { CloseIcon, CheckIcon, ContentCopyIcon } from '../icons';
 import { createUser } from '../../services/UsersService';
 import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
 
-// Super Admin is never picked here either - see Users.jsx's ROLE_OPTIONS.
+// Super Admin is never picked here either, and neither is Rescuer (that is the
+// Rescuers page's Add Rescuer) - see pages/Users/Users.jsx.
 const ROLE_OPTIONS = Object.values(USERS_STATUS_OPTIONS.ROLE).filter(
-    (role) => role !== USERS_STATUS_OPTIONS.ROLE.SUPER_ADMIN,
+    (role) => role !== USERS_STATUS_OPTIONS.ROLE.SUPER_ADMIN && role !== USERS_STATUS_OPTIONS.ROLE.RESCUER,
 );
 
 // No 0/O/1/I/l - a password the admin may have to read out loud or retype

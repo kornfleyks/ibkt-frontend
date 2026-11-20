@@ -64,10 +64,11 @@ export function endPasswordChangedSessions(userId, { exceptSignedInAt } = {}) {
   }
 }
 
-export function registerSessionEventRoutes(app, { requireAuth }) {
-  // requireAuth already rejects non-Active accounts, so a suspended user
+export function registerSessionEventRoutes(app, { requireAnyAuth }) {
+  // Every signed-in role needs this stream (rescuers too), so requireAnyAuth.
+  // It already rejects non-Active accounts, so a suspended user
   // can't (re)connect - the client treats that 401 as "signed out".
-  app.get("/api/session/events", requireAuth, async (req, res) => {
+  app.get("/api/session/events", requireAnyAuth, async (req, res) => {
     const userId = String(req.user.sub);
 
     res.set({

@@ -25,6 +25,10 @@ export const TRAVEL_STATUS_OPTIONS = {
     XL: "XL",
     LARGE: "Large",
   },
+  WEIGHT_UNIT: {
+    KG: "kg",
+    LB: "lb",
+  },
   TRAVEL_CRATE_READY: {
     PENDING: "Pending",
     YES: "Yes",

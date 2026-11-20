@@ -30,3 +30,6 @@ structure.txt
 *.njsproj
 *.sln
 *.sw?
+
+# Client brief (confidential, kept local)
+*.pptx

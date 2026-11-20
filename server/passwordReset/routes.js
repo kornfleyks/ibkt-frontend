@@ -2,7 +2,7 @@ import { USERS } from "../../src/constants/boards/users.js";
 import { findUserByEmail, findUserByResetToken, setUserColumns, hashPassword, recordPasswordChange } from "../auth.js";
 import { clearAttempts } from "../loginLockout.js";
 import { logActivity } from "../activityLog.js";
-import { createResetCode, isUnexpired, codeMatches } from "./tokens.js";
+import { createResetCode, isUnexpired, codeMatches, expiryColumnValue } from "./tokens.js";
 import { isSenderConfigured, sendResetCode } from "./sender.js";
 
 // "Forgot password?" on the login page. Public routes: the caller has no
@@ -17,13 +17,6 @@ const INVALID_LINK = "This reset link is invalid or has expired. Request a new o
 
 function fullNameOf(user) {
   return `${user.firstName} ${user.lastName}`.trim();
-}
-
-// Monday's date-with-time format, in UTC like Last Login.
-function expiryValue(epochMs) {
-  const iso = new Date(epochMs).toISOString();
-
-  return { date: iso.slice(0, 10), time: iso.slice(11, 19) };
 }
 
 const CLEARED_TOKEN = {
@@ -45,7 +38,7 @@ async function sendResetEmail(email) {
 
   await setUserColumns(user.id, {
     [COLUMNS.PASSWORD_RESET_TOKEN]: stored,
-    [COLUMNS.PASSWORD_RESET_EXPIRY]: expiryValue(expiresAt),
+    [COLUMNS.PASSWORD_RESET_EXPIRY]: expiryColumnValue(expiresAt),
   });
 
   try {

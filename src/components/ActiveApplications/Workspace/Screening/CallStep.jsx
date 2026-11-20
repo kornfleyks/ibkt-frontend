@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Box, Button, CircularProgress, Divider, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, Stack, Typography } from "@mui/material";
 import { UploadIcon } from "../../../icons";
 import SectionCard from "../../../Common/SectionCard";
 import RecordField from "../../../Common/RecordField";
@@ -18,15 +18,35 @@ const optionsOf = (field) => ADOPTION_EDITABLE_FIELDS[field].options;
 // One screening call: its fields, its transcripts (uploaded files and
 // pasted text) and "Review call with AI". Call 2 is greyed out until Call 2
 // Required is Yes; the Required field itself stays editable.
-function CallStep({ call, step, application, save, transcripts, onTranscriptsChange, ai, onReviewed }) {
+//
+// An extra call (Call 3 and above, `extra` given) has its date and summary
+// in the call itself, not in the application: `extra` is { date, summary,
+// onSave({ date? | summary? }), onDelete() }, and it can be deleted.
+function CallStep({ call, step, application, save, transcripts, onTranscriptsChange, ai, onReviewed, extra }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteCallOpen, setDeleteCallOpen] = useState(false);
+  const [deletingCall, setDeletingCall] = useState(false);
   const [error, setError] = useState(null);
   const inactive = call === 2 && application.call2Required !== "Yes";
   const field = (name) => `call${call}${name}`;
   const hasTranscript = transcripts.files.length + transcripts.texts.length > 0;
+
+  async function confirmDeleteCall() {
+    setDeletingCall(true);
+    setError(null);
+
+    try {
+      await extra.onDelete();
+    } catch (err) {
+      console.error("Failed to delete the call:", err);
+      setError(err?.message || "Something went wrong while deleting the call.");
+      setDeletingCall(false);
+      setDeleteCallOpen(false);
+    }
+  }
 
   async function confirmDelete() {
     setDeleting(true);
@@ -56,10 +76,18 @@ function CallStep({ call, step, application, save, transcripts, onTranscriptsCha
   return (
     <SectionCard>
       <Stack spacing={2}>
-        <Box>
-          <Typography variant="overline" color="text.secondary">{`Step ${step}`}</Typography>
-          <Typography variant="h6" fontWeight={600}>{`Call ${call}`}</Typography>
-        </Box>
+        <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
+          <Box>
+            <Typography variant="overline" color="text.secondary">{extra ? "Extra call" : `Step ${step}`}</Typography>
+            <Typography variant="h6" fontWeight={600}>{`Call ${call}`}</Typography>
+          </Box>
+
+          {extra && (
+            <Button size="small" color="inherit" onClick={() => setDeleteCallOpen(true)}>
+              Delete call
+            </Button>
+          )}
+        </Stack>
 
         {call === 2 && (
           <RecordField
@@ -79,14 +107,24 @@ function CallStep({ call, step, application, save, transcripts, onTranscriptsCha
           )}
 
           <Box sx={inactive ? { pointerEvents: "none" } : undefined} aria-disabled={inactive || undefined}>
-            <RecordField label="Date" kind="date" value={application[field("Date")]} onSave={(value) => save(field("Date"), value)} />
+            <RecordField
+              label="Date"
+              kind="date"
+              value={extra ? extra.date : application[field("Date")]}
+              onSave={(value) => (extra ? extra.onSave({ date: value ?? "" }) : save(field("Date"), value))}
+            />
             {call === 1 && (
               <>
                 <RecordField label="Completed" kind="select" options={optionsOf("call1Completed")} value={application.call1Completed} onSave={(value) => save("call1Completed", value)} />
                 <RecordField label="Sentiment" kind="select" options={optionsOf("call1Sentiment")} value={application.call1Sentiment} onSave={(value) => save("call1Sentiment", value)} />
               </>
             )}
-            <RecordField label="Summary" kind="longText" value={application[field("Summary")]} onSave={(value) => save(field("Summary"), value)} />
+            <RecordField
+              label="Summary"
+              kind="longText"
+              value={extra ? extra.summary : application[field("Summary")]}
+              onSave={(value) => (extra ? extra.onSave({ summary: value ?? "" }) : save(field("Summary"), value))}
+            />
 
             <Divider sx={{ my: 2 }} />
 
@@ -118,7 +156,7 @@ function CallStep({ call, step, application, save, transcripts, onTranscriptsCha
                 <FileDetailsRow key={file.assetId} file={file} onDelete={(item) => setDeleteTarget({ kind: "file", item })} />
               ))}
               {transcripts.texts.map((text) => (
-                <PastedTranscriptRow key={text.id} transcript={text} onDelete={(item) => setDeleteTarget({ kind: "text", item })} />
+                <PastedTranscriptRow key={text.id} transcript={text} call={call} onDelete={(item) => setDeleteTarget({ kind: "text", item })} />
               ))}
             </Stack>
           </Box>
@@ -152,6 +190,25 @@ function CallStep({ call, step, application, save, transcripts, onTranscriptsCha
         onCancel={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
       />
+
+      {extra && (
+        <Dialog open={deleteCallOpen} onClose={deletingCall ? undefined : () => setDeleteCallOpen(false)}>
+          <DialogTitle>{`Delete Call ${call}?`}</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              This deletes the call's date, summary and every transcript on it (uploaded files and pasted text). Past AI reviews of this call stay in the history. It cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteCallOpen(false)} disabled={deletingCall}>
+              Cancel
+            </Button>
+            <Button color="error" variant="contained" onClick={confirmDeleteCall} disabled={deletingCall}>
+              {deletingCall ? <CircularProgress size={16} sx={{ color: "inherit" }} /> : "Delete call"}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </SectionCard>
   );
 }

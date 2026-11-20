@@ -1,5 +1,6 @@
 import { USERS } from "../../src/constants/boards/users.js";
 import { RESCUERS } from "../../src/constants/boards/rescuers.js";
+import { FOSTERS } from "../../src/constants/boards/fosters.js";
 import { CATS } from "../../src/constants/boards/cats.js";
 import { ACTIVE_APPLICATIONS } from "../../src/constants/boards/activeApplications.js";
 import { TRAVEL } from "../../src/constants/boards/travel.js";
@@ -19,6 +20,7 @@ import { COMMUNICATION_BOARDS } from "../../src/constants/communicationBoards.js
 export const MIRRORED_BOARDS = [
   { boardId: USERS.BOARD_ID, table: "users" },
   { boardId: RESCUERS.BOARD_ID, table: "rescuers" },
+  { boardId: FOSTERS.BOARD_ID, table: "fosters" },
   { boardId: CATS.BOARD_ID, table: "cats" },
   { boardId: ACTIVE_APPLICATIONS.BOARD_ID, table: "applications" },
   { boardId: TRAVEL.BOARD_ID, table: "travel" },
@@ -54,6 +56,7 @@ export const LINK_PAIRS = [
   [[ACTIVE_APPLICATIONS.BOARD_ID, "board_relation_mm482g9z"], [TRAVEL.BOARD_ID, "board_relation_mm486b2n"]], // Travel / Linked Adopter
   [[ACTIVE_APPLICATIONS.BOARD_ID, "board_relation_mm49xt5w"], [POST_ADOPTION.BOARD_ID, "board_relation_mm497ap1"]], // Post-Adoption / Linked Adopter
   [[CATS.BOARD_ID, "board_relation_mm474v6b"], [RESCUERS.BOARD_ID, "board_relation_mm48rqcz"]], // Linked Rescuer / link to Cats
+  [[CATS.BOARD_ID, CATS.COLUMNS.LINKED_FOSTER], [FOSTERS.BOARD_ID, FOSTERS.COLUMNS.LINK_TO_CATS]], // Linked Foster / link to Cats
   [[CATS.BOARD_ID, "board_relation_mm481sxw"], [TRAVEL.BOARD_ID, "board_relation_mm48vpn9"]], // Travel / Linked Cat
   [[CATS.BOARD_ID, "board_relation_mm49kxgg"], [POST_ADOPTION.BOARD_ID, "board_relation_mm493c3r"]], // Post-Adoption / Linked Cat
 ];

@@ -27,6 +27,10 @@ export const TRAVEL = {
     PASSPORT_VERIFIED: "color_mm4gr18g", // Passport Verified | status
     MINISTRY_APPROVAL: "color_mm4gp5jx", // Ministry Approval | status
     EXPORT_DOCUMENTS_COMPLETE: "color_mm4gtqn7", // Export Documents Complete | status
+    CRATE_WEIGHT: "numeric_mm48gcnt", // Crate Weight | numbers (was titled Weight (kg))
+    WEIGHT_UNIT: "color_mm96e65t", // Weight Unit | status (kg, lb)
+    TRAVEL_DATE: "date_mm48dwgq", // Travel Date | date
+    ARRIVAL_DATE: "date_mm486bxc", // Arrival Date | date
     FLIGHT_NUMBER: "text_mm48wjhq", // Flight Number | text
     DEPARTURE_AIRPORT: "text_mm487anc", // Departure Airport | text
     ARRIVAL_AIRPORT: "text_mm48jqna", // Arrival Airport | text

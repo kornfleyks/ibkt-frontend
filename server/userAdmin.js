@@ -22,7 +22,9 @@ const MONDAY_API_URL = process.env.MONDAY_API_URL;
 
 const ITEM_ID_PATTERN = /^\d+$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const CREATABLE_ROLES = Object.values(ROLES).filter((role) => role !== ROLES.SUPER_ADMIN);
+// A Rescuer is made through POST /api/admin/rescuers (or an approved application), which also makes their Rescuers record.
+// A Foster is made through POST /api/admin/fosters (or an approved application), which also makes their Fosters record.
+const CREATABLE_ROLES = Object.values(ROLES).filter((role) => role !== ROLES.SUPER_ADMIN && role !== ROLES.RESCUER && role !== ROLES.FOSTER);
 const { ACCOUNT_STATUS } = USERS_STATUS_OPTIONS;
 const STAGES = ACTIVE_APPLICATIONS_STATUS_OPTIONS.ADOPTION_STAGE;
 const TASK_STATUS = TASKS_STATUS_OPTIONS.STATUS;

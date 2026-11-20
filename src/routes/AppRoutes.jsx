@@ -12,6 +12,9 @@ import AdoptionDetail from "../pages/Adoptions/AdoptionDetail";
 import Matching from "../pages/Matching";
 import Tasks from "../pages/Tasks";
 import Users from "../pages/Users";
+import Forms from "../pages/Forms";
+import Rescuers from "../pages/Rescuers";
+import Fosters from "../pages/Fosters";
 import ActivityLog from "../pages/ActivityLog";
 import AppSettings from "../pages/AppSettings";
 import ReviewItems from "../pages/ReviewItems/ReviewItems";
@@ -20,9 +23,23 @@ import Login from "../pages/Login/Login";
 import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
+import BecomeRescuer from "../pages/BecomeRescuer";
+import BecomeFoster from "../pages/BecomeFoster";
+import PublicForm from "../pages/PublicForm";
+import RescuerLogin from "../pages/RescuerLogin";
+import RescuerSetPassword from "../pages/RescuerSetPassword";
+import RescuerCats from "../pages/RescuerCats";
+import RescuerAddCat from "../pages/RescuerAddCat";
+import FosterLogin from "../pages/FosterLogin";
+import FosterSetPassword from "../pages/FosterSetPassword";
+import FosterCats from "../pages/FosterCats";
+import FosterProfile from "../pages/FosterProfile";
 import Forbidden from "../pages/Forbidden";
 
 import ProtectedRoute from "../components/ProtectedRoute";
+import RescuerRoute from "../components/RescuerRoute";
+import FosterRoute from "../components/FosterRoute";
+import PortalLayout from "../layouts/PortalLayout/PortalLayout";
 
 function AppRoutes() {
   return (
@@ -34,6 +51,61 @@ function AppRoutes() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/become-a-rescuer" element={<BecomeRescuer />} />
+        <Route path="/forms/:formKey" element={<PublicForm />} />
+        <Route path="/rescuer/login" element={<RescuerLogin />} />
+        <Route path="/rescuer/set-password" element={<RescuerSetPassword />} />
+        <Route path="/become-a-foster" element={<BecomeFoster />} />
+        <Route path="/foster/login" element={<FosterLogin />} />
+        <Route path="/foster/set-password" element={<FosterSetPassword />} />
+
+        {/* Foster portal (Foster role only) */}
+
+        <Route
+          path="/foster"
+          element={
+            <FosterRoute>
+              <PortalLayout>
+                <FosterCats />
+              </PortalLayout>
+            </FosterRoute>
+          }
+        />
+
+        <Route
+          path="/foster/cats/:id/profile"
+          element={
+            <FosterRoute>
+              <PortalLayout>
+                <FosterProfile />
+              </PortalLayout>
+            </FosterRoute>
+          }
+        />
+
+        {/* Rescuer portal (Rescuer role only) */}
+
+        <Route
+          path="/rescuer"
+          element={
+            <RescuerRoute>
+              <PortalLayout>
+                <RescuerCats />
+              </PortalLayout>
+            </RescuerRoute>
+          }
+        />
+
+        <Route
+          path="/rescuer/add-cat"
+          element={
+            <RescuerRoute>
+              <PortalLayout>
+                <RescuerAddCat />
+              </PortalLayout>
+            </RescuerRoute>
+          }
+        />
 
         {/* Protected */}
 
@@ -41,7 +113,7 @@ function AppRoutes() {
           path="/dashboard"
           element={
             <ProtectedRoute
-              roles={["Admin", "Volunteer", "Rescuer", "Foster", "Adopter"]}
+              roles={["Admin", "Volunteer", "Foster", "Adopter"]}
             >
               <AppLayout>
                 <Dashboard />
@@ -106,6 +178,39 @@ function AppRoutes() {
         />
 
         <Route
+          path="/forms"
+          element={
+            <ProtectedRoute roles={["Admin", "Volunteer"]}>
+              <AppLayout>
+                <Forms />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rescuers"
+          element={
+            <ProtectedRoute roles={["Admin"]}>
+              <AppLayout>
+                <Rescuers />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/fosters"
+          element={
+            <ProtectedRoute roles={["Admin"]}>
+              <AppLayout>
+                <Fosters />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/matching"
           element={
             <ProtectedRoute roles={["Admin", "Volunteer"]}>
@@ -142,7 +247,7 @@ function AppRoutes() {
           path="/tasks"
           element={
             <ProtectedRoute
-              roles={["Admin", "Volunteer", "Rescuer", "Foster"]}
+              roles={["Admin", "Volunteer", "Foster"]}
             >
               <AppLayout>
                 <Tasks />
@@ -199,7 +304,7 @@ function AppRoutes() {
           path="/account"
           element={
             <ProtectedRoute
-              roles={["Admin", "Volunteer", "Rescuer", "Foster", "Adopter"]}
+              roles={["Admin", "Volunteer", "Foster", "Adopter"]}
             >
               <AppLayout>
                 <Account />

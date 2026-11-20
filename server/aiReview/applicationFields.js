@@ -4,6 +4,7 @@ import { APPLICATION_FIELDS, getApplication } from "../applications.js";
 import { changeRecord, logChanges } from "../database/boardRecords.js";
 import { isDatabaseBoard } from "../database/switches.js";
 import { statusLabelsOf, readMondayRecord, changeMondayRecord } from "../mondayRecords.js";
+import { updateCall } from "../screening/callsStore.js";
 
 // Reading the application for a review, and saving an accepted draft, in
 // either storage (applications in the database or on Monday). The AI
@@ -55,16 +56,27 @@ export async function readApplication(applicationId) {
 
 // Saves an accepted draft's values; logged with old and new values like
 // any application change. Answers the saved values, or null for an
-// unknown application.
-export async function saveReviewFields(actor, applicationId, values) {
+// unknown application. A review of an extra call (`call` 3 or more) also
+// has `callSummary`, which is saved to that call (application_calls), not to
+// the application.
+export async function saveReviewFields(actor, applicationId, values, { call = null } = {}) {
+  const { callSummary, ...applicationValues } = values;
   const fields = isDatabaseBoard(TABLE) ? REVIEW_FIELDS : MONDAY_READ_FIELDS;
+
+  if (callSummary !== undefined) {
+    if (!call || !(await updateCall({ applicationId, call, changes: { summary: callSummary } }))) throw new Error(`Call ${call} isn't on this application.`);
+  }
+
   const result = isDatabaseBoard(TABLE)
-    ? await changeRecord(TABLE, fields, applicationId, values)
-    : await changeMondayRecord(BOARD_ID, fields, applicationId, values, STATUS_LABELS);
+    ? await changeRecord(TABLE, fields, applicationId, applicationValues)
+    : await changeMondayRecord(BOARD_ID, fields, applicationId, applicationValues, STATUS_LABELS);
 
   if (!result) return null;
 
-  logChanges({ actor, table: TABLE, boardName: "Active Applications", fields, before: result.before, after: result.after, keys: Object.keys(values) });
+  logChanges({ actor, table: TABLE, boardName: "Active Applications", fields, before: result.before, after: result.after, keys: Object.keys(applicationValues) });
 
-  return Object.fromEntries(Object.keys(values).map((key) => [key, result.after[key]]));
+  return {
+    ...Object.fromEntries(Object.keys(applicationValues).map((key) => [key, result.after[key]])),
+    ...(callSummary !== undefined ? { callSummary } : {}),
+  };
 }

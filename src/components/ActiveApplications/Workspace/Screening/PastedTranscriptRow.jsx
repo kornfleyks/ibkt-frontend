@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Box, Button, IconButton, Stack, Typography } from "@mui/material";
+import { Box, IconButton, Stack, Typography } from "@mui/material";
 import { DeleteIcon } from "../../../icons";
+import ViewTranscriptDialog from "./ViewTranscriptDialog";
 import useDateFormat from "../../../../hooks/useDateFormat";
 
 const PREVIEW_LENGTH = 280;
 
-// A pasted transcript: who added it and when, its length, a preview that
-// opens to the full text, and delete.
-function PastedTranscriptRow({ transcript, onDelete }) {
+// A pasted transcript: who added it and when, its length, a preview, and
+// delete. Clicking the transcript opens the whole text in a dialog.
+function PastedTranscriptRow({ transcript, call, onDelete }) {
   const { formatDateTime } = useDateFormat();
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const long = transcript.text.length > PREVIEW_LENGTH;
 
   return (
@@ -23,7 +24,19 @@ function PastedTranscriptRow({ transcript, onDelete }) {
       }}
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box
+          role="button"
+          tabIndex={0}
+          aria-label="Open the whole transcript"
+          onClick={() => setOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              setOpen(true);
+            }
+          }}
+          sx={{ flex: 1, minWidth: 0, cursor: "pointer", borderRadius: 1, "&:hover": { bgcolor: "action.hover" } }}
+        >
           <Typography sx={{ fontWeight: 600 }}>Pasted transcript</Typography>
           <Typography variant="body2" color="text.secondary">
             {[
@@ -34,14 +47,12 @@ function PastedTranscriptRow({ transcript, onDelete }) {
           </Typography>
 
           <Typography variant="body2" sx={{ mt: 1, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
-            {expanded || !long ? transcript.text : `${transcript.text.slice(0, PREVIEW_LENGTH)}...`}
+            {long ? `${transcript.text.slice(0, PREVIEW_LENGTH)}...` : transcript.text}
           </Typography>
 
-          {long && (
-            <Button size="small" onClick={() => setExpanded((current) => !current)} sx={{ mt: 0.5, px: 0 }}>
-              {expanded ? "Show less" : "Show all"}
-            </Button>
-          )}
+          <Typography variant="caption" color="primary" sx={{ display: "block", mt: 0.5 }}>
+            Click to read the whole transcript
+          </Typography>
         </Box>
 
         <IconButton
@@ -54,6 +65,8 @@ function PastedTranscriptRow({ transcript, onDelete }) {
           <DeleteIcon fontSize="small" />
         </IconButton>
       </Stack>
+
+      <ViewTranscriptDialog transcript={open ? transcript : null} title={`Call ${call} transcript`} onClose={() => setOpen(false)} />
     </Box>
   );
 }
