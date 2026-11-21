@@ -414,15 +414,11 @@ function authenticate({ allowPortalOnly }) {
         next();
       })
       .catch((err) => {
-        // Monday unreachable and the user not yet in memory: fall back to the
-        // token's own claims rather than locking everyone out.
-        console.error("requireAuth: account state lookup failed, using token claims.", err.message);
-        const refusal = allowPortalOnly ? null : staffRefusal(payload.role);
-
-        if (refusal) return res.status(refusal.status).json(refusal.body);
-
-        req.user = payload;
-        next();
+        // The account could not be checked (the database, or Monday, did not answer
+        // and the user is not in memory). The token's own role is not trusted then:
+        // it may be out of date after a role change or a suspension.
+        console.error("requireAuth: account state lookup failed.", err.message);
+        res.status(503).json({ error: "Your account could not be checked right now. Please try again in a moment.", code: "ACCOUNT_CHECK_FAILED" });
       });
   };
 }

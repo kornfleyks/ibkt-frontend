@@ -58,6 +58,7 @@ import { registerPublicFormRoutes } from "./publicForms/routes.js";
 import { registerCatUpdateRoutes } from "./catUpdates/routes.js";
 import { startCatUpdateChecks } from "./catUpdates/check.js";
 import { startPostAdoptionReminders } from "./postAdoption/reminders.js";
+import { requestLimiter } from "./requestLimiter.js";
 import { sendRegistrationPendingEmail } from "./mail/accountEmails.js";
 import { registerMailgunWebhookRoutes } from "./mail/webhookRoutes.js";
 import { mondayHeaders } from "./mondayApiVersion.js";
@@ -292,6 +293,9 @@ app.set("trust proxy", 1);
 // X-User-Role is set by requireAuth so the app can pick up a role change live.
 app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role", MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER] }));
 // 2 MB: a pasted call transcript (Screening tab) can pass the 100 KB default.
+// Every public (no sign-in) route: 60 changing requests per address in 10 minutes.
+// Before the body is read, so a refused request costs nothing to parse.
+app.use("/api/public", requestLimiter({ windowMs: 10 * 60 * 1000, max: 60 }));
 app.use(express.json({ limit: "2mb" }));
 
 // Admins get today's Monday call count on every JSON response (for the
@@ -936,6 +940,11 @@ app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => 
   }
 });
 
+// BACKGROUND_JOBS=false starts the server without the Jotform, cat update,
+// post-adoption and Monday version checks. For a local server: it shares the
+// live database, so these checks would act on live data and notify real staff.
+const BACKGROUND_JOBS = process.env.BACKGROUND_JOBS !== "false";
+
 app.listen(PORT, () => {
   console.log(`Upload proxy listening on http://localhost:${PORT}`);
   // Settings first: they carry the MONDAY_API_VERSION pin used by every
@@ -947,7 +956,7 @@ app.listen(PORT, () => {
     // Jotform submissions stored but not yet handled (e.g. arrived while the
     // server was down mid-way). Safe with several servers: each submission
     // is claimed by one.
-    if (isDatabaseEnabled()) {
+    if (BACKGROUND_JOBS && isDatabaseEnabled()) {
       processWaitingSubmissions()
         .then((handled) => handled && console.log(`Jotform: handled ${handled} waiting submission(s).`))
         .catch((err) => console.error("Jotform: handling waiting submissions failed.", err));
@@ -959,7 +968,7 @@ app.listen(PORT, () => {
       startPostAdoptionReminders();
     }
   });
-  startMondayApiVersionChecks();
+  if (BACKGROUND_JOBS) startMondayApiVersionChecks();
   startKeepAlive();
   // Nightly database -> Monday sync, only where SYNC_ENABLED=true (Render).
   startSyncSchedule();

@@ -1,4 +1,5 @@
 import multer from "multer";
+import { contentMatchesExtension, notThatKindOfFile } from "../fileSignature.js";
 import { CATS } from "../../src/constants/boards/cats.js";
 import { USERS } from "../../src/constants/boards/users.js";
 import { RESCUERS } from "../../src/constants/boards/rescuers.js";
@@ -248,6 +249,7 @@ export function registerRescuerPortalRoutes(app, { requireAnyAuth }) {
           const extension = file.originalname.split(".").pop()?.toLowerCase();
 
           if (!rule.extensions.includes(extension)) throw new InputError(`Allowed file types: ${rule.extensions.join(", ")}.`);
+          if (!contentMatchesExtension(file.buffer, extension)) throw new InputError(notThatKindOfFile(extension));
           if (file.size > rule.maxBytes) throw new InputError(`That file is larger than ${rule.maxBytes / MB} MB.`);
           if (cat[rule.field].length >= rule.max) throw new InputError(`You can add up to ${rule.max} ${req.body.kind === "medicalDocuments" ? "documents" : req.body.kind} per cat.`);
 

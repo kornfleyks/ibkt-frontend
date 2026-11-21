@@ -1,5 +1,6 @@
 import { readAuth, clearAuth, updateStoredRole, setSignOutReason, inactiveAccountReason, PASSWORD_CHANGED_REASON, NOT_STAFF_REASON } from './authStorage';
 import { syncUsageFromResponse } from './mondayUsage';
+import { PORTALS } from '../constants/roles';
 
 // All Monday requests go through our own server, which holds the API
 // token. The browser never sees it (see /server/index.js).
@@ -44,9 +45,9 @@ async function handleUnauthorized(response) {
 
     clearAuth();
 
-    // A rescuer is sent back to the rescuer sign-in page, not the staff one.
-    const inPortal = /\/rescuer(\/|$)/.test(window.location.pathname);
-    const loginUrl = `${import.meta.env.BASE_URL}${inPortal ? 'rescuer/login' : 'login'}`.replace(/\/+/g, '/');
+    // A rescuer or a foster is sent back to their own sign-in page, not the staff one.
+    const portal = Object.values(PORTALS).find((entry) => new RegExp(`/${entry.name}(/|$)`).test(window.location.pathname));
+    const loginUrl = `${import.meta.env.BASE_URL}${portal ? portal.signIn : '/login'}`.replace(/\/+/g, '/');
 
     if (!window.location.pathname.endsWith('/login')) {
         window.location.href = loginUrl;

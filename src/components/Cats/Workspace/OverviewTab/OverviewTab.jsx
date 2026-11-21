@@ -494,6 +494,7 @@ function StatusRow({ cat, onCatUpdate }) {
             <AdoptionReadyDialog
                 open={Boolean(notReady)}
                 catName={cat.name}
+                status={notReady?.status}
                 problems={notReady?.problems ?? []}
                 canOverride={Boolean(notReady?.canOverride)}
                 onCancel={cancel}
@@ -840,7 +841,7 @@ function OverviewTab({ cat, onCatUpdate }) {
                         <StatusRow cat={cat} onCatUpdate={onCatUpdate} />
 
                         <InfoRow
-                            label="Foster"
+                            label="Foster contact"
                             value={cat.foster}
                         />
 

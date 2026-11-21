@@ -82,7 +82,8 @@ function firstPageWithError(form, errors) {
 function PublicForm() {
     const { formKey } = useParams();
     const [searchParams] = useSearchParams();
-    const form = PUBLIC_FORMS[formKey];
+    // Only a listed form: not an inherited name such as "constructor".
+    const form = Object.hasOwn(PUBLIC_FORMS, formKey) ? PUBLIC_FORMS[formKey] : undefined;
 
     const [answers, setAnswers] = useState(() => (form ? initialAnswers(form) : {}));
     const [errors, setErrors] = useState({});

@@ -113,7 +113,7 @@ function AppRoutes() {
           path="/dashboard"
           element={
             <ProtectedRoute
-              roles={["Admin", "Volunteer", "Foster", "Adopter"]}
+              roles={["Admin", "Volunteer", "Adopter"]}
             >
               <AppLayout>
                 <Dashboard />
@@ -247,7 +247,7 @@ function AppRoutes() {
           path="/tasks"
           element={
             <ProtectedRoute
-              roles={["Admin", "Volunteer", "Foster"]}
+              roles={["Admin", "Volunteer"]}
             >
               <AppLayout>
                 <Tasks />
@@ -304,7 +304,7 @@ function AppRoutes() {
           path="/account"
           element={
             <ProtectedRoute
-              roles={["Admin", "Volunteer", "Foster", "Adopter"]}
+              roles={["Admin", "Volunteer", "Adopter"]}
             >
               <AppLayout>
                 <Account />

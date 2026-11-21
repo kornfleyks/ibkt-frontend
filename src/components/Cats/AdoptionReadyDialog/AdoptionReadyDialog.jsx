@@ -17,7 +17,7 @@ import { groupProblems } from '../../../constants/catReadiness';
 // "This cat is not ready for Adoption Ready": what is missing and, for an
 // Admin, a reason field to set the status anyway (logged in the Activity Log).
 // `onOverride(reason)` should throw to keep the dialog open with its message.
-function AdoptionReadyDialog({ open, catName, problems, canOverride, onCancel, onOverride }) {
+function AdoptionReadyDialog({ open, catName, status, problems, canOverride, onCancel, onOverride }) {
     const [reason, setReason] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -44,7 +44,7 @@ function AdoptionReadyDialog({ open, catName, problems, canOverride, onCancel, o
 
     return (
         <Dialog open={open} onClose={saving ? undefined : handleCancel} maxWidth="sm" fullWidth>
-            <DialogTitle>{`${catName || 'This cat'} is not ready to be set to Adoption Ready`}</DialogTitle>
+            <DialogTitle>{`${catName || 'This cat'} is not ready to be set to ${status || 'Adoption Ready'}`}</DialogTitle>
 
             <DialogContent dividers>
                 <Typography sx={{ mb: 2 }}>These are still missing:</Typography>

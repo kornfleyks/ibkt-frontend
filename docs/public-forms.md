@@ -44,6 +44,9 @@ The app has its own copies of four of the client's Jotform forms. Each has a pub
 
 - The routes are open to anyone. They have a hidden bot-trap field, a limit of 10 submissions and 60 uploads per address per hour (kept in memory), strict length caps, and answers cleaned to the shape of each question type.
 - A file is kept in the server's temporary folder under a random token. No route serves it. A token that does not exist, or a malformed one, is rejected.
+- Every changing request under `/api/public` is also counted per address in `server/requestLimiter.js`: 60 in 10 minutes, then 429 with Retry-After. It counts refused requests too and runs before the body is read. The limits above count only saved submissions and uploads.
+- An uploaded file must start with the bytes of the kind its extension names (`server/fileSignature.js`). A program or a script renamed .jpg or .pdf is refused. The foster and rescuer portals use the same check.
+- A form is looked up by its own name only, so an address such as `/api/public/forms/constructor` answers 404.
 - The reply never says whether an application or a person exists.
 - The Reference Check page shows a typed signature as plain text. Before this change the page linked the stored value, so a typed value such as a `javascript:` address would have become a link. Only `https` values are links now.
 

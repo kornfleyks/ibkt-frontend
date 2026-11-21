@@ -1,5 +1,6 @@
 import multer from "multer";
 import { basename, extname } from "node:path";
+import { contentMatchesExtension, notThatKindOfFile } from "../fileSignature.js";
 import { PUBLIC_FORMS, publicFormErrors, UPLOAD_MAX_BYTES, UPLOAD_MAX_FILES_PER_QUESTION, UPLOAD_MAX_FILES_PER_FORM, UPLOAD_EXTENSIONS } from "../../src/constants/forms/publicForms.js";
 import { isVisible } from "../../src/constants/forms/preAdoptionForm.js";
 import { isDatabaseEnabled } from "../database/db.js";
@@ -162,6 +163,8 @@ export function registerPublicFormRoutes(app) {
         return res.status(400).json({ error: `Files of type .${extension || "?"} are not accepted. Allowed: ${UPLOAD_EXTENSIONS.join(", ")}.` });
       }
 
+      if (!contentMatchesExtension(file.buffer, extension)) return res.status(400).json({ error: notThatKindOfFile(extension) });
+
       try {
         const token = await saveUpload({ buffer: file.buffer, mimetype: file.mimetype || "application/octet-stream", originalname: name });
 
@@ -174,7 +177,8 @@ export function registerPublicFormRoutes(app) {
   });
 
   app.post("/api/public/forms/:formKey", async (req, res) => {
-    const form = PUBLIC_FORMS[req.params.formKey];
+    // Only a listed form: not an inherited name such as "constructor".
+    const form = Object.hasOwn(PUBLIC_FORMS, req.params.formKey) ? PUBLIC_FORMS[req.params.formKey] : undefined;
 
     if (!form) return res.status(404).json({ error: "Unknown form." });
 

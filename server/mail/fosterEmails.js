@@ -1,5 +1,6 @@
 import { USERS } from "../../src/constants/boards/users.js";
 import { sendOrLog } from "./accountEmails.js";
+import { emailName } from "./emailText.js";
 
 // Emails of the foster onboarding flow (docs/foster-onboarding.md), the same as
 // the rescuer ones (rescuerEmails.js). The recipient has no account yet, so each
@@ -22,9 +23,9 @@ export function sendFosterApplicationReceivedEmail({ applicationId, email, first
     {
       to: email,
       subject: "We received your foster application",
-      text: `Hi ${firstName},\n\nThanks for applying to foster with Itty Bitty Kitty Tails. We have received your application and will review it. You will get another email once we have made a decision.\n\nIBKT System`,
+      text: `Hi ${emailName(firstName)},\n\nThanks for applying to foster with Itty Bitty Kitty Tails. We have received your application and will review it. You will get another email once we have made a decision.\n\nIBKT System`,
     },
-    { userName: `${firstName} ${lastName}`.trim(), actorName: "Applicant", target: target(applicationId) },
+    { userName: emailName(`${firstName} ${lastName}`), actorName: "Applicant", target: target(applicationId) },
   );
 }
 
@@ -45,7 +46,7 @@ function days(ms) {
 // The email with the first set-password link. `kind` tells a first link
 // (approval) from a replacement (an Admin resent it).
 export async function sendFosterLinkEmail({ kind, applicationId, userId, email, firstName, lastName, code, expiresAt, actor }) {
-  const name = `${firstName} ${lastName}`.trim();
+  const name = emailName(`${firstName} ${lastName}`);
   let setUrl;
   let loginUrl;
 
@@ -66,8 +67,8 @@ export async function sendFosterLinkEmail({ kind, applicationId, userId, email, 
       to: email,
       subject: approved ? "Your foster application has been approved" : "Your IBKT sign-in link",
       text: approved
-        ? `Hi ${firstName},\n\nGood news - your application to foster with Itty Bitty Kitty Tails has been approved.\n\nTo get started, choose a password here (the link works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nOnce signed in you will see the cats that IBKT has placed with you.\n\nIBKT System`
-        : `Hi ${firstName},\n\nHere is a new link to choose your IBKT password (it works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nIBKT System`,
+        ? `Hi ${emailName(firstName)},\n\nGood news - your application to foster with Itty Bitty Kitty Tails has been approved.\n\nTo get started, choose a password here (the link works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nOnce signed in you will see the cats that IBKT has placed with you.\n\nIBKT System`
+        : `Hi ${emailName(firstName)},\n\nHere is a new link to choose your IBKT password (it works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nIBKT System`,
     },
     {
       userName: name,
@@ -85,8 +86,8 @@ export function sendFosterRejectedEmail({ applicationId, email, firstName, lastN
     {
       to: email,
       subject: "About your foster application",
-      text: `Hi ${firstName},\n\nThank you for applying to foster with Itty Bitty Kitty Tails. After reviewing your application we are not able to approve it at this time.\n\n${reason}\n\nYou are welcome to apply again in the future.\n\nIBKT System`,
+      text: `Hi ${emailName(firstName)},\n\nThank you for applying to foster with Itty Bitty Kitty Tails. After reviewing your application we are not able to approve it at this time.\n\n${reason}\n\nYou are welcome to apply again in the future.\n\nIBKT System`,
     },
-    { userName: `${firstName} ${lastName}`.trim(), actorId: actor?.id, actorName: actor?.name, target: target(applicationId) },
+    { userName: emailName(`${firstName} ${lastName}`), actorId: actor?.id, actorName: actor?.name, target: target(applicationId) },
   );
 }

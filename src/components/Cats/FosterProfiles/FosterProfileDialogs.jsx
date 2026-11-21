@@ -99,7 +99,7 @@ export function ProfileDialog({ profile, onClose, onApply, onReject }) {
                                     ) : (
                                         files.map((file) => (
                                             <Typography key={file.assetId} variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-                                                {file.url ? (
+                                                {/^https:\/\//.test(file.url ?? '') ? (
                                                     <a href={file.url} target="_blank" rel="noreferrer">
                                                         {file.name}
                                                     </a>

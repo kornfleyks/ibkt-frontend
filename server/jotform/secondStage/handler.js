@@ -44,13 +44,21 @@ export function singleApplication(candidates) {
 }
 
 // { applicationId, via } or null. Order: already linked (an edit), the
-// hidden id from the Send Adoption Form link, email, exact full name.
-async function findApplication(submission, { applicationIdHint, email, name }) {
+// hidden id from the Send Adoption Form link (only when the form's email is the
+// application's email), email, exact full name.
+export async function findApplication(submission, { applicationIdHint, email, name }) {
   if (submission.applicationId && (await exists(TABLE, submission.applicationId))) {
     return { applicationId: String(submission.applicationId), via: "linked" };
   }
 
-  if (applicationIdHint && (await exists(TABLE, applicationIdHint))) return { applicationId: applicationIdHint, via: "link" };
+  // The id sits in a link anyone can edit, so it is trusted only when the form's
+  // email is the application's email. It then still tells apart two applications
+  // of the same person. Any other form falls through to the matching below.
+  if (applicationIdHint && email && (await exists(TABLE, applicationIdHint))) {
+    const hinted = await getApplication(applicationIdHint);
+
+    if (hinted && normalized(hinted.email) === normalized(email)) return { applicationId: applicationIdHint, via: "link" };
+  }
 
   const applications = await listApplications();
 

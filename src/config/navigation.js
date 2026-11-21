@@ -6,7 +6,7 @@ export const navigationItems = [
         title: "Dashboard",
         path: "/dashboard",
         icon: DashboardIcon,
-        roles: ["Admin", "Volunteer", "Foster", "Adopter"]
+        roles: ["Admin", "Volunteer", "Adopter"]
     },
     {
         title: "Cats",
@@ -42,7 +42,7 @@ export const navigationItems = [
         title: "Tasks",
         path: "/tasks",
         icon: CheckCircleIcon,
-        roles: ["Admin", "Volunteer", "Foster"]
+        roles: ["Admin", "Volunteer"]
     },
     {
         title: "Forms",

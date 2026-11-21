@@ -29,6 +29,7 @@ import DocumentsTab from '../../components/Cats/Workspace/DocumentsTab';
 import InfoRow from '../../components/Common/InfoRow';
 import { workspaceTabs } from '../../config/workspaceTabs';
 import CatTravelTab from '../../components/Cats/Workspace/CatTravelTab';
+import CatPostAdoptionTab from '../../components/Cats/Workspace/CatPostAdoptionTab';
 import CommunicationsTab from '../../components/Communications/CommunicationsTab';
 import TasksTab from '../../components/Tasks/TasksTab';
 import ActivityTab from '../../components/ActivityLog/ActivityTab';
@@ -114,6 +115,7 @@ function StatusChipEditor({ cat, onCatUpdate }) {
             <AdoptionReadyDialog
                 open={Boolean(notReady)}
                 catName={cat.name}
+                status={notReady?.status}
                 problems={notReady?.problems ?? []}
                 canOverride={Boolean(notReady?.canOverride)}
                 onCancel={cancel}
@@ -164,7 +166,7 @@ function CatWorkspace() {
         communications: <CommunicationsTab boardId={CATS.BOARD_ID} itemId={cat.id} />,
         tasks: <TasksTab link={{ catId: cat.id }} noun="cat" pageKey="catTasks" />,
         travel: <CatTravelTab cat={cat} />,
-        'post-adoption': <Typography>Post Adoption Coming Soon</Typography>,
+        'post-adoption': <CatPostAdoptionTab cat={cat} />,
         activity: <ActivityTab boardId={CATS.BOARD_ID} itemId={cat.id} />
     };
 

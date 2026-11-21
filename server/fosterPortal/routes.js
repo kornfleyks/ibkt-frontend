@@ -17,6 +17,7 @@ import { listActiveAccounts } from "../accountState.js";
 import { createNotification } from "../notifications.js";
 import { logActivity } from "../activityLog.js";
 import { insertProfile, latestProfiles } from "./store.js";
+import { contentMatchesExtension, notThatKindOfFile } from "../fileSignature.js";
 
 // The foster portal's server side (docs/foster-onboarding.md): what a signed-in
 // Foster may do with the cats assigned to them.
@@ -88,11 +89,11 @@ function profileSummary(profile) {
 
 // The files in the pending column as the portal shows them (no links: a
 // foster has no Monday login).
-async function pendingFiles(catId) {
+async function pendingFiles(catId, userId) {
   const files = await listItemFiles(PENDING_FILES, catId);
 
   return files
-    .filter((file) => FOSTER_FILE_KINDS.includes(file.documentType))
+    .filter((file) => FOSTER_FILE_KINDS.includes(file.documentType) && String(file.uploadedBy?.id ?? "") === String(userId))
     .map((file) => ({ assetId: file.assetId, name: file.name, kind: file.documentType, sizeBytes: file.sizeBytes, uploadedAt: file.uploadedAt }));
 }
 
@@ -113,7 +114,7 @@ async function getMyCats(req) {
 async function getMyCat(req) {
   const fosterId = await myFosterId(req);
   const cat = await ownCat(req, fosterId);
-  const [files, profiles] = await Promise.all([pendingFiles(cat.id), latestProfiles([cat.id])]);
+  const [files, profiles] = await Promise.all([pendingFiles(cat.id, req.user.sub), latestProfiles([cat.id])]);
 
   return { cat: { id: cat.id, name: cat.name, status: cat.status, gender: cat.gender, age: cat.age }, files, counts: countsOf(files), profile: profileSummary(profiles.get(cat.id)) };
 }
@@ -156,9 +157,10 @@ async function uploadMyFile(req) {
   await refuseWhileWaiting(cat.id);
 
   const extension = file.originalname.split(".").pop()?.toLowerCase();
-  const existing = await pendingFiles(cat.id);
+  const existing = await pendingFiles(cat.id, req.user.sub);
 
   if (!rule.extensions.includes(extension)) throw new InputError(`Allowed file types: ${rule.extensions.join(", ")}.`);
+  if (!contentMatchesExtension(file.buffer, extension)) throw new InputError(notThatKindOfFile(extension));
   if (file.size > rule.maxBytes) throw new InputError(`That file is larger than ${rule.maxBytes / (1024 * 1024)} MB.`);
   if (existing.filter((entry) => entry.kind === kind).length >= rule.max) throw new InputError(`You can add up to ${rule.max} ${rule.label.toLowerCase()} per cat.`);
   if (existing.length >= MAX_FILES_PER_CAT) throw new InputError(`You can send up to ${MAX_FILES_PER_CAT} files per cat.`);
@@ -188,7 +190,7 @@ async function deleteMyFile(req) {
 
   await refuseWhileWaiting(cat.id);
 
-  const mine = (await pendingFiles(cat.id)).find((file) => file.assetId === String(req.params.assetId));
+  const mine = (await pendingFiles(cat.id, req.user.sub)).find((file) => file.assetId === String(req.params.assetId));
 
   if (!mine) throw new HttpError(404, "That file isn't on this cat.");
 
@@ -232,7 +234,7 @@ async function sendMyProfile(req) {
 
   await refuseWhileWaiting(cat.id);
 
-  const files = await pendingFiles(cat.id);
+  const files = await pendingFiles(cat.id, req.user.sub);
   const missing = missingFiles(countsOf(files));
 
   if (missing.length > 0) throw new InputError(`Add the missing files first: ${missing.map((item) => `${item.label} (${item.have} of ${item.need})`).join(", ")}.`);

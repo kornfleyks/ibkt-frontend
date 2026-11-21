@@ -20,7 +20,7 @@ import {
   InputError,
 } from "./database/boardRecords.js";
 import { maskCat, maskCats, refuseSensitiveCatChanges } from "./sensitiveFields.js";
-import { ADOPTION_READY_STATUS, readinessProblems, problemsText } from "../src/constants/catReadiness.js";
+import { READY_REQUIRED_FOR, readinessProblems, problemsText } from "../src/constants/catReadiness.js";
 import { evaluateAdoptionReady } from "./adoptionReadyGate.js";
 import { logActivity } from "./activityLog.js";
 
@@ -204,13 +204,13 @@ export async function changeCat(actor, id, changes) {
 // The Adoption Ready check for a change that sets a cat's status to it
 // (adoptionReadyGate.js). Reads the cat itself: the check needs its real values.
 async function adoptionReadyGate(req, changes, overrideReason) {
-  if (changes.status !== ADOPTION_READY_STATUS) return null;
+  if (!READY_REQUIRED_FOR.includes(changes.status)) return null;
 
   return evaluateAdoptionReady({ changes, current: await getCat(req.params.id), role: req.user.role, overrideReason });
 }
 
 // The Activity Log entry for an override, saying what was missing and why it was set anyway.
-function logOverride(actor, catId, catName, { problems, reason }) {
+function logOverride(actor, catId, catName, { problems, reason, status }) {
   logActivity({
     actorId: actor.id,
     actorName: actor.name,
@@ -219,7 +219,7 @@ function logOverride(actor, catId, catName, { problems, reason }) {
     itemId: catId,
     itemName: catName,
     actionType: "Updated",
-    description: `${actor.name} set ${catName} to Adoption Ready although it was not ready (missing: ${problemsText(problems)}). Reason: ${reason}`,
+    description: `${actor.name} set ${catName} to ${status} although it was not ready (missing: ${problemsText(problems)}). Reason: ${reason}`,
     fieldChanged: "Status",
     raw: { override: true, missing: problems.map((problem) => problem.key) },
   });

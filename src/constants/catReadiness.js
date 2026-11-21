@@ -19,6 +19,11 @@ export const MIN_VIDEOS = 3;
 // coming back from a match that fell through), so the check does not apply.
 export const READY_EXEMPT_FROM = [STATUS.ADOPTION_READY, STATUS.RESERVED, STATUS.ADOPTED];
 
+// A cat must be complete, unless it is exempt as above, before it is set to any
+// of these. Reserved and Adopted are in the list so that a cat that is not ready
+// cannot reach Adoption Ready by way of them.
+export const READY_REQUIRED_FOR = [STATUS.ADOPTION_READY, STATUS.RESERVED, STATUS.ADOPTED];
+
 const text = (value) => String(value ?? "").trim();
 const answered = (value) => !["", "N/A", "Unknown"].includes(text(value));
 const oneOf = (...allowed) => (value) => allowed.includes(text(value));

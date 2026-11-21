@@ -22,6 +22,8 @@ function PostAdoptionTab({ application }) {
   const [testimonial, setTestimonial] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // The user may not see this application's post-adoption record.
+  const [restricted, setRestricted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,6 +31,7 @@ function PostAdoptionTab({ application }) {
     async function load() {
       setLoading(true);
       setError(null);
+      setRestricted(false);
 
       try {
         const data = await getApplicationPostAdoption(application.id);
@@ -42,7 +45,10 @@ function PostAdoptionTab({ application }) {
       } catch (err) {
         console.error("Failed to load post-adoption:", err);
 
-        if (!cancelled) setError(err?.message || "Failed to load the post-adoption record.");
+        if (cancelled) return;
+
+        if (err?.status === 403) setRestricted(true);
+        else setError(err?.message || "Failed to load the post-adoption record.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -108,6 +114,10 @@ function PostAdoptionTab({ application }) {
         <CircularProgress size={28} sx={{ color: "text.secondary" }} />
       </Stack>
     );
+  }
+
+  if (restricted) {
+    return <Alert severity="info">The post-adoption details are only visible to Admins and the Case Owner of this application.</Alert>;
   }
 
   if (!record) {
