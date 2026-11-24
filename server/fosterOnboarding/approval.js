@@ -3,7 +3,8 @@ import { FOSTERS } from "../../src/constants/boards/fosters.js";
 import { USERS } from "../../src/constants/boards/users.js";
 import { ROLES } from "../../src/constants/roles.js";
 import { FOSTERS_STATUS_OPTIONS } from "../../src/constants/statuses/fostersStatuses.js";
-import { createItem, fieldsFromMondayValues } from "../database/boardStore.js";
+import { createItem, updateItem, fieldsFromMondayValues } from "../database/boardStore.js";
+import { findFosterByEmail } from "../catShareLinks/fosters.js";
 import { createUserAccount, findUserByEmail, hashPassword, setUserColumns } from "../auth.js";
 import { getAccountState } from "../accountState.js";
 import { toPhoneValue } from "../phoneValue.js";
@@ -16,6 +17,7 @@ import { countryFromText } from "../rescuerOnboarding/countryFromText.js";
 //      password nobody knows until the person sets their own
 //   3. a set-password link, valid for a week (issueSetPasswordLink, the same
 //      as for rescuers: rescuerOnboarding/approval.js)
+// (an earlier "Not yet registered" record with the same email is reused for 1).
 // The caller sends the email. `resume` ({ fosterId, userId }) and `onProgress`
 // let an application keep how far it got, so a failure half way is finished by
 // approving again instead of making duplicates.
@@ -78,9 +80,19 @@ export async function createFosterAccount(person, { resume = {}, onProgress = as
 
   if (!fosterId) {
     const name = `${person.firstName} ${person.lastName}`.trim();
-    const record = await createItem("fosters", { name, fields: await fieldsFromMondayValues("fosters", fosterValues(person)) });
+    const fields = await fieldsFromMondayValues("fosters", fosterValues(person));
+    // Someone added from a shareable Add Cat link before they registered has a
+    // "Not yet registered" record with this email: finish that record (so the
+    // cats already linked to it stay linked) instead of making a second one.
+    const earlier = await findFosterByEmail(person.email);
 
-    fosterId = String(record.id);
+    if (earlier?.status === OPTIONS.STATUS.NOT_YET_REGISTERED) {
+      await updateItem("fosters", earlier.id, { name, fields });
+      fosterId = earlier.id;
+    } else {
+      fosterId = String((await createItem("fosters", { name, fields })).id);
+    }
+
     await onProgress({ fosterId });
   }
 

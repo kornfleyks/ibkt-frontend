@@ -4,11 +4,13 @@ import { serverGet, serverPost } from "./MondayService";
 // sign-in exists yet), like login and registration in AuthService.js.
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
-export async function submitRescuerApplication(answers, website = "") {
+// Resolves to { ok, status }: "approved" means the account exists and the
+// chosen password works, "pending" means an Admin still has to approve it.
+export async function submitRescuerApplication(answers, password, website = "") {
   const response = await fetch(`${SERVER_URL}/api/public/rescuer-applications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ answers, website }),
+    body: JSON.stringify({ answers, password, website }),
   });
 
   const result = await response.json().catch(() => ({}));

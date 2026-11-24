@@ -18,6 +18,8 @@ import { countryFromText } from "./countryFromText.js";
 // The caller sends the email. `resume` ({ rescuerId, userId }) and
 // `onProgress` let an application keep how far it got, so a failure half
 // way is finished by approving again instead of making duplicates.
+// `password` is the one the person chose on the form (automatic approval,
+// no email step); without it the login gets a random password nobody knows.
 
 const R = RESCUERS.COLUMNS;
 const U = USERS.COLUMNS;
@@ -78,7 +80,7 @@ function rescuerValues(person) {
 // person: { firstName, lastName, email, phone: { country, number },
 // whatsapp, country, city, contactMethod, notes, consents: boolean }.
 // Returns { rescuerId, userId }.
-export async function createRescuerAccount(person, { resume = {}, onProgress = async () => {} } = {}) {
+export async function createRescuerAccount(person, { resume = {}, onProgress = async () => {}, password = null } = {}) {
   let { rescuerId, userId } = resume;
 
   if (!userId && (await findUserByEmail(person.email))) {
@@ -94,9 +96,9 @@ export async function createRescuerAccount(person, { resume = {}, onProgress = a
   }
 
   if (!userId) {
-    // Nobody knows this password (a random one, hashed): signing in works
-    // only once the person sets their own through the link.
-    const passwordHash = await hashPassword(crypto.randomBytes(32).toString("hex"));
+    // Without a chosen password nobody knows it (a random one, hashed):
+    // signing in works only once the person sets their own through the link.
+    const passwordHash = await hashPassword(password ?? crypto.randomBytes(32).toString("hex"));
 
     userId = String(
       await createUserAccount({

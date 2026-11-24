@@ -111,7 +111,7 @@ function only(body, keys) {
 // (the rescuer portal gives a shorter list) and `rescuerId`, when given,
 // overrides any rescuer in the body. Used by POST /api/cats and the rescuer
 // portal (rescuerPortal/routes.js).
-export async function createCatFromInput(actor, body, { fields = CREATE_FIELDS, rescuerId } = {}) {
+export async function createCatFromInput(actor, body, { fields = CREATE_FIELDS, rescuerId, fosterId } = {}) {
   const name = typeof body.name === "string" ? body.name.trim() : "";
 
   if (!name) throw new InputError("A name is required.");
@@ -126,6 +126,7 @@ export async function createCatFromInput(actor, body, { fields = CREATE_FIELDS, 
     fivStatus: CATS_STATUS_OPTIONS.FIV_STATUS.NOT_TESTED_YET,
     ...only(body, fields),
     ...(rescuerId ? { rescuerId } : {}),
+    ...(fosterId ? { linkedFosterId: fosterId } : {}),
   };
   const record = await createRecord(TABLE, CAT_FIELDS, { name: name.slice(0, 255), values });
 

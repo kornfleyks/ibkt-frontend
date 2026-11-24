@@ -42,6 +42,7 @@ import { passwordStampOf } from "./passwordStamp.js";
 import { registerUserAdminRoutes } from "./userAdmin.js";
 import { registerWebhookRoutes } from "./webhooks.js";
 import { registerJotformRoutes } from "./jotform/routes.js";
+import { registerWixRescuerFormRoutes } from "./wixRescuerForm/routes.js";
 import { processWaitingSubmissions } from "./jotform/receive.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
@@ -51,6 +52,7 @@ import { registerAccountRoutes } from "./account.js";
 import { registerPasswordResetRoutes } from "./passwordReset/routes.js";
 import { registerRescuerOnboardingRoutes } from "./rescuerOnboarding/routes.js";
 import { registerRescuerPortalRoutes } from "./rescuerPortal/routes.js";
+import { registerCatShareLinkRoutes } from "./catShareLinks/routes.js";
 import { registerFosterOnboardingRoutes } from "./fosterOnboarding/routes.js";
 import { registerFosterPortalRoutes } from "./fosterPortal/routes.js";
 import { registerFosterReviewRoutes } from "./fosterPortal/review.js";
@@ -293,9 +295,13 @@ app.set("trust proxy", 1);
 // X-User-Role is set by requireAuth so the app can pick up a role change live.
 app.use(cors({ origin: ALLOWED_ORIGINS, exposedHeaders: ["X-User-Role", MONDAY_USAGE_HEADER, MONDAY_BLOCKED_HEADER, DATABASE_USAGE_HEADER] }));
 // 2 MB: a pasted call transcript (Screening tab) can pass the 100 KB default.
-// Every public (no sign-in) route: 60 changing requests per address in 10 minutes.
-// Before the body is read, so a refused request costs nothing to parse.
+// The routes that need no sign-in, each with its own limit per address in 10
+// minutes (changing requests only). Before the body is read, so a refused request
+// costs nothing to parse. Not covered: the webhooks, which are signed or secret.
 app.use("/api/public", requestLimiter({ windowMs: 10 * 60 * 1000, max: 60 }));
+app.use("/api/login", requestLimiter({ windowMs: 10 * 60 * 1000, max: 30 }));
+app.use("/api/register", requestLimiter({ windowMs: 10 * 60 * 1000, max: 10 }));
+app.use("/api/password-reset", requestLimiter({ windowMs: 10 * 60 * 1000, max: 10 }));
 app.use(express.json({ limit: "2mb" }));
 
 // Admins get today's Monday call count on every JSON response (for the
@@ -549,6 +555,7 @@ registerUserAdminRoutes(app, { requireAuth, requireAdmin });
 registerWebhookRoutes(app);
 registerMailgunWebhookRoutes(app);
 registerJotformRoutes(app);
+registerWixRescuerFormRoutes(app, { requireAuth, requireAdmin });
 registerSessionEventRoutes(app, { requireAnyAuth });
 registerNotificationRoutes(app, { requireAuth });
 registerSettingsRoutes(app, { requireAuth, requireAdmin });
@@ -574,6 +581,7 @@ registerPasswordResetRoutes(app);
 registerRescuerOnboardingRoutes(app, { requireAuth, requireAdmin });
 registerFosterOnboardingRoutes(app, { requireAuth, requireAdmin });
 registerRescuerPortalRoutes(app, { requireAnyAuth });
+registerCatShareLinkRoutes(app, { requireAnyAuth });
 registerFosterPortalRoutes(app, { requireAnyAuth });
 registerFosterReviewRoutes(app, { requireAuth });
 registerPublicFormRoutes(app);

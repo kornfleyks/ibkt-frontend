@@ -2,10 +2,12 @@
 // memory (one server). It counts every request, including the ones that are
 // refused later (a form with missing answers, an application that already
 // exists, a large body), which the per-address limits that count saved records
-// do not. A fixed window per address: after `max` requests in a window the
+// do not. The address is clientKey(): an IPv6 client is counted by its /64. A fixed window per address: after `max` requests in a window the
 // address gets 429 and Retry-After until the window ends.
 //
 //   app.use("/api/public", requestLimiter({ windowMs: 10 * 60 * 1000, max: 60 }));
+
+import { clientKey } from "./clientAddress.js";
 
 export function requestLimiter({ windowMs, max, methods = ["POST", "PUT", "PATCH", "DELETE"], now = () => Date.now() }) {
   const windows = new Map();
@@ -23,7 +25,7 @@ export function requestLimiter({ windowMs, max, methods = ["POST", "PUT", "PATCH
     if (!methods.includes(req.method)) return next();
 
     const time = now();
-    const key = req.ip || "unknown";
+    const key = clientKey(req.ip);
     let entry = windows.get(key);
 
     if (!entry || entry.resetAt <= time) {

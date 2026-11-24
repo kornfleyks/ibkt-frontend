@@ -113,7 +113,7 @@ export async function optionLabels(table, columnId) {
 // A dropdown label typed for the first time joins the list at once
 // (Monday adds it at the nightly sync; re-reading Monday's columns
 // replaces these).
-async function rememberLabel(table, columnId, label) {
+export async function rememberLabel(table, columnId, label) {
   await query(
     `insert into column_options (board_id, column_id, option_key, label, position)
      select $1, $2, 'app:' || $3, $3, coalesce(max(position), 0) + 1 from column_options where board_id = $1 and column_id = $2

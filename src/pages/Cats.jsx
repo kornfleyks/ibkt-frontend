@@ -15,6 +15,7 @@ import {
 import { AddIcon } from '../components/icons';
 
 import PageHeader from '../components/PageHeader';
+import ShareCatFormButton from '../components/CatForm/ShareCatFormButton';
 
 import CatsGrid from '../components/Cats/CatsGrid';
 import AddCatDialog from '../components/Cats/AddCatDialog/AddCatDialog';
@@ -25,7 +26,7 @@ import { searchText } from '../utils/searchText';
 
 import { useLoading } from '../context/LoadingContext';
 import useAuth from '../hooks/useAuth';
-import { canSeeSensitiveFields } from '../constants/roles';
+import { canSeeSensitiveFields, isAdminRole } from '../constants/roles';
 import useTabParam from '../hooks/useTabParam';
 import { slugify } from '../utils/slugify';
 
@@ -117,8 +118,9 @@ function Cats() {
 
 
             actions={
-
-                <Button
+                <Stack direction="row" spacing={1}>
+                    {isAdminRole(user?.role) && <ShareCatFormButton />}
+                    <Button
 
                     variant="contained"
 
@@ -137,7 +139,7 @@ function Cats() {
                     Add Cat
 
                 </Button>
-
+                </Stack>
             }
 
         />

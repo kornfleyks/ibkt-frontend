@@ -17,7 +17,7 @@ import { listActiveAccounts } from "../accountState.js";
 import { createNotification } from "../notifications.js";
 import { logActivity } from "../activityLog.js";
 import { insertProfile, latestProfiles } from "./store.js";
-import { contentMatchesExtension, notThatKindOfFile } from "../fileSignature.js";
+import { uploadProblem } from "../fileSignature.js";
 
 // The foster portal's server side (docs/foster-onboarding.md): what a signed-in
 // Foster may do with the cats assigned to them.
@@ -160,7 +160,9 @@ async function uploadMyFile(req) {
   const existing = await pendingFiles(cat.id, req.user.sub);
 
   if (!rule.extensions.includes(extension)) throw new InputError(`Allowed file types: ${rule.extensions.join(", ")}.`);
-  if (!contentMatchesExtension(file.buffer, extension)) throw new InputError(notThatKindOfFile(extension));
+  const problem = uploadProblem(file.buffer, extension);
+
+  if (problem) throw new InputError(problem);
   if (file.size > rule.maxBytes) throw new InputError(`That file is larger than ${rule.maxBytes / (1024 * 1024)} MB.`);
   if (existing.filter((entry) => entry.kind === kind).length >= rule.max) throw new InputError(`You can add up to ${rule.max} ${rule.label.toLowerCase()} per cat.`);
   if (existing.length >= MAX_FILES_PER_CAT) throw new InputError(`You can send up to ${MAX_FILES_PER_CAT} files per cat.`);

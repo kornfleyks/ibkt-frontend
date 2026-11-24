@@ -5,7 +5,7 @@ import { COUNTRY_OPTIONS } from '../../utils/phone';
 
 // Country (with dialling code) + national number. Monday's phone column
 // needs the country with every number. value: { country, number }.
-function PhoneField({ value, onChange, disabled = false }) {
+function PhoneField({ value, onChange, disabled = false, required = false }) {
     const selected = COUNTRY_OPTIONS.find((option) => option.code === value.country) ?? null;
 
     return (
@@ -18,11 +18,12 @@ function PhoneField({ value, onChange, disabled = false }) {
                 getOptionLabel={(option) => `${option.name} (+${option.dialCode})`}
                 isOptionEqualToValue={(option, current) => option.code === current.code}
                 sx={{ minWidth: 260 }}
-                renderInput={(params) => <TextField {...params} label="Country" />}
+                renderInput={(params) => <TextField {...params} required={required} label="Country" />}
             />
 
             <TextField
                 fullWidth
+                required={required}
                 label="Phone number"
                 value={value.number}
                 disabled={disabled}

@@ -28,7 +28,10 @@ export function evaluateAdoptionReady({ changes, current, role, overrideReason }
   // An unknown cat is answered as not found by the change itself.
   if (!current || READY_EXEMPT_FROM.includes(current.status)) return null;
 
-  const problems = readinessProblems(current);
+  // The cat as it would be after this change: a request that fills the missing
+  // fields passes, and one that blanks a required field while setting the status
+  // does not.
+  const problems = readinessProblems({ ...current, ...changes });
 
   if (problems.length === 0) return null;
 

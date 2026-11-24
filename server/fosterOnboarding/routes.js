@@ -1,4 +1,5 @@
 import { FOSTER_FORM_ID, WORDING_VERSION, fosterAnswersErrors, cleanFosterAnswers } from "../../src/constants/forms/fosterApplicationForm.js";
+import { clientKey } from "../clientAddress.js";
 import { NOTIFICATIONS_STATUS_OPTIONS } from "../../src/constants/statuses/notificationsStatuses.js";
 import { USERS } from "../../src/constants/boards/users.js";
 import { ROLES, isAdminRole } from "../../src/constants/roles.js";
@@ -183,7 +184,7 @@ export function registerFosterOnboardingRoutes(app, { requireAuth, requireAdmin 
     }
 
     try {
-      const ipHash = hashIp(req.ip);
+      const ipHash = hashIp(clientKey(req.ip));
 
       if ((await countRecentFromIp(ipHash, HOUR_MS)) >= MAX_PER_IP_PER_HOUR) {
         return res.status(429).json({ error: "Too many applications from this connection. Please try again later." });

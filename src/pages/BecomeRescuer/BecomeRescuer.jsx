@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -11,9 +11,20 @@ import Stepper from '@mui/material/Stepper';
 import Typography from '@mui/material/Typography';
 
 import AuthLayout from '../../layouts/AuthLayout/AuthLayout';
+import PasswordField from '../../components/Common/PasswordField';
+import useAuth from '../../hooks/useAuth';
 import PreAdoptionQuestion from '../../components/ActiveApplications/AddApplicationDialog/PreAdoptionQuestion';
 import { RESCUER_PAGES, rescuerAnswersErrors } from '../../constants/forms/rescuerApplicationForm';
 import { submitRescuerApplication } from '../../services/RescuerApplicationService';
+
+const MIN_PASSWORD_LENGTH = 8;
+
+function passwordError(password, confirmPassword) {
+    if (password.length < MIN_PASSWORD_LENGTH) return `Choose a password of at least ${MIN_PASSWORD_LENGTH} characters.`;
+    if (password !== confirmPassword) return 'The passwords do not match.';
+
+    return null;
+}
 
 function initialAnswers() {
     return { phone: { country: 'GB', number: '' } };
@@ -31,8 +42,12 @@ function firstPageWithError(errors) {
 }
 
 // The public page a new rescuer fills in (docs/rescuer-onboarding.md). No
-// sign-in. The hidden "website" field is the bot trap the server checks.
+// sign-in. The rescuer also chooses a password on the last step: the server
+// approves the application automatically and the rescuer is signed in
+// straight away. The hidden "website" field is the bot trap the server checks.
 function BecomeRescuer() {
+    const { login } = useAuth();
+    const navigate = useNavigate();
     const [answers, setAnswers] = useState(initialAnswers);
     const [errors, setErrors] = useState({});
     const [step, setStep] = useState(0);
@@ -40,6 +55,9 @@ function BecomeRescuer() {
     const [error, setError] = useState(null);
     const [done, setDone] = useState(false);
     const [website, setWebsite] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordProblem, setPasswordProblem] = useState(null);
 
     const page = RESCUER_PAGES[step];
     const lastStep = step === RESCUER_PAGES.length - 1;
@@ -71,11 +89,33 @@ function BecomeRescuer() {
             return;
         }
 
+        const problem = passwordError(password, confirmPassword);
+
+        setPasswordProblem(problem);
+
+        if (problem) return;
+
         setSaving(true);
         setError(null);
 
         try {
-            await submitRescuerApplication(answers, website);
+            const { status } = await submitRescuerApplication(answers, password, website);
+
+            if (status === 'approved') {
+                // The account exists: sign in with the password just chosen.
+                try {
+                    await login(String(answers.email).trim(), password, { portal: 'rescuer' });
+                    navigate('/rescuer', { replace: true });
+                } catch {
+                    navigate('/rescuer/login', {
+                        replace: true,
+                        state: { notice: 'Your account is ready. Sign in with the password you chose.' },
+                    });
+                }
+
+                return;
+            }
+
             setDone(true);
         } catch (err) {
             if (err.fields) {
@@ -93,7 +133,7 @@ function BecomeRescuer() {
         return (
             <AuthLayout title="Application Sent" width={520}>
                 <Alert severity="success" sx={{ mb: 3 }}>
-                    Thank you. We have received your application and will email you once we have made a decision.
+                    Thank you. We have received your application, but we could not create your account automatically. An admin will review it and email you.
                 </Alert>
             </AuthLayout>
         );
@@ -122,6 +162,37 @@ function BecomeRescuer() {
                     </div>
                 ))}
 
+                {lastStep && (
+                    <Stack spacing={2}>
+                        <Typography variant="subtitle1" fontWeight={600}>
+                            Choose your password
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            You will use this password to sign in once you submit the form.
+                        </Typography>
+                        <PasswordField
+                            fullWidth
+                            required
+                            label="Password"
+                            value={password}
+                            disabled={saving}
+                            onChange={(event) => setPassword(event.target.value)}
+                            autoComplete="new-password"
+                        />
+                        <PasswordField
+                            fullWidth
+                            required
+                            label="Confirm password"
+                            value={confirmPassword}
+                            disabled={saving}
+                            onChange={(event) => setConfirmPassword(event.target.value)}
+                            autoComplete="new-password"
+                            error={Boolean(passwordProblem)}
+                            helperText={passwordProblem ?? undefined}
+                        />
+                    </Stack>
+                )}
+
                 {/* Bot trap: invisible and unreachable for people, filled in by bots. */}
                 <Box aria-hidden sx={{ position: 'absolute', left: '-10000px', height: 0, overflow: 'hidden' }}>
                     <label>
@@ -143,7 +214,7 @@ function BecomeRescuer() {
 
                     {lastStep ? (
                         <Button variant="contained" onClick={handleSubmit} disabled={saving}>
-                            {saving ? 'Sending...' : 'Submit Application'}
+                            {saving ? 'Sending...' : 'Submit and Sign In'}
                         </Button>
                     ) : (
                         <Button variant="contained" onClick={handleNext}>

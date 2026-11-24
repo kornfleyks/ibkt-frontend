@@ -1,4 +1,5 @@
 import { RESCUER_FORM_ID, WORDING_VERSION, rescuerAnswersErrors, cleanRescuerAnswers } from "../../src/constants/forms/rescuerApplicationForm.js";
+import { clientKey } from "../clientAddress.js";
 import { NOTIFICATIONS_STATUS_OPTIONS } from "../../src/constants/statuses/notificationsStatuses.js";
 import { USERS } from "../../src/constants/boards/users.js";
 import { isAdminRole } from "../../src/constants/roles.js";
@@ -27,7 +28,12 @@ import { createRescuerAccount, issueSetPasswordLink, ApprovalError } from "./app
 // Rescuer onboarding (docs/rescuer-onboarding.md).
 //
 // Public (no sign-in):
-//   POST /api/public/rescuer-applications   { answers, website }
+//   POST /api/public/rescuer-applications   { answers, password, website }
+//     -> { ok, status: "approved" | "pending" }
+//     "approved": the account exists and the password works, so the page
+//     signs the rescuer in. "pending": the application is saved but the
+//     account could not be made (for example the email already has an
+//     account), so an Admin finishes it on the Applications tab.
 //
 // Admin (the Applications tab and Add Rescuer on the Rescuers page):
 //   GET  /api/rescuer-applications[?status=]
@@ -48,6 +54,9 @@ const HOUR_MS = 60 * 60 * 1000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STATUSES = ["Pending", "Approved", "Rejected"];
 const MAX_REASON = 1000;
+const MIN_PASSWORD_LENGTH = 8;
+const MAX_PASSWORD_LENGTH = 200;
+const AUTOMATIC_REVIEWER = { id: "automatic", name: "Automatic approval" };
 const TARGET_BOARD = "rescuer_applications";
 const APPLICANT = { id: "applicant", name: "Rescuer application" };
 
@@ -124,6 +133,42 @@ function personFromApplication(application) {
   };
 }
 
+// Approval without an Admin: a new application becomes a rescuer account
+// straight away, with the password the person chose on the form. True when
+// the account was made. On any failure the application is left Pending (so
+// an Admin can approve or reject it) and this returns false; it never
+// throws, because the application is already saved.
+async function approveAutomatically(applicationId, password) {
+  if (!isDatabaseBoard("rescuers") || !isDatabaseBoard("users")) return false;
+
+  let claimed = false;
+
+  try {
+    const application = await getApplication(applicationId);
+
+    claimed = await claimApplication(applicationId);
+
+    if (!claimed) return false;
+
+    await createRescuerAccount(personFromApplication(application), {
+      password,
+      onProgress: (progress) => saveProgress(applicationId, progress),
+    });
+
+    await markDecided(applicationId, { status: "Approved", reviewer: AUTOMATIC_REVIEWER });
+    claimed = false;
+    logDecision({ actor: AUTOMATIC_REVIEWER, application, actionType: "Approved", verb: "approved" });
+
+    return true;
+  } catch (err) {
+    if (!(err instanceof ApprovalError)) console.error("Rescuer application: automatic approval failed:", err);
+
+    if (claimed) await releaseApplication(applicationId).catch(() => {});
+
+    return false;
+  }
+}
+
 function requireRescuerBoards(req, res, next) {
   if (isDatabaseBoard("rescuers") && isDatabaseBoard("users")) return next();
 
@@ -140,9 +185,14 @@ export function registerRescuerOnboardingRoutes(app, { requireAuth, requireAdmin
     if (req.body?.website) return res.json({ ok: true });
 
     const answers = req.body?.answers;
+    const password = req.body?.password;
 
     if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
       return res.status(400).json({ error: "The form answers are missing." });
+    }
+
+    if (typeof password !== "string" || password.length < MIN_PASSWORD_LENGTH || password.length > MAX_PASSWORD_LENGTH) {
+      return res.status(400).json({ error: `Choose a password of at least ${MIN_PASSWORD_LENGTH} characters.` });
     }
 
     const errors = rescuerAnswersErrors(answers);
@@ -152,7 +202,7 @@ export function registerRescuerOnboardingRoutes(app, { requireAuth, requireAdmin
     }
 
     try {
-      const ipHash = hashIp(req.ip);
+      const ipHash = hashIp(clientKey(req.ip));
 
       if ((await countRecentFromIp(ipHash, HOUR_MS)) >= MAX_PER_IP_PER_HOUR) {
         return res.status(429).json({ error: "Too many applications from this connection. Please try again later." });
@@ -169,13 +219,17 @@ export function registerRescuerOnboardingRoutes(app, { requireAuth, requireAdmin
       });
 
       // Already Pending or Approved for this email: nothing saved, nothing
-      // emailed, and the person is told the same as everyone else.
-      if (saved) {
-        sendRescuerApplicationReceivedEmail({ applicationId: saved.id, email: clean.email, firstName: clean.firstName, lastName: clean.lastName });
-        notifyAdminsOfApplication({ id: saved.id, firstName: clean.firstName, lastName: clean.lastName });
-      }
+      // emailed, and the person is told their application was received.
+      if (!saved) return res.json({ ok: true, status: "pending" });
 
-      res.json({ ok: true });
+      if (await approveAutomatically(saved.id, password)) return res.json({ ok: true, status: "approved" });
+
+      // The account could not be made: the application stays Pending for an
+      // Admin, who is notified, and the applicant is told it was received.
+      sendRescuerApplicationReceivedEmail({ applicationId: saved.id, email: clean.email, firstName: clean.firstName, lastName: clean.lastName });
+      notifyAdminsOfApplication({ id: saved.id, firstName: clean.firstName, lastName: clean.lastName });
+
+      res.json({ ok: true, status: "pending" });
     } catch (err) {
       console.error("Rescuer application failed:", err);
       res.status(500).json({ error: "Failed to send your application. Please try again." });

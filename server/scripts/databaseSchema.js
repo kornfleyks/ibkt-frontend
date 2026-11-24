@@ -476,7 +476,7 @@ await transaction(async (run) => {
   // developer account (routes.js, AppRoutes.jsx); never sent to Monday.
   await run(`create table if not exists review_items (
     id bigserial primary key,
-    category text not null check (category in ('question', 'flag', 'internal')),
+    category text not null check (category in ('request', 'question', 'flag', 'internal')),
     title text not null,
     detail text,
     status text not null default 'open' check (status in ('open', 'answered', 'resolved')),
@@ -487,8 +487,43 @@ await transaction(async (run) => {
     updated_at timestamptz not null default now()
   )`);
   await run("create index if not exists review_items_category on review_items (category, created_at)");
+  // The "request" category (client change requests) was added after the
+  // table was created, so the inline category check is replaced.
+  await run("alter table review_items drop constraint if exists review_items_category_check");
+  await run("alter table review_items add constraint review_items_category_check check (category in ('request', 'question', 'flag', 'internal'))");
   // Optional: null means no priority set.
   await run("alter table review_items add column if not exists priority text check (priority in ('high', 'medium', 'low'))");
+
+  // Single-use links for the shareable Add Cat form (catShareLinks/). Only a
+  // hash of each link's code is kept. App-only: never sent to Monday.
+  await run(`create table if not exists cat_share_links (
+    id bigserial primary key,
+    token_hash text not null unique,
+    created_by_id text not null,
+    created_by_name text not null,
+    rescuer_id bigint,
+    expires_at timestamptz not null,
+    used_at timestamptz,
+    cat_id bigint,
+    created_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists cat_share_links_creator on cat_share_links (created_by_id, created_at)");
+  // Set when the link was emailed as an invitation (who it was sent to).
+  await run("alter table cat_share_links add column if not exists invitee_name text");
+  await run("alter table cat_share_links add column if not exists invitee_email text");
+  // Who the link is for: a foster (asked who they are) or a rescuer.
+  await run("alter table cat_share_links add column if not exists audience text not null default 'rescuer' check (audience in ('foster', 'rescuer'))");
+
+  // What the Wix rescuer form sends on submission (wixRescuerForm/): the
+  // payload exactly as received, until its fields are mapped. App-only.
+  await run(`create table if not exists wix_rescuer_submissions (
+    id bigserial primary key,
+    delivery_key text not null unique,
+    email text,
+    payload jsonb not null,
+    received_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists wix_rescuer_submissions_received on wix_rescuer_submissions (received_at desc)");
 
   // Each referee's "Reference Check - IBKT" answers about an application
   // (jotform/referenceCheck/handler.js, referenceChecks/). App-only: never
@@ -629,7 +664,7 @@ await transaction(async (run) => {
   // Reachable only by this server's connection; Supabase's public API
   // (anon / authenticated keys) gets nothing without policies. Every app table
   // is listed here, so add a new table to this list when creating it.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "rescuer_applications", "foster_applications", "foster_cat_profiles", "reference_checks", "review_items", "email_log", "ai_runs", "application_calls", "call_transcripts", "cat_update_clock", "file_uploads", "jotform_submissions", "jotform_webhook_events", "post_adoption_chase", "post_adoption_testimonial", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "rescuer_applications", "foster_applications", "foster_cat_profiles", "reference_checks", "review_items", "cat_share_links", "wix_rescuer_submissions", "email_log", "ai_runs", "application_calls", "call_transcripts", "cat_update_clock", "file_uploads", "jotform_submissions", "jotform_webhook_events", "post_adoption_chase", "post_adoption_testimonial", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });

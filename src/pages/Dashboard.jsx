@@ -4,6 +4,7 @@ import Grid from '@mui/material/Grid';
 import { PetsIcon, AssignmentIcon, CheckCircleIcon, FlightTakeoffIcon, ReportProblemIcon, AssignmentIndIcon } from '../components/icons';
 import DashboardPanel from '../components/DashboardPanel';
 import PageHeader from '../components/PageHeader';
+import InviteCatFormButton from '../components/CatForm/InviteCatFormButton';
 
 
 import Button from '@mui/material/Button';
@@ -181,7 +182,8 @@ function Dashboard() {
 
         <PageHeader
             title="Dashboard"
-            subtitle="Overview of the IBKT system"
+            subtitle="Overview of Oriel"
+            actions={isAdmin ? <InviteCatFormButton /> : null}
         />
 
         <MondayApiVersionBanner />

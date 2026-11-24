@@ -1,6 +1,7 @@
 import multer from "multer";
 import { basename, extname } from "node:path";
-import { contentMatchesExtension, notThatKindOfFile } from "../fileSignature.js";
+import { uploadProblem } from "../fileSignature.js";
+import { clientKey } from "../clientAddress.js";
 import { PUBLIC_FORMS, publicFormErrors, UPLOAD_MAX_BYTES, UPLOAD_MAX_FILES_PER_QUESTION, UPLOAD_MAX_FILES_PER_FORM, UPLOAD_EXTENSIONS } from "../../src/constants/forms/publicForms.js";
 import { isVisible } from "../../src/constants/forms/preAdoptionForm.js";
 import { isDatabaseEnabled } from "../database/db.js";
@@ -142,7 +143,7 @@ async function submissionErrors(form, answers) {
 
 export function registerPublicFormRoutes(app) {
   app.post("/api/public/form-uploads", (req, res) => {
-    const wait = uploadLimit(req.ip);
+    const wait = uploadLimit(clientKey(req.ip));
 
     if (wait) return tooMany(res, wait);
 
@@ -163,7 +164,9 @@ export function registerPublicFormRoutes(app) {
         return res.status(400).json({ error: `Files of type .${extension || "?"} are not accepted. Allowed: ${UPLOAD_EXTENSIONS.join(", ")}.` });
       }
 
-      if (!contentMatchesExtension(file.buffer, extension)) return res.status(400).json({ error: notThatKindOfFile(extension) });
+      const problem = uploadProblem(file.buffer, extension);
+
+      if (problem) return res.status(400).json({ error: problem });
 
       try {
         const token = await saveUpload({ buffer: file.buffer, mimetype: file.mimetype || "application/octet-stream", originalname: name });
@@ -187,7 +190,7 @@ export function registerPublicFormRoutes(app) {
     // A bot filled in the hidden field: pretend it worked, save nothing.
     if (req.body?.website) return res.json({ ok: true });
 
-    const wait = submissionLimit(req.ip);
+    const wait = submissionLimit(clientKey(req.ip));
 
     if (wait) return tooMany(res, wait);
 

@@ -1,5 +1,5 @@
 import multer from "multer";
-import { contentMatchesExtension, notThatKindOfFile } from "../fileSignature.js";
+import { uploadProblem } from "../fileSignature.js";
 import { CATS } from "../../src/constants/boards/cats.js";
 import { USERS } from "../../src/constants/boards/users.js";
 import { RESCUERS } from "../../src/constants/boards/rescuers.js";
@@ -37,7 +37,7 @@ const ID_PATTERN = /^\d+$/;
 
 // What a rescuer may fill in: the staff Add Cat fields except the rescuer
 // link (always themselves). Status is always Intake.
-const PORTAL_FIELDS = CREATE_FIELDS.filter((field) => field !== "rescuerId");
+export const PORTAL_FIELDS = CREATE_FIELDS.filter((field) => field !== "rescuerId");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SHORT_TEXT = 255;
@@ -56,9 +56,9 @@ const FILE_RULES = {
   medicalDocuments: { ...PORTAL_FILE_RULES.medicalDocuments, column: C.MEDICAL_DOCUMENTS, field: "medicalDocuments" },
 };
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * MB, files: 1 } });
+export const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * MB, files: 1 } });
 
-class PortalError extends Error {
+export class PortalError extends Error {
   constructor(message, status) {
     super(message);
     this.status = status;
@@ -71,7 +71,7 @@ function onlyRescuers(req, res, next) {
   next();
 }
 
-function onlyInDatabase(req, res, next) {
+export function onlyInDatabase(req, res, next) {
   if (isDatabaseBoard("cats") && isDatabaseBoard("users") && isDatabaseBoard("rescuers")) return next();
 
   res.status(409).json({ error: "The rescuer portal needs Cats, Users and Rescuers kept in the database." });
@@ -79,7 +79,7 @@ function onlyInDatabase(req, res, next) {
 
 // The Rescuers record linked to the signed-in rescuer's login, which must
 // still be Active (staff can switch a rescuer off).
-async function myRescuerId(req) {
+export async function myRescuerId(req) {
   const users = await boardFields("users");
   const { rows } = await query(`select ${ident(users.field(U.LINKED_RESCUER))} as ids from ${ident(users.table)} where monday_item_id = $1`, [Number(req.user.sub)]);
   const id = rows[0]?.ids?.[0];
@@ -96,7 +96,7 @@ async function myRescuerId(req) {
 
 // Runs a handler's work and answers: a PortalError's own status, 400 for
 // bad input, a store error's status, 429 for Monday's rate limit, else 500.
-function handle(res, work, what) {
+export function handle(res, work, what) {
   work()
     .then((result) => res.json(result))
     .catch((err) => {
@@ -170,6 +170,56 @@ async function ownCat(req, id) {
   return cat;
 }
 
+// Adds one uploaded file to a cat that is still Intake, within the caps
+// (shared by the signed-in portal and the shared add cat link).
+// kind: photos | videos | medicalDocuments. `who` is for the activity log.
+// Resolves to { id } of the Monday asset.
+export async function storeCatFile({ cat, kind, file, actor, who }) {
+  const rule = FILE_RULES[kind];
+
+  if (!rule) throw new InputError("kind must be photos, videos or medicalDocuments.");
+  if (!file) throw new InputError("A file is required.");
+  if (cat.status !== STATUS.INTAKE) throw new PortalError("Files can't be added once IBKT has started working on this cat. Contact IBKT.", 409);
+
+  const extension = file.originalname.split(".").pop()?.toLowerCase();
+
+  if (!rule.extensions.includes(extension)) throw new InputError(`Allowed file types: ${rule.extensions.join(", ")}.`);
+  const problem = uploadProblem(file.buffer, extension);
+
+  if (problem) throw new InputError(problem);
+  if (file.size > rule.maxBytes) throw new InputError(`That file is larger than ${rule.maxBytes / MB} MB.`);
+  if (cat[rule.field].length >= rule.max) throw new InputError(`You can add up to ${rule.max} ${kind === "medicalDocuments" ? "documents" : kind} per cat.`);
+
+  let assetId;
+
+  try {
+    assetId = await addFileToColumn(cat.id, rule.column, file);
+  } catch (err) {
+    if (err.rateLimited) throw err;
+    if (err.mondayErrors) throw new PortalError("Monday couldn't accept that file. Try again.", 502);
+
+    throw err;
+  }
+
+  clearCache([CATS.BOARD_ID]);
+  await refreshFileCopy(cat.id, rule.column);
+
+  logActivity({
+    actorId: actor.id,
+    actorName: actor.name,
+    boardId: CATS.BOARD_ID,
+    boardName: "Cats",
+    itemId: cat.id,
+    itemName: cat.name,
+    actionType: "Updated",
+    description: `${actor.name} (${who}) uploaded a file to ${kind} on ${cat.name}`,
+    fieldChanged: kind,
+    raw: { itemId: cat.id, fileName: file.originalname },
+  });
+
+  return { id: assetId };
+}
+
 export function registerRescuerPortalRoutes(app, { requireAnyAuth }) {
   const guard = [requireAnyAuth, onlyRescuers, onlyInDatabase];
 
@@ -236,53 +286,9 @@ export function registerRescuerPortalRoutes(app, { requireAnyAuth }) {
       handle(
         res,
         async () => {
-          const rule = FILE_RULES[req.body?.kind];
-          const file = req.file;
-
-          if (!rule) throw new InputError("kind must be photos, videos or medicalDocuments.");
-          if (!file) throw new InputError("A file is required.");
-
           const cat = await ownCat(req, req.params.id);
 
-          if (cat.status !== STATUS.INTAKE) throw new PortalError("Files can't be added once IBKT has started working on this cat. Contact IBKT.", 409);
-
-          const extension = file.originalname.split(".").pop()?.toLowerCase();
-
-          if (!rule.extensions.includes(extension)) throw new InputError(`Allowed file types: ${rule.extensions.join(", ")}.`);
-          if (!contentMatchesExtension(file.buffer, extension)) throw new InputError(notThatKindOfFile(extension));
-          if (file.size > rule.maxBytes) throw new InputError(`That file is larger than ${rule.maxBytes / MB} MB.`);
-          if (cat[rule.field].length >= rule.max) throw new InputError(`You can add up to ${rule.max} ${req.body.kind === "medicalDocuments" ? "documents" : req.body.kind} per cat.`);
-
-          let assetId;
-
-          try {
-            assetId = await addFileToColumn(cat.id, rule.column, file);
-          } catch (err) {
-            if (err.rateLimited) throw err;
-            if (err.mondayErrors) throw new PortalError("Monday couldn't accept that file. Try again.", 502);
-
-            throw err;
-          }
-
-          clearCache([CATS.BOARD_ID]);
-          await refreshFileCopy(cat.id, rule.column);
-
-          const actor = actorOf(req);
-
-          logActivity({
-            actorId: actor.id,
-            actorName: actor.name,
-            boardId: CATS.BOARD_ID,
-            boardName: "Cats",
-            itemId: cat.id,
-            itemName: cat.name,
-            actionType: "Updated",
-            description: `${actor.name} (rescuer) uploaded a file to ${req.body.kind} on ${cat.name}`,
-            fieldChanged: req.body.kind,
-            raw: { itemId: cat.id, fileName: file.originalname },
-          });
-
-          return { id: assetId };
+          return storeCatFile({ cat, kind: req.body?.kind, file: req.file, actor: actorOf(req), who: "rescuer" });
         },
         "rescuer portal request",
       ),

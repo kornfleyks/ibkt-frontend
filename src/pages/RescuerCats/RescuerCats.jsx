@@ -3,6 +3,8 @@ import { Link as RouterLink, useLocation } from 'react-router-dom';
 import { Alert, Button, Card, CardContent, Chip, CircularProgress, Stack, Typography } from '@mui/material';
 
 import PageHeader from '../../components/PageHeader';
+import ShareCatFormButton from '../../components/CatForm/ShareCatFormButton';
+import InviteCatFormButton from '../../components/CatForm/InviteCatFormButton';
 import { getMyCats } from '../../services/RescuerPortalService';
 import { PORTAL_CONTACT_EMAIL } from '../../constants/rescuerPortal';
 import useDateFormat from '../../hooks/useDateFormat';
@@ -52,9 +54,13 @@ function RescuerCats() {
                 title="My Cats"
                 subtitle="The cats you have added. To change anything, contact IBKT."
                 actions={
-                    <Button variant="contained" component={RouterLink} to="/rescuer/add-cat">
-                        Add Cat
-                    </Button>
+                    <Stack direction="row" spacing={1}>
+                        <InviteCatFormButton />
+                        <ShareCatFormButton />
+                        <Button variant="contained" component={RouterLink} to="/rescuer/add-cat">
+                            Add Cat
+                        </Button>
+                    </Stack>
                 }
             />
 

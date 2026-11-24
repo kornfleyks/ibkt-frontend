@@ -24,6 +24,7 @@ import Register from "../pages/Register";
 import ForgotPassword from "../pages/ForgotPassword";
 import ResetPassword from "../pages/ResetPassword";
 import BecomeRescuer from "../pages/BecomeRescuer";
+import SharedAddCat from "../pages/SharedAddCat";
 import BecomeFoster from "../pages/BecomeFoster";
 import PublicForm from "../pages/PublicForm";
 import RescuerLogin from "../pages/RescuerLogin";
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/become-a-rescuer" element={<BecomeRescuer />} />
+        <Route path="/add-cat/:code" element={<SharedAddCat />} />
         <Route path="/forms/:formKey" element={<PublicForm />} />
         <Route path="/rescuer/login" element={<RescuerLogin />} />
         <Route path="/rescuer/set-password" element={<RescuerSetPassword />} />

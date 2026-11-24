@@ -13,6 +13,7 @@ The client brief asks the system to prevent listing a cat unless all required fi
 | Enforcement | The change is refused for everyone. An Admin or Super Admin can set it anyway by giving a reason, which is saved in the Activity Log. |
 | Existing cats | A cat that is already Adoption Ready is not touched. The rule applies only when a cat is set to Adoption Ready. |
 | Returning cats | A Reserved or Adopted cat that goes back to Adoption Ready (a match that fell through) is not checked, because it was ready before. |
+| Fields in the same request | The check looks at the cat as it would be after the change. A request that fills the missing fields passes, and one that blanks a required field while setting the status is refused. A cat that is already Adoption Ready, Reserved or Adopted is not checked again when a field is edited later. |
 | Reserved and Adopted | Setting a cat to Reserved or Adopted is checked in the same way, unless the cat is already Adoption Ready, Reserved or Adopted. Without this a cat that is not ready could go to Reserved first and then to Adoption Ready without the check (security review, 21 Nov 2026). An Admin can override with a reason. |
 
 ## Required List

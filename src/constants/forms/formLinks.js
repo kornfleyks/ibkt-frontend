@@ -8,7 +8,7 @@ export const FORM_LINKS = [
   {
     key: "rescuer-application",
     title: "Rescuer Application",
-    description: "A new rescuer applies to work with IBKT. An Admin reviews it, then approves or rejects it.",
+    description: "A new rescuer applies to work with IBKT. The application is approved automatically and the rescuer is signed in. An Admin only reviews it if the account could not be created.",
     path: "/become-a-rescuer",
   },
   {
