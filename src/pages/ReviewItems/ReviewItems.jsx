@@ -37,14 +37,16 @@ import useDateFormat from "../../hooks/useDateFormat";
 // answer. Visible only to one developer account (src/routes/AppRoutes.jsx),
 // and Admin-only on the server (server/reviewItems/).
 
+// The client change requests come first, above the call questions.
 const SECTIONS = [
+  { category: "request", title: "Client change requests", empty: "No client change requests." },
   { category: "question", title: "Questions for the client", empty: "No open questions for the client." },
   { category: "flag", title: "Things to flag to the client", empty: "Nothing to flag right now." },
   { category: "internal", title: "Internal / to do", empty: "No internal notes." },
 ];
 
 const ALL_FILTER = "all";
-const FILTER_LABELS = { question: "Questions", flag: "Flags", internal: "Internal" };
+const FILTER_LABELS = { request: "Change requests", question: "Questions", flag: "Flags", internal: "Internal" };
 
 // Open work first, finished work last.
 const STATUS_ORDER = { open: 0, answered: 1, resolved: 2 };

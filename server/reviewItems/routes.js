@@ -12,7 +12,7 @@ import { listReviewItems, createReviewItem, updateReviewItem, deleteReviewItem }
 //   POST   /api/review-items/:id       { category?, title?, detail?, status?, priority? (null clears), answer? } -> { item }
 //   DELETE /api/review-items/:id       -> { deleted: true }
 
-const CATEGORIES = new Set(["question", "flag", "internal"]);
+const CATEGORIES = new Set(["request", "question", "flag", "internal"]);
 const STATUSES = new Set(["open", "answered", "resolved"]);
 const PRIORITIES = new Set(["high", "medium", "low"]);
 const ID_PATTERN = /^\d+$/;
@@ -20,7 +20,7 @@ const ID_PATTERN = /^\d+$/;
 async function create(req) {
   const { category, title, detail, priority } = req.body ?? {};
 
-  if (!CATEGORIES.has(category)) throw new HttpError(400, "category must be one of question, flag, internal.");
+  if (!CATEGORIES.has(category)) throw new HttpError(400, "category must be one of request, question, flag, internal.");
   if (!String(title ?? "").trim()) throw new HttpError(400, "A title is required.");
   if (priority != null && !PRIORITIES.has(priority)) throw new HttpError(400, "priority must be one of high, medium, low.");
 
@@ -32,7 +32,7 @@ async function update(req) {
 
   const { category, title, detail, status, priority, answer: answerText } = req.body ?? {};
 
-  if (category !== undefined && !CATEGORIES.has(category)) throw new HttpError(400, "category must be one of question, flag, internal.");
+  if (category !== undefined && !CATEGORIES.has(category)) throw new HttpError(400, "category must be one of request, question, flag, internal.");
   if (status !== undefined && !STATUSES.has(status)) throw new HttpError(400, "status must be one of open, answered, resolved.");
   if (title !== undefined && !String(title).trim()) throw new HttpError(400, "The title can't be empty.");
   if (priority != null && !PRIORITIES.has(priority)) throw new HttpError(400, "priority must be one of high, medium, low.");
