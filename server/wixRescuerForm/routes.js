@@ -12,8 +12,8 @@ import { insertSubmission, listSubmissions } from "./store.js";
 // The secret is part of the address, as for the Jotform and Monday
 // webhooks, because Wix's documentation for that action does not mention
 // request headers or signing. A wrong or missing secret gets a 404, so the
-// address does not reveal itself. The body is stored as received (JSON or a
-// form post); a reply goes out at once, since Wix waits for it.
+// address does not reveal itself. The body (JSON or a form post) is stored as
+// columns (store.js); a reply goes out at once, since Wix waits for it.
 //
 //   GET /api/wix-rescuer-submissions   Admin: what was received, newest first
 //

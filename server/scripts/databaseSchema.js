@@ -514,15 +514,33 @@ await transaction(async (run) => {
   // Who the link is for: a foster (asked who they are) or a rescuer.
   await run("alter table cat_share_links add column if not exists audience text not null default 'rescuer' check (audience in ('foster', 'rescuer'))");
 
-  // What the Wix rescuer form sends on submission (wixRescuerForm/): the
-  // payload exactly as received, until its fields are mapped. App-only.
+  // What the Wix rescuer form sends on submission (wixRescuerForm/), kept as
+  // columns plus the form's own answers. `payload` holds the whole body only
+  // when it could not be read as expected. App-only: never sent to Monday.
   await run(`create table if not exists wix_rescuer_submissions (
     id bigserial primary key,
     delivery_key text not null unique,
-    email text,
-    payload jsonb not null,
     received_at timestamptz not null default now()
   )`);
+  for (const column of [
+    "wix_submission_id text",
+    "wix_contact_id text",
+    "form_id text",
+    "form_name text",
+    "submitted_at timestamptz",
+    "first_name text",
+    "last_name text",
+    "email text",
+    "phone text",
+    "rescue_location text",
+    "cats_to_rehome text",
+    "answers jsonb",
+    "payload jsonb",
+  ]) {
+    await run(`alter table wix_rescuer_submissions add column if not exists ${column}`);
+  }
+  // The first version of the table required the whole payload.
+  await run("alter table wix_rescuer_submissions alter column payload drop not null");
   await run("create index if not exists wix_rescuer_submissions_received on wix_rescuer_submissions (received_at desc)");
 
   // Each referee's "Reference Check - IBKT" answers about an application
