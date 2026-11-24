@@ -44,7 +44,7 @@ function Sidebar() {
           component="h2"
           sx={{ textAlign: "center", mb: 4, color: "inherit" }}
         >
-          IBKT
+          Oriel
         </Typography>
       ) : (
         <Box
@@ -75,7 +75,7 @@ function Sidebar() {
                 lineHeight: 1,
               }}
             >
-              I
+              O
             </Typography>
           </Box>
         </Box>

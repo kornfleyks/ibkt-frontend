@@ -66,7 +66,7 @@ function Header() {
                 </IconButton>
 
                 <Typography variant="h6" component="h1">
-                    IBKT System
+                    Oriel
                 </Typography>
 
             </Box>

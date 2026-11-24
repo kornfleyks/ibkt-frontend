@@ -23,7 +23,7 @@ export function sendFosterApplicationReceivedEmail({ applicationId, email, first
     {
       to: email,
       subject: "We received your foster application",
-      text: `Hi ${emailName(firstName)},\n\nThanks for applying to foster with Itty Bitty Kitty Tails. We have received your application and will review it. You will get another email once we have made a decision.\n\nIBKT System`,
+      text: `Hi ${emailName(firstName)},\n\nThanks for applying to foster with Itty Bitty Kitty Tails. We have received your application and will review it. You will get another email once we have made a decision.\n\nOriel`,
     },
     { userName: emailName(`${firstName} ${lastName}`), actorName: "Applicant", target: target(applicationId) },
   );
@@ -65,10 +65,10 @@ export async function sendFosterLinkEmail({ kind, applicationId, userId, email, 
     approved ? "Foster approved email" : "Foster set-password link email",
     {
       to: email,
-      subject: approved ? "Your foster application has been approved" : "Your IBKT sign-in link",
+      subject: approved ? "Your foster application has been approved" : "Your Oriel sign-in link",
       text: approved
-        ? `Hi ${emailName(firstName)},\n\nGood news - your application to foster with Itty Bitty Kitty Tails has been approved.\n\nTo get started, choose a password here (the link works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nOnce signed in you will see the cats that IBKT has placed with you.\n\nIBKT System`
-        : `Hi ${emailName(firstName)},\n\nHere is a new link to choose your IBKT password (it works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nIBKT System`,
+        ? `Hi ${emailName(firstName)},\n\nGood news - your application to foster with Itty Bitty Kitty Tails has been approved.\n\nTo get started, choose a password here (the link works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nOnce signed in you will see the cats that IBKT has placed with you.\n\nOriel`
+        : `Hi ${emailName(firstName)},\n\nHere is a new link to choose your Oriel password (it works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nOriel`,
     },
     {
       userName: name,
@@ -86,7 +86,7 @@ export function sendFosterRejectedEmail({ applicationId, email, firstName, lastN
     {
       to: email,
       subject: "About your foster application",
-      text: `Hi ${emailName(firstName)},\n\nThank you for applying to foster with Itty Bitty Kitty Tails. After reviewing your application we are not able to approve it at this time.\n\n${reason}\n\nYou are welcome to apply again in the future.\n\nIBKT System`,
+      text: `Hi ${emailName(firstName)},\n\nThank you for applying to foster with Itty Bitty Kitty Tails. After reviewing your application we are not able to approve it at this time.\n\n${reason}\n\nYou are welcome to apply again in the future.\n\nOriel`,
     },
     { userName: emailName(`${firstName} ${lastName}`), actorId: actor?.id, actorName: actor?.name, target: target(applicationId) },
   );

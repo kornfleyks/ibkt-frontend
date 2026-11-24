@@ -18,7 +18,7 @@ function AuthLayout({ title, width = 400, children }) {
         >
 
             <Typography variant="h4" component="p" fontWeight={600} sx={{ mb: 3 }}>
-                IBKT
+                Oriel
             </Typography>
 
             <Card sx={{ width: '100%', maxWidth: width }}>

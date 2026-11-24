@@ -92,8 +92,8 @@ export function sendRegistrationPendingEmail({ userId, email, firstName, lastNam
     "Registration pending email",
     {
       to: email,
-      subject: "Your IBKT account is pending approval",
-      text: `Hi ${firstName},\n\nThanks for registering with IBKT System. Your account is pending approval from an administrator. You'll receive another email once it's approved and you can log in.\n\nIBKT System`,
+      subject: "Your Oriel account is pending approval",
+      text: `Hi ${firstName},\n\nThanks for registering with Oriel. Your account is pending approval from an administrator. You'll receive another email once it's approved and you can log in.\n\nOriel`,
     },
     { userId, userName },
   );
@@ -107,8 +107,8 @@ export function sendAccountApprovedEmail({ userId, email, firstName, lastName, a
     "Account approved email",
     {
       to: email,
-      subject: "Your IBKT account has been approved",
-      text: `Hi ${firstName},\n\nGood news - your IBKT System account has been approved. You can now log in.\n\nIBKT System`,
+      subject: "Your Oriel account has been approved",
+      text: `Hi ${firstName},\n\nGood news - your Oriel account has been approved. You can now log in.\n\nOriel`,
     },
     { userId, userName, actorId: actor?.id, actorName: actor?.name },
   );
@@ -126,8 +126,8 @@ export function sendTestEmail({ userId, email, firstName, lastName, actor }) {
     "Test email",
     {
       to: email,
-      subject: "IBKT System test email",
-      text: `Hi ${firstName},\n\nThis is a test email sent from the Users page by ${actor?.name ?? "an admin"}, to confirm email delivery is working.\n\nIBKT System`,
+      subject: "Oriel test email",
+      text: `Hi ${firstName},\n\nThis is a test email sent from the Users page by ${actor?.name ?? "an admin"}, to confirm email delivery is working.\n\nOriel`,
     },
     { userId, userName, actorId: actor?.id, actorName: actor?.name },
   );

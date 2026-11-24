@@ -22,7 +22,7 @@ export function sendRescuerApplicationReceivedEmail({ applicationId, email, firs
     {
       to: email,
       subject: "We received your rescuer application",
-      text: `Hi ${emailName(firstName)},\n\nThanks for applying to become a rescuer with Itty Bitty Kitty Tails. We have received your application and will review it. You will get another email once we have made a decision.\n\nIBKT System`,
+      text: `Hi ${emailName(firstName)},\n\nThanks for applying to become a rescuer with Itty Bitty Kitty Tails. We have received your application and will review it. You will get another email once we have made a decision.\n\nOriel`,
     },
     { userName: emailName(`${firstName} ${lastName}`), actorName: "Applicant", target: target(applicationId) },
   );
@@ -31,7 +31,7 @@ export function sendRescuerApplicationReceivedEmail({ applicationId, email, firs
 // The app's public address plus a path, for links in emails. APP_BASE_URL is
 // the address the app is served from, including any sub-path (for example
 // https://kornfleyks.github.io/ibkt-frontend).
-function appLink(path) {
+export function appLink(path) {
   const base = String(process.env.APP_BASE_URL ?? "").trim().replace(/\/+$/, "");
 
   if (!base) throw new Error("APP_BASE_URL isn't set on this server, so a link can't be made.");
@@ -65,10 +65,10 @@ export async function sendRescuerLinkEmail({ kind, applicationId, userId, email,
     approved ? "Rescuer approved email" : "Rescuer set-password link email",
     {
       to: email,
-      subject: approved ? "Your rescuer application has been approved" : "Your IBKT sign-in link",
+      subject: approved ? "Your rescuer application has been approved" : "Your Oriel sign-in link",
       text: approved
-        ? `Hi ${emailName(firstName)},\n\nGood news - your application to become a rescuer with Itty Bitty Kitty Tails has been approved.\n\nTo get started, choose a password here (the link works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nOnce signed in you can add the cats you are rehoming and see the ones you have added.\n\nIBKT System`
-        : `Hi ${emailName(firstName)},\n\nHere is a new link to choose your IBKT password (it works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nIBKT System`,
+        ? `Hi ${emailName(firstName)},\n\nGood news - your application to become a rescuer with Itty Bitty Kitty Tails has been approved.\n\nTo get started, choose a password here (the link works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nOnce signed in you can add the cats you are rehoming and see the ones you have added.\n\nOriel`
+        : `Hi ${emailName(firstName)},\n\nHere is a new link to choose your Oriel password (it works for ${validDays} days):\n${setUrl}\n\nAfter that you can sign in at:\n${loginUrl}\n\nOriel`,
     },
     {
       userName: name,
@@ -86,7 +86,7 @@ export function sendRescuerRejectedEmail({ applicationId, email, firstName, last
     {
       to: email,
       subject: "About your rescuer application",
-      text: `Hi ${emailName(firstName)},\n\nThank you for applying to become a rescuer with Itty Bitty Kitty Tails. After reviewing your application we are not able to approve it at this time.\n\n${reason}\n\nYou are welcome to apply again in the future.\n\nIBKT System`,
+      text: `Hi ${emailName(firstName)},\n\nThank you for applying to become a rescuer with Itty Bitty Kitty Tails. After reviewing your application we are not able to approve it at this time.\n\n${reason}\n\nYou are welcome to apply again in the future.\n\nOriel`,
     },
     { userName: emailName(`${firstName} ${lastName}`), actorId: actor?.id, actorName: actor?.name, target: target(applicationId) },
   );

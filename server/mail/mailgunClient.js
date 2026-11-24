@@ -32,7 +32,7 @@ export function normalizeMessageId(value) {
 // from defaults to the sandbox domain's postmaster; pass a real "from" once
 // a verified domain exists. Resolves to Mailgun's { id, message } - id is
 // this send's message id, for recording in email_log.
-export async function sendEmail({ to, subject, text, html, from = `IBKT System <postmaster@${DOMAIN}>` }) {
+export async function sendEmail({ to, subject, text, html, from = `Oriel <postmaster@${DOMAIN}>` }) {
   if (!isMailerConfigured()) {
     throw new Error("Mailgun isn't configured (MAILGUN_API_SANDBOX_KEY / MAILGUN_SANDBOX_DOMAIN missing).");
   }

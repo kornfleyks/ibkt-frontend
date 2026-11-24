@@ -32,7 +32,7 @@ function PortalLayout({ children }) {
                 <Container maxWidth="md">
                     <Stack direction="row" spacing={2} sx={{ alignItems: 'center', flexWrap: 'wrap', rowGap: 1 }}>
                         <Typography variant="h6" component="p" fontWeight={600} sx={{ mr: 2 }}>
-                            IBKT
+                            Oriel
                         </Typography>
 
                         {links.map((link) => (
