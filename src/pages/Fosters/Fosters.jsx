@@ -34,9 +34,10 @@ const ROW_ACTIONS = [
     },
 ];
 
-// Fosters, managed like the Users page (same component, fosters only), plus
-// an Applications tab where new applications are approved or rejected
-// (docs/foster-onboarding.md).
+// Fosters, managed like the Users page (same component, fosters only). Two
+// tabs, each with at most one row of filters: Applications, where new
+// applications are approved or rejected (docs/foster-onboarding.md), and
+// Fosters, the accounts.
 function Fosters() {
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -82,24 +83,26 @@ function Fosters() {
             AddDialog={AddFosterDialog}
             rowActions={ROW_ACTIONS}
             defaultTab="applications"
-            extraTab={{
-                slug: 'applications',
-                label: 'Applications',
-                count: pending,
-                subtitle: pending > 0 ? `${pending} application(s) awaiting review` : 'Manage fosters and their applications',
-                content: ({ reloadUsers, setNotice }) => (
-                    <FosterApplications
-                        applications={applications}
-                        loading={loading}
-                        error={error}
-                        setNotice={setNotice}
-                        onChanged={() => {
-                            setReloadKey((key) => key + 1);
-                            reloadUsers();
-                        }}
-                    />
-                ),
-            }}
+            extraTabs={[
+                {
+                    slug: 'applications',
+                    label: 'Applications',
+                    count: pending,
+                    subtitle: pending > 0 ? `${pending} application(s) awaiting review` : 'Manage fosters and their applications',
+                    content: ({ reloadUsers, setNotice }) => (
+                        <FosterApplications
+                            applications={applications}
+                            loading={loading}
+                            error={error}
+                            setNotice={setNotice}
+                            onChanged={() => {
+                                setReloadKey((key) => key + 1);
+                                reloadUsers();
+                            }}
+                        />
+                    ),
+                },
+            ]}
         />
     );
 }

@@ -552,6 +552,35 @@ await transaction(async (run) => {
   await run("alter table wix_rescuer_submissions alter column payload drop not null");
   await run("create index if not exists wix_rescuer_submissions_received on wix_rescuer_submissions (received_at desc)");
 
+  // The Rescuer Agreement: one row for each Wix rescuer request that was
+  // approved, with the link to the agreement, the signature and the link to
+  // sign up (rescuerAgreement/). Only hashes of the links' codes are kept.
+  // submission_id has no foreign key, so a signed agreement stays when a
+  // request row is removed. App-only: never sent to Monday.
+  await run(`create table if not exists rescuer_agreements (
+    id bigserial primary key,
+    submission_id bigint not null unique,
+    email text not null,
+    first_name text,
+    last_name text,
+    token_hash text not null unique,
+    expires_at timestamptz not null,
+    created_by_id text,
+    created_by_name text,
+    email_status text,
+    email_error text,
+    email_at timestamptz,
+    signed_at timestamptz,
+    signed_name text,
+    agreement_version text,
+    agreement_file_hash text,
+    points_signed jsonb,
+    signup_token_hash text unique,
+    signup_expires_at timestamptz,
+    signup_used_at timestamptz,
+    created_at timestamptz not null default now()
+  )`);
+
   // Each referee's "Reference Check - IBKT" answers about an application
   // (jotform/referenceCheck/handler.js, referenceChecks/). App-only: never
   // sent to Monday.
@@ -691,7 +720,7 @@ await transaction(async (run) => {
   // Reachable only by this server's connection; Supabase's public API
   // (anon / authenticated keys) gets nothing without policies. Every app table
   // is listed here, so add a new table to this list when creating it.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "rescuer_applications", "foster_applications", "foster_cat_profiles", "reference_checks", "review_items", "cat_share_links", "wix_rescuer_submissions", "email_log", "ai_runs", "application_calls", "call_transcripts", "cat_update_clock", "file_uploads", "jotform_submissions", "jotform_webhook_events", "post_adoption_chase", "post_adoption_testimonial", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "rescuer_applications", "foster_applications", "foster_cat_profiles", "reference_checks", "review_items", "cat_share_links", "wix_rescuer_submissions", "rescuer_agreements", "email_log", "ai_runs", "application_calls", "call_transcripts", "cat_update_clock", "file_uploads", "jotform_submissions", "jotform_webhook_events", "post_adoption_chase", "post_adoption_testimonial", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });

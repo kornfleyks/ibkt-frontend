@@ -24,12 +24,16 @@ import {
   markDecided,
 } from "./applicationsStore.js";
 import { createRescuerAccount, issueSetPasswordLink, ApprovalError } from "./approval.js";
+import { claimSignup, releaseSignup } from "../rescuerAgreement/store.js";
 
 // Rescuer onboarding (docs/rescuer-onboarding.md).
 //
 // Public (no sign-in):
-//   POST /api/public/rescuer-applications   { answers, password, website }
+//   POST /api/public/rescuer-applications   { answers, password, website, signupCode }
 //     -> { ok, status: "approved" | "pending" }
+//     signupCode is the sign-up link the person got after signing the Rescuer
+//     Agreement (rescuerAgreement/); without a valid one the answer is 403.
+//     The link is used up, and the account is made for the agreement's email.
 //     "approved": the account exists and the password works, so the page
 //     signs the rescuer in. "pending": the application is saved but the
 //     account could not be made (for example the email already has an
@@ -49,6 +53,8 @@ import { createRescuerAccount, issueSetPasswordLink, ApprovalError } from "./app
 // the email already has an application or an account, and a bot gets the
 // same "ok" a person does.
 
+const SIGNUP_CODE_PATTERN = /^[A-Za-z0-9_-]{20,100}$/;
+const SIGNUP_LINK_NEEDED = "You need the sign-up link from your email to apply. If it has expired, ask IBKT for a new one.";
 const MAX_PER_IP_PER_HOUR = 5;
 const HOUR_MS = 60 * 60 * 1000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -186,6 +192,11 @@ export function registerRescuerOnboardingRoutes(app, { requireAuth, requireAdmin
 
     const answers = req.body?.answers;
     const password = req.body?.password;
+    const signupCode = req.body?.signupCode;
+
+    // Only a person who signed the Rescuer Agreement has a sign-up link
+    // (rescuerAgreement/): the application needs it.
+    if (!SIGNUP_CODE_PATTERN.test(String(signupCode))) return res.status(403).json({ error: SIGNUP_LINK_NEEDED });
 
     if (!answers || typeof answers !== "object" || Array.isArray(answers)) {
       return res.status(400).json({ error: "The form answers are missing." });
@@ -208,15 +219,29 @@ export function registerRescuerOnboardingRoutes(app, { requireAuth, requireAdmin
         return res.status(429).json({ error: "Too many applications from this connection. Please try again later." });
       }
 
-      const clean = cleanRescuerAnswers(answers);
-      const saved = await insertApplication({
-        firstName: clean.firstName.slice(0, 255),
-        lastName: clean.lastName.slice(0, 255),
-        email: clean.email.slice(0, 320),
-        answers: { formId: RESCUER_FORM_ID, ...clean },
-        wordingVersion: WORDING_VERSION,
-        ipHash,
-      });
+      // The sign-up link is used up by one application (two at once cannot both win).
+      const agreement = await claimSignup(signupCode);
+
+      if (!agreement) return res.status(403).json({ error: SIGNUP_LINK_NEEDED });
+
+      // The account is for the email of the signed agreement, whatever the form says.
+      const clean = { ...cleanRescuerAnswers(answers), email: agreement.email };
+      let saved;
+
+      try {
+        saved = await insertApplication({
+          firstName: clean.firstName.slice(0, 255),
+          lastName: clean.lastName.slice(0, 255),
+          email: clean.email.slice(0, 320),
+          answers: { formId: RESCUER_FORM_ID, ...clean },
+          wordingVersion: WORDING_VERSION,
+          ipHash,
+        });
+      } catch (err) {
+        // Not saved: the person can try again with the same link.
+        await releaseSignup(agreement.id).catch(() => {});
+        throw err;
+      }
 
       // Already Pending or Approved for this email: nothing saved, nothing
       // emailed, and the person is told their application was received.

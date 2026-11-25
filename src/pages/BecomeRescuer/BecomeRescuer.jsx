@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Step from '@mui/material/Step';
@@ -16,6 +17,7 @@ import useAuth from '../../hooks/useAuth';
 import PreAdoptionQuestion from '../../components/ActiveApplications/AddApplicationDialog/PreAdoptionQuestion';
 import { RESCUER_PAGES, rescuerAnswersErrors } from '../../constants/forms/rescuerApplicationForm';
 import { submitRescuerApplication } from '../../services/RescuerApplicationService';
+import { getSignup } from '../../services/RescuerAgreementService';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -42,12 +44,19 @@ function firstPageWithError(errors) {
 }
 
 // The public page a new rescuer fills in (docs/rescuer-onboarding.md). No
-// sign-in. The rescuer also chooses a password on the last step: the server
+// sign-in, but it opens only from the sign-up link (/become-a-rescuer/:code)
+// that the rescuer gets after signing the Rescuer Agreement
+// (docs/rescuer-agreement.md). The email comes from the agreement and cannot
+// be changed. The rescuer also chooses a password on the last step: the server
 // approves the application automatically and the rescuer is signed in
 // straight away. The hidden "website" field is the bot trap the server checks.
 function BecomeRescuer() {
+    const { code } = useParams();
     const { login } = useAuth();
     const navigate = useNavigate();
+    // 'loading' | 'open' | 'gone': whether the sign-up link opens the form.
+    const [linkState, setLinkState] = useState(code ? 'loading' : 'gone');
+    const [linkError, setLinkError] = useState(code ? null : 'You need the sign-up link from your email to apply. If you do not have one, contact IBKT.');
     const [answers, setAnswers] = useState(initialAnswers);
     const [errors, setErrors] = useState({});
     const [step, setStep] = useState(0);
@@ -61,6 +70,32 @@ function BecomeRescuer() {
 
     const page = RESCUER_PAGES[step];
     const lastStep = step === RESCUER_PAGES.length - 1;
+
+    useEffect(() => {
+        if (!code) return undefined;
+
+        let cancelled = false;
+
+        getSignup(code)
+            .then((person) => {
+                if (cancelled) return;
+
+                setAnswers((current) => ({ ...current, firstName: person.firstName ?? '', lastName: person.lastName ?? '', email: person.email }));
+                setLinkState('open');
+            })
+            .catch((err) => {
+                console.error('Failed to open the sign-up link:', err);
+
+                if (cancelled) return;
+
+                setLinkError(err.message);
+                setLinkState('gone');
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [code]);
 
     function setAnswer(key, value) {
         setAnswers((current) => ({ ...current, [key]: value }));
@@ -99,7 +134,7 @@ function BecomeRescuer() {
         setError(null);
 
         try {
-            const { status } = await submitRescuerApplication(answers, password, website);
+            const { status } = await submitRescuerApplication(answers, password, website, code);
 
             if (status === 'approved') {
                 // The account exists: sign in with the password just chosen.
@@ -139,6 +174,24 @@ function BecomeRescuer() {
         );
     }
 
+    if (linkState === 'loading') {
+        return (
+            <AuthLayout title="Become a Rescuer" width={520}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                    <CircularProgress />
+                </Box>
+            </AuthLayout>
+        );
+    }
+
+    if (linkState === 'gone') {
+        return (
+            <AuthLayout title="Become a Rescuer" width={520}>
+                <Alert severity="warning">{linkError}</Alert>
+            </AuthLayout>
+        );
+    }
+
     return (
         <AuthLayout title="Become a Rescuer" width={720}>
             <Stepper activeStep={step} alternativeLabel sx={{ mb: 3 }}>
@@ -157,7 +210,7 @@ function BecomeRescuer() {
                             value={answers[question.key]}
                             onChange={(value) => setAnswer(question.key, value)}
                             error={errors[question.key]}
-                            disabled={saving}
+                            disabled={saving || question.key === 'email'}
                         />
                     </div>
                 ))}

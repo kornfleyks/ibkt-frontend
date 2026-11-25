@@ -170,11 +170,49 @@ export async function insertSubmission(payload) {
   return rows[0] ? { id: String(rows[0].id) } : null;
 }
 
+// One stored submission as its row, or null.
+export async function getSubmission(id) {
+  const { rows } = await query("select * from wix_rescuer_submissions where id = $1", [Number(id)]);
+
+  return rows[0] ?? null;
+}
+
+// Where a request is in the agreement (rescuerAgreement/): "none" (not
+// approved), "sent" (link sent, not signed), "expired" (link sent, not
+// signed, and it has expired), "signed", or "signedUp" (the person used the
+// sign-up link).
+function agreementOf(row) {
+  if (!row.agreement_id) return { status: "none" };
+
+  const status = row.agreement_signup_used_at ? "signedUp" : row.agreement_signed_at ? "signed" : new Date(row.agreement_expires_at) < new Date() ? "expired" : "sent";
+
+  return {
+    status,
+    expiresAt: row.agreement_expires_at,
+    signedAt: row.agreement_signed_at,
+    signedName: row.agreement_signed_name,
+    signupExpiresAt: row.agreement_signup_expires_at,
+    emailStatus: row.agreement_email_status,
+    emailError: row.agreement_email_error,
+  };
+}
+
 // Newest first, for an Admin to see what Wix is sending.
 export async function listSubmissions(limit = 50) {
-  const { rows } = await query("select * from wix_rescuer_submissions order by received_at desc limit $1", [limit]);
+  const { rows } = await query(
+    `select s.*,
+            a.id as agreement_id, a.expires_at as agreement_expires_at, a.signed_at as agreement_signed_at, a.signed_name as agreement_signed_name,
+            a.signup_expires_at as agreement_signup_expires_at, a.signup_used_at as agreement_signup_used_at,
+            a.email_status as agreement_email_status, a.email_error as agreement_email_error
+       from wix_rescuer_submissions s
+       left join rescuer_agreements a on a.submission_id = s.id
+      order by s.received_at desc
+      limit $1`,
+    [limit],
+  );
 
   return rows.map((row) => ({
+    agreement: agreementOf(row),
     id: String(row.id),
     wixSubmissionId: row.wix_submission_id,
     collectionId: row.collection_id,

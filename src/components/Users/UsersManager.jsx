@@ -488,7 +488,8 @@ function UserRow({ user, rowActions, onNotice, onError, showRole, roleOptions, i
                         onChange={(event) => onRequestRole(user, event.target.value)}
                         sx={{ minWidth: 130 }}
                     >
-                        {roleOptions.map((option) => (
+                        {/* The account's own role is listed even when it is not offered here. */}
+                        {(roleOptions.includes(user.role) || !user.role ? roleOptions : [user.role, ...roleOptions]).map((option) => (
                             <MenuItem key={option} value={option}>
                                 {option}
                             </MenuItem>
@@ -555,11 +556,13 @@ function matchesSearch(user, term) {
 //   labels          the wording that names the accounts ({ title, singular, add })
 //   AddDialog       the dialog the add button opens (gets { onClose, onCreated })
 //   rowActions      extra items in each row's menu: [{ label, onClick(user, { setNotice, setError }) }]
-//   extraTab        a first tab with its own content: { slug, label, count, subtitle, content({ reloadUsers, setNotice }) }
+//   extraTabs       tabs with their own content, each { slug, label, count, subtitle, content({ reloadUsers, setNotice }) }.
+//                   The accounts then have one last tab named by labels.title, and the account statuses are filter
+//                   chips inside it (not tabs). An old link with ?tab=<status> opens that tab with that filter.
 //   defaultTab      the tab slug shown when the address names none (default 'all')
 const DEFAULT_LABELS = { title: 'Users', singular: 'user', add: 'Add User' };
 
-function UsersManager({ include = () => true, roleOptions = ROLE_OPTIONS, showRole = true, labels = {}, AddDialog = AddUserDialog, rowActions = [], extraTab = null, defaultTab = 'all' }) {
+function UsersManager({ include = () => true, roleOptions = ROLE_OPTIONS, showRole = true, labels = {}, AddDialog = AddUserDialog, rowActions = [], extraTabs = null, defaultTab = 'all' }) {
     const { title, singular, add } = { ...DEFAULT_LABELS, ...labels };
     const { user: currentUser } = useAuth();
     const [allUsers, setUsers] = useState([]);
@@ -578,6 +581,12 @@ function UsersManager({ include = () => true, roleOptions = ROLE_OPTIONS, showRo
     // Bumped to load the list again without the spinner (the extra tab's content uses it).
     const [reloadKey, setReloadKey] = useState(0);
     const [searchParams, setSearchParams] = useSearchParams();
+    // With extraTabs: the status filter of the accounts tab (a TABS slug).
+    const [accountStatus, setAccountStatus] = useState(() => {
+        const slug = searchParams.get('tab');
+
+        return TABS.some((item) => item.slug === slug) ? slug : 'all';
+    });
 
     useEffect(() => {
         let cancelled = false;
@@ -704,9 +713,13 @@ function UsersManager({ include = () => true, roleOptions = ROLE_OPTIONS, showRo
     }
 
     // Tab from ?tab=, else the default.
-    const tabs = extraTab ? [{ label: extraTab.label, slug: extraTab.slug, status: null, extra: true }, ...TABS] : TABS;
+    const chipMode = Boolean(extraTabs);
+    const extras = (extraTabs ?? []).map((item) => ({ label: item.label, slug: item.slug, status: null, extra: item }));
+    const tabs = chipMode ? [...extras, { label: title, slug: 'accounts', status: null, accounts: true }] : [...extras, ...TABS];
     const findTab = (slug) => tabs.findIndex((item) => item.slug === slug);
-    const requestedTab = findTab(searchParams.get('tab'));
+    const requestedSlug = searchParams.get('tab');
+    // An old link to an account status opens the accounts tab.
+    const requestedTab = findTab(chipMode && TABS.some((item) => item.slug === requestedSlug) ? 'accounts' : requestedSlug);
     const tab = requestedTab !== -1 ? requestedTab : Math.max(findTab(defaultTab), 0);
     const onExtraTab = Boolean(tabs[tab].extra);
 
@@ -719,15 +732,16 @@ function UsersManager({ include = () => true, roleOptions = ROLE_OPTIONS, showRo
     }
 
     const term = search.trim().toLowerCase();
+    const activeStatus = chipMode ? TABS.find((item) => item.slug === accountStatus).status : tabs[tab].status;
     const visibleUsers = users
-        .filter((user) => !tabs[tab].status || user.accountStatus === tabs[tab].status)
+        .filter((user) => !activeStatus || user.accountStatus === activeStatus)
         .filter((user) => matchesSearch(user, term));
 
     return (
         <>
             <PageHeader
                 title={title}
-                subtitle={extraTab?.subtitle ?? (counts.pending > 0 ? `${counts.pending} account(s) awaiting approval` : `Manage ${singular} accounts`)}
+                subtitle={tabs[tab].extra?.subtitle ?? (counts.pending > 0 ? `${counts.pending} account(s) awaiting approval` : `Manage ${singular} accounts`)}
                 actions={
                     <Button
                         variant="contained"
@@ -764,11 +778,25 @@ function UsersManager({ include = () => true, roleOptions = ROLE_OPTIONS, showRo
                         <Stack spacing={2}>
                             <Tabs value={tab} onChange={(event, index) => setTab(index)} variant="scrollable" scrollButtons="auto">
                                 {tabs.map((item) => (
-                                    <Tab key={item.slug} label={`${item.label} (${item.extra ? extraTab.count : counts[item.slug]})`} />
+                                    <Tab key={item.slug} label={`${item.label} (${item.extra ? item.extra.count : item.accounts ? counts.all : counts[item.slug]})`} />
                                 ))}
                             </Tabs>
 
-                            {onExtraTab ? extraTab.content({ reloadUsers, setNotice }) : (<>
+                            {onExtraTab ? tabs[tab].extra.content({ reloadUsers, setNotice }) : (<>
+                            {chipMode && (
+                                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                                    {TABS.map((item) => (
+                                        <Chip
+                                            key={item.slug}
+                                            label={`${item.label} (${counts[item.slug]})`}
+                                            color={accountStatus === item.slug ? 'primary' : 'default'}
+                                            variant={accountStatus === item.slug ? 'filled' : 'outlined'}
+                                            onClick={() => setAccountStatus(item.slug)}
+                                        />
+                                    ))}
+                                </Stack>
+                            )}
+
                             <TextField
                                 size="small"
                                 label="Search by name or email"

@@ -6,11 +6,13 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 
 // Resolves to { ok, status }: "approved" means the account exists and the
 // chosen password works, "pending" means an Admin still has to approve it.
-export async function submitRescuerApplication(answers, password, website = "") {
+// `signupCode` is the code of the sign-up link the rescuer got after signing
+// the Rescuer Agreement; the server refuses an application without it.
+export async function submitRescuerApplication(answers, password, website = "", signupCode = "") {
   const response = await fetch(`${SERVER_URL}/api/public/rescuer-applications`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ answers, password, website }),
+    body: JSON.stringify({ answers, password, website, signupCode }),
   });
 
   const result = await response.json().catch(() => ({}));

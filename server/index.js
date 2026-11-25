@@ -43,6 +43,7 @@ import { registerUserAdminRoutes } from "./userAdmin.js";
 import { registerWebhookRoutes } from "./webhooks.js";
 import { registerJotformRoutes } from "./jotform/routes.js";
 import { registerWixRescuerFormRoutes } from "./wixRescuerForm/routes.js";
+import { registerRescuerAgreementRoutes } from "./rescuerAgreement/routes.js";
 import { processWaitingSubmissions } from "./jotform/receive.js";
 import { registerSessionEventRoutes } from "./sessionEvents.js";
 import { registerNotificationRoutes, notifyFromTaskMutation, NOTIFICATIONS_BOARD_ID } from "./notifications.js";
@@ -388,7 +389,7 @@ app.post("/api/login", async (req, res) => {
       });
     }
 
-    // Only staff roles use the staff app; Adopter and any other role have no
+    // Only staff roles use the staff app; any other role has no
     // portal yet (docs/role-lockdown.md), so there is nothing for them to sign
     // in to. The portal roles were handled above.
     if (!requestedPortal && !isStaffRole(user.role)) {
@@ -557,6 +558,7 @@ registerWebhookRoutes(app);
 registerMailgunWebhookRoutes(app);
 registerJotformRoutes(app);
 registerWixRescuerFormRoutes(app, { requireAuth, requireAdmin });
+registerRescuerAgreementRoutes(app, { requireAuth, requireAdmin });
 registerSessionEventRoutes(app, { requireAnyAuth });
 registerNotificationRoutes(app, { requireAuth });
 registerSettingsRoutes(app, { requireAuth, requireAdmin });
