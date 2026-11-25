@@ -36,6 +36,7 @@ import {
   Person,
   Play,
   Search,
+  Security,
   Settings,
   Show,
   Team,
@@ -100,6 +101,7 @@ export const PersonIcon = fromVibe(Person, "PersonIcon");
 export const PlayCircleIcon = fromVibe(Play, "PlayCircleIcon");
 export const ReportProblemIcon = fromVibe(Warning, "ReportProblemIcon");
 export const SearchIcon = fromVibe(Search, "SearchIcon");
+export const SecurityIcon = fromVibe(Security, "SecurityIcon");
 export const SettingsIcon = fromVibe(Settings, "SettingsIcon");
 export const UploadIcon = fromVibe(Upload, "UploadIcon");
 export const VisibilityIcon = fromVibe(Show, "VisibilityIcon");

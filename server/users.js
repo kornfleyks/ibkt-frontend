@@ -65,7 +65,8 @@ async function toColumnValues(userId, changes) {
       // Super Admin is only ever set directly on Monday (scripts/seedSuperAdmins.js
       // or by hand) - never through this page, for anyone.
       if (value === ROLES.SUPER_ADMIN) throw new InputError("Super Admin can't be set here.");
-      if (!(await optionLabels("users", U.ROLE)).includes(value)) throw new InputError(`Unknown role "${value}".`);
+      // Only the roles the app knows: the Monday column may still have older labels (Adopter).
+      if (!Object.values(ROLES).includes(value) || !(await optionLabels("users", U.ROLE)).includes(value)) throw new InputError(`Unknown role "${value}".`);
       values[EDITABLE[key].column] = { label: value };
     }
   }

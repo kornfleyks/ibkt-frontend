@@ -10,13 +10,12 @@ export const ROLES = {
   SUPER_ADMIN: "Super Admin",
   RESCUER: "Rescuer",
   FOSTER: "Foster",
-  ADOPTER: "Adopter",
 };
 
 // The portal of each role that has its own portal and no access to the staff
 // app: the name the portal's sign-in page sends to the server ("portal" in POST
 // /api/login) and the home page of the portal (2026-10-16 Rescuer, 2026-11-17
-// Foster; Adopter is undecided and left as it is). The server refuses these
+// Foster). The server refuses these
 // roles on every route that doesn't opt in with requireAnyAuth (server/auth.js),
 // so a new route is closed to them unless it says otherwise.
 export const PORTALS = {
@@ -42,7 +41,7 @@ export function portalOfRole(role) {
 // The roles that may use the staff app (2026-11-11). The server lets only
 // these through every route that doesn't opt in with requireAnyAuth, and
 // only these may sign in on the staff sign-in page (server/auth.js,
-// server/index.js). Any other role - Adopter, Foster, a role added later, or
+// server/index.js). Any other role - Foster, a role added later, or
 // none - is refused until it gets a portal of its own, so a new external role
 // is closed by default instead of open until someone remembers to block it.
 export const STAFF_ROLES = [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.VOLUNTEER];

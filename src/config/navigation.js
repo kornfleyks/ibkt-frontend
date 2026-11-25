@@ -1,4 +1,4 @@
-import { DashboardIcon, PetsIcon, AssignmentIcon, VolunteerActivismIcon, FavoriteIcon, CheckCircleIcon, GroupIcon, HistoryIcon, SettingsIcon, ChatBubbleOutlineIcon, LinkIcon, PersonIcon } from "../components/icons";
+import { DashboardIcon, PetsIcon, AssignmentIcon, VolunteerActivismIcon, FavoriteIcon, CheckCircleIcon, GroupIcon, HistoryIcon, SettingsIcon, ChatBubbleOutlineIcon, LinkIcon, PersonIcon, SecurityIcon } from "../components/icons";
 //import PersonIcon from "@mui/icons-material/PersonOutlined";
 
 export const navigationItems = [
@@ -6,7 +6,7 @@ export const navigationItems = [
         title: "Dashboard",
         path: "/dashboard",
         icon: DashboardIcon,
-        roles: ["Admin", "Volunteer", "Adopter"]
+        roles: ["Admin", "Volunteer"]
     },
     {
         title: "Cats",
@@ -53,7 +53,7 @@ export const navigationItems = [
     {
         title: "Rescuers",
         path: "/rescuers",
-        icon: PersonIcon,
+        icon: SecurityIcon,
         roles: ["Admin"]
     },
     {

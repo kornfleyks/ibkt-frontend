@@ -270,10 +270,12 @@ export async function setUserColumns(userId, columnValues) {
   });
 }
 
-// role/accountStatus default to self-registration's own values (Adopter,
-// Pending); the Users page's "Add User" (server/userAdmin.js) passes its
-// own picked role and "Active" instead.
-export async function createUserAccount({ firstName, lastName, email, passwordHash, role = "Adopter", accountStatus = "Pending" }) {
+// role/accountStatus default to self-registration's own values (Volunteer,
+// Pending: the account cannot sign in until an Admin approves it, and
+// approving it gives Volunteer access to the staff app); the Users page's
+// "Add User" (server/userAdmin.js) passes its own picked role and "Active"
+// instead.
+export async function createUserAccount({ firstName, lastName, email, passwordHash, role = "Volunteer", accountStatus = "Pending" }) {
   const columnValues = {
     [USERS_COLUMNS.FIRST_NAME]: firstName,
     [USERS_COLUMNS.LAST_NAME]: lastName,
@@ -350,7 +352,7 @@ export async function signToken(user, { session } = {}) {
 
 // The refusal of a role that may not use the staff app, or null when it may.
 // Only staff roles (isStaffRole) may. A portal role (Rescuer, Foster) gets 403
-// PORTAL_ONLY (it has its own pages); any other role (Adopter, one added later,
+// PORTAL_ONLY (it has its own pages); any other role (one added later,
 // none) gets 401 NOT_STAFF, which signs a session of that role out in the app,
 // like a suspended account.
 function staffRefusal(role) {

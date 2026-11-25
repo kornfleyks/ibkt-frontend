@@ -21,11 +21,11 @@ Editing an application, the Screening, Contracts, Payments and AI review routes 
 
 On 2026-11-11 the Users table had 2 Super Admins, 1 Active Adopter and 1 Blocked Adopter, and no Volunteers or Fosters. The Active Adopter can no longer sign in to the app.
 
-Self-registration (`/register`) still creates Adopter accounts. An Admin who approves one gives an account that cannot sign in. Either do not approve them, or change the registration page. This is not decided.
+Update 2026-11-25: the Adopter role was removed from the app. Self-registration (`/register`) now creates Volunteer accounts with the status Pending. The account cannot sign in until an Admin approves it, and approving it gives Volunteer access to the staff app, so an Admin should check who the person is first. The Users page no longer offers Adopter, and the server refuses any role the app does not know. The one account that still had the Adopter role was changed to Volunteer. The label Adopter may still exist in the Role column on the Monday Users board, where it can be deleted.
 
 ## Not Changed
 
-- The menu and route lists in the frontend still name Foster and Adopter for the Dashboard and Cats. They have no effect now and can be removed when the Foster and Adopter portals are decided.
+- The menu and route lists in the frontend still name Foster for the Dashboard and Cats. They have no effect now.
 - `requireAnyAuth` routes (log out, the session stream and the rescuer portal) stay open to every signed-in account.
 
 ## Decisions
@@ -35,8 +35,7 @@ Self-registration (`/register`) still creates Adopter accounts. An Admin who app
 
 ## Open Points
 
-- What the Foster and Adopter roles get once they have portals.
-- Whether the registration page should keep creating Adopter accounts that cannot sign in.
+- Whether the registration page should stay open, since approving a sign-up now gives Volunteer access.
 
 ## Testing
 

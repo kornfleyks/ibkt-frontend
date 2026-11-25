@@ -15,7 +15,6 @@ export const USERS_STATUS_OPTIONS = {
     SUPER_ADMIN: "Super Admin",
     RESCUER: "Rescuer",
     FOSTER: "Foster",
-    ADOPTER: "Adopter",
   },
   ACCOUNT_STATUS: {
     PENDING: "Pending",

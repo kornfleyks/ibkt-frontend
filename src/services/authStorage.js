@@ -72,7 +72,7 @@ export const PASSWORD_CHANGED_REASON =
   "Your password was changed, so you've been signed out. Sign in with your new password.";
 
 // The server refused a session whose role may not use the app (401 code
-// NOT_STAFF): Adopter and other roles have no portal yet.
+// NOT_STAFF): roles other than the staff roles have no portal yet.
 export const NOT_STAFF_REASON = "This account type can't use the app yet, so you've been signed out. Contact IBKT if you think this is a mistake.";
 
 export function inactiveAccountReason(accountStatus) {
