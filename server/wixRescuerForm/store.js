@@ -141,8 +141,8 @@ export async function insertSubmission(payload) {
   const { rows } = await query(
     `insert into wix_rescuer_submissions
        (delivery_key, wix_submission_id, wix_contact_id, collection_id, form_id, form_name, submitted_at,
-        full_name, first_name, last_name, email, phone, rescue_location, cats_to_rehome, answers, payload)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        full_name, first_name, last_name, email, phone, rescue_location, cats_to_rehome, answers, payload, pack_email_status)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
      on conflict (delivery_key) do nothing
      returning id`,
     [
@@ -162,6 +162,8 @@ export async function insertSubmission(payload) {
       s.catsToRehome,
       JSON.stringify(s.answers),
       unreadable ? JSON.stringify(payload) : null,
+      // A new submission with an email address waits for the rescuer pack email (packEmail.js).
+      s.email ? "pending" : null,
     ],
   );
 
@@ -186,6 +188,10 @@ export async function listSubmissions(limit = 50) {
     answers: row.answers,
     submittedAt: row.submitted_at,
     receivedAt: row.received_at,
+    packEmailStatus: row.pack_email_status,
+    packEmailAttempts: row.pack_email_attempts,
+    packEmailSentAt: row.pack_email_sent_at,
+    packEmailError: row.pack_email_error,
     // Only present when the payload could not be read as expected.
     unreadablePayload: row.payload,
   }));

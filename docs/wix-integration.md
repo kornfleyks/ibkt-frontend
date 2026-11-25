@@ -25,6 +25,14 @@ The call needs `WIX_API_KEY` (a Wix API key with permission to read Wix Data) an
 
 A collection item has the fields `title` (the name), `email`, `phone`, `rescueLocation`, `numberOfCats`, `submissionId`, `submittedOn`, `contactId`, `approve`, `decline` and `emailSent`. The app stores them as columns and keeps the last three as answers. It does not act on `approve`, `decline` or `emailSent`.
 
+## Rescuer pack email
+
+After each read, the server sends the rescuer pack email to every new submission that has an email address (`server/wixRescuerForm/packEmail.js`). Wix Triggered Emails can only be sent from code on the Wix site, so the email is sent with the Wix Email Transmissions API as a transactional message, without an unsubscribe link. The API key needs the permission Manage Email Marketing.
+
+The column `pack_email_status` of `wix_rescuer_submissions` shows the result: `pending`, `sending`, `accepted` (Wix accepted it), `sent` (Wix reports it as sent), `failed`, or empty for a row that is never emailed. The columns `pack_email_attempts`, `pack_email_sent_at` and `pack_email_error` hold the attempts, the time and the reason for a failure. A failed send is tried again on the next read, up to 3 attempts.
+
+Nothing is sent unless `WIX_PACK_EMAIL_ENABLED` is `true` and `WIX_PACK_URL` is set. `WIX_PACK_SENDER_EMAIL` (an address verified in Wix), `WIX_PACK_SENDER_NAME` and `WIX_PACK_REPLY_TO` are optional. The wording of the email is in `emailOf` in `packEmail.js` and is a draft.
+
 ## Why the secret is in the address
 
 Wix's help article for the "Send HTTP request" action does not mention request headers or signing, so the app cannot rely on a header. The Jotform and Monday webhooks of the app also use a secret in the address.

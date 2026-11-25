@@ -1,4 +1,5 @@
 import { insertSubmission } from "./store.js";
+import { sendPackEmails } from "./packEmail.js";
 
 // Reads the rescuer requests straight from Wix, as the safety net for the
 // automation (routes.js): Wix runs the automation only when its trigger fires,
@@ -73,6 +74,10 @@ async function safePull() {
     const { stored } = await pullRescuerSubmissions();
 
     if (stored) console.log(`Wix rescuer form: stored ${stored} submission(s) read from Wix.`);
+
+    const { sent, failed, delivered } = await sendPackEmails();
+
+    if (sent || failed || delivered) console.log(`Wix rescuer pack email: ${sent} accepted, ${delivered} delivered, ${failed} failed.`);
   } catch (err) {
     console.error("Wix rescuer form: reading from Wix failed.", err.message);
   }

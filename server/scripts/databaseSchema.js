@@ -538,6 +538,13 @@ await transaction(async (run) => {
     "cats_to_rehome text",
     "answers jsonb",
     "payload jsonb",
+    // The rescuer pack email (wixRescuerForm/packEmail.js).
+    "pack_email_status text",
+    "pack_email_attempts integer not null default 0",
+    "pack_email_last_attempt_at timestamptz",
+    "pack_email_sent_at timestamptz",
+    "pack_email_error text",
+    "pack_email_transmission_id text",
   ]) {
     await run(`alter table wix_rescuer_submissions add column if not exists ${column}`);
   }
