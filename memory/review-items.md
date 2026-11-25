@@ -15,6 +15,9 @@ Priority (2026-10-16): optional `priority` column (high/medium/low, null = none;
 
 Request category (2026-11-24): a fourth category, "request" (label "Change requests", section "Client change requests"), sits at the top of the page, above the questions. It holds the client's Oriel change requests, one item per request with the user's notes in the detail. The category check on `review_items` was widened in `server/scripts/databaseSchema.js` (must be run against the DB), and the items come from `server/scripts/seedClientRequests.js`.
 
+
+Security category (2026-11-26): a fifth category, "security" (label "Security", section "Security", between the flags and the internal items). Every security finding and task goes here, see [[security-tasks-go-to-client-review]]. The category check was widened in `server/scripts/databaseSchema.js` and on the live table. 22 items on that day.
+
 **Why:** the user wanted a durable place to track questions/flags across client calls instead of re-deriving them each time.
 
 **How to apply:** when prepping for another client call, add new items via the page itself (or a one-off script like seedReviewItems.js) rather than just telling the user in chat - that's the point of the page. Related: [[application-update-not-guarded]] (same roles+emails gating pattern as App Settings)

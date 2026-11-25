@@ -1,7 +1,7 @@
 import { serverGet, serverPost, serverDelete } from "./MondayService";
 
 // A standing punch-list for client calls (server/reviewItems/). Each item:
-// { id, category: "request" | "question" | "flag" | "internal", title, detail,
+// { id, category: "request" | "question" | "flag" | "security" | "internal", title, detail,
 //   status: "open" | "answered" | "resolved",
 //   priority: "high" | "medium" | "low" | null, answer, answeredByName,
 //   answeredAt, createdAt, updatedAt }.

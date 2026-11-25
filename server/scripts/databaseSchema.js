@@ -476,7 +476,7 @@ await transaction(async (run) => {
   // developer account (routes.js, AppRoutes.jsx); never sent to Monday.
   await run(`create table if not exists review_items (
     id bigserial primary key,
-    category text not null check (category in ('request', 'question', 'flag', 'internal')),
+    category text not null check (category in ('request', 'question', 'flag', 'security', 'internal')),
     title text not null,
     detail text,
     status text not null default 'open' check (status in ('open', 'answered', 'resolved')),
@@ -490,7 +490,7 @@ await transaction(async (run) => {
   // The "request" category (client change requests) was added after the
   // table was created, so the inline category check is replaced.
   await run("alter table review_items drop constraint if exists review_items_category_check");
-  await run("alter table review_items add constraint review_items_category_check check (category in ('request', 'question', 'flag', 'internal'))");
+  await run("alter table review_items add constraint review_items_category_check check (category in ('request', 'question', 'flag', 'security', 'internal'))");
   // Optional: null means no priority set.
   await run("alter table review_items add column if not exists priority text check (priority in ('high', 'medium', 'low'))");
 

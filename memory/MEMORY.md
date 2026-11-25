@@ -11,3 +11,4 @@
 - [Review items](review-items.md) - BUILT 2026-10-04: /client-review page (billkifonidis@gmail.com only), punch-list of questions/flags with stored answers
 - [Super Admin role](super-admin-role.md) - BUILT 2026-10-04: Admin-and-more role for billkifonidis@gmail.com + support@ittybittykittytails.co.uk, fully protected on Users page
 - [Rescuer onboarding design](rescuer-onboarding-design.md) - DESIGN ONLY 2026-10-16: application form, approve/reject emails, Rescuer login + read-only portal; 9 open points in docs/rescuer-onboarding.md
+- [Security tasks go to Client Review](security-tasks-go-to-client-review.md) - standing rule 2026-11-26: every security finding or task is an item of category security on /client-review
