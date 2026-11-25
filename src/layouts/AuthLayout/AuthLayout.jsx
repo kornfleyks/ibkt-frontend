@@ -1,5 +1,7 @@
 import { Box, Card, CardContent, Typography } from '@mui/material';
 
+import BrandMark from '../../components/Brand/BrandMark';
+
 // The signed-out pages (Sign In, Create Account, Forgot / Reset Password):
 // the app name above a centred card titled for the page.
 function AuthLayout({ title, width = 400, children }) {
@@ -17,9 +19,10 @@ function AuthLayout({ title, width = 400, children }) {
             }}
         >
 
-            <Typography variant="h4" component="p" fontWeight={600} sx={{ mb: 3 }}>
-                Oriel
-            </Typography>
+            {/* The seal is for sign-in pages and documents (at least 120 px across). */}
+            <Box sx={{ mb: 3 }}>
+                <BrandMark variant="seal" width={140} />
+            </Box>
 
             <Card sx={{ width: '100%', maxWidth: width }}>
 

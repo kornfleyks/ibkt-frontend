@@ -10,7 +10,9 @@ import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
 
 const RESCUER_ROLE = USERS_STATUS_OPTIONS.ROLE.RESCUER;
 const isRescuer = (user) => user.role === RESCUER_ROLE;
-const LABELS = { title: 'Rescuers', singular: 'rescuer', add: 'Add Rescuer' };
+// Called Rescue Partners in the app (Oriel mock-ups, November 2026). The role and the
+// code keep the name Rescuer.
+const LABELS = { title: 'Rescue Partners', singular: 'rescue partner', add: 'Add Rescue Partner' };
 
 // "Resend sign-in link" on a rescuer's row: a fresh 7-day set-password link,
 // for example when the first one expired unused.
@@ -106,7 +108,7 @@ function Rescuers() {
             content: ({ reloadUsers, setNotice }) => (
                 <>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Rescuers who filled in the Oriel sign-up form. They are approved automatically unless the account could not be created.
+                        Rescue partners who filled in the Oriel sign-up form. They are approved automatically unless the account could not be created.
                     </Typography>
 
                     <RescuerApplications

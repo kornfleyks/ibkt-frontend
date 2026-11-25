@@ -80,7 +80,7 @@ function AddRescuerDialog({ onClose, onCreated }) {
     return (
         <Dialog open onClose={handleClose} maxWidth="sm" fullWidth>
             <DialogTitle sx={{ fontSize: '1.1rem' }}>
-                Add Rescuer
+                Add Rescue Partner
                 <IconButton onClick={handleClose} disabled={saving} sx={{ position: 'absolute', right: 8, top: 8 }}>
                     <CloseIcon />
                 </IconButton>
@@ -88,7 +88,7 @@ function AddRescuerDialog({ onClose, onCreated }) {
 
             <DialogContent dividers sx={{ '& > * + *': { mt: 2 } }}>
                 <Alert severity="info">
-                    The rescuer is created Active right away and emailed a link (valid for 7 days) to choose their
+                    The rescue partner is created Active right away and emailed a link (valid for 7 days) to choose their
                     password. They have not answered the agreement questions, so none are recorded.
                 </Alert>
 

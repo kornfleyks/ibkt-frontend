@@ -1,15 +1,18 @@
 import { createTheme } from "@mui/material/styles";
-import { VIBE_TOKENS } from "./vibeTokens";
+import { BRAND_TOKENS } from "./brandTokens";
 
-// MUI theme styled after monday.com's Vibe design system: Vibe's colours
-// (light, and the navy dark theme), fonts (Figtree text, Poppins titles),
-// radii, shadows and component shapes. Only the look changes - every
-// component is still MUI, so behaviour and layout are untouched.
+// The Oriel brand as an MUI theme (brandTokens.js): the IBKT palette, Barlow
+// Condensed capitals for headings, Nunito Sans for everything else, pill
+// buttons and chips, Cream pages. Only the look changes - every component is
+// still MUI, so behaviour and layout are untouched.
 export function buildTheme(darkMode) {
 
-    const t = darkMode ? VIBE_TOKENS.dark : VIBE_TOKENS.light;
+    const t = darkMode ? BRAND_TOKENS.dark : BRAND_TOKENS.light;
 
-    const titleFont = { fontFamily: t.titleFontFamily, fontWeight: 500 };
+    // Headings are always capitals in Barlow Condensed SemiBold (the brand
+    // guidelines). The face is narrow, so the sizes below are a step larger than
+    // the body scale would suggest.
+    const titleFont = { fontFamily: t.titleFontFamily, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.01em' };
 
     const theme = createTheme({
 
@@ -41,7 +44,7 @@ export function buildTheme(darkMode) {
             },
 
             info: {
-                main: t.link
+                main: t.info
             },
 
             text: {
@@ -72,19 +75,18 @@ export function buildTheme(darkMode) {
 
             fontFamily: t.fontFamily,
 
-            // Vibe's title scale: h1 30, h2/h3 24, h4 18, h5 16.
-            h1: { ...titleFont, fontSize: '1.875rem', lineHeight: '42px' },
-            h2: { ...titleFont, fontSize: '1.5rem', lineHeight: '32px' },
-            h3: { ...titleFont, fontSize: '1.5rem', lineHeight: '32px' },
-            h4: { ...titleFont, fontSize: '1.125rem', lineHeight: '24px' },
-            h5: { ...titleFont, fontSize: '1rem', lineHeight: '22px' },
-            h6: { ...titleFont, fontSize: '1rem', lineHeight: '22px' },
-            subtitle1: { fontWeight: 500 },
-            subtitle2: { fontWeight: 500 },
-            body1: { fontSize: '0.875rem', lineHeight: '20px' },
-            body2: { fontSize: '0.8125rem', lineHeight: '18px' },
-            caption: { fontSize: '0.75rem' },
-            button: { textTransform: 'none', fontWeight: 400, fontSize: '0.875rem' }
+            h1: { ...titleFont, fontSize: '2.25rem', lineHeight: 1.1 },
+            h2: { ...titleFont, fontSize: '1.875rem', lineHeight: 1.15 },
+            h3: { ...titleFont, fontSize: '1.625rem', lineHeight: 1.15 },
+            h4: { ...titleFont, fontSize: '1.375rem', lineHeight: 1.2 },
+            h5: { ...titleFont, fontSize: '1.25rem', lineHeight: 1.2 },
+            h6: { ...titleFont, fontSize: '1.125rem', lineHeight: 1.25 },
+            subtitle1: { fontWeight: 600 },
+            subtitle2: { fontWeight: 600 },
+            body1: { fontSize: '0.9375rem', lineHeight: '22px' },
+            body2: { fontSize: '0.875rem', lineHeight: '20px' },
+            caption: { fontSize: '0.8125rem' },
+            button: { textTransform: 'none', fontWeight: 700, fontSize: '0.9375rem' }
 
         },
 
@@ -142,9 +144,9 @@ export function buildTheme(darkMode) {
                 styleOverrides: {
 
                     root: {
-                        borderRadius: t.radiusSmall,
+                        borderRadius: t.radiusPill,
                         minHeight: 40,
-                        paddingInline: 16,
+                        paddingInline: 20,
                         boxShadow: 'none',
                         '&:hover': { boxShadow: 'none' }
                     },
@@ -160,19 +162,21 @@ export function buildTheme(darkMode) {
                         fontSize: '1rem'
                     },
 
-                    // Vibe "secondary" buttons: border in the UI border colour.
+                    // Secondary buttons: a Plum outline with dark text.
                     outlined: ({ ownerState }) => ({
                         ...((ownerState.color === 'primary' || !ownerState.color) && {
                             color: t.primaryText,
-                            borderColor: t.uiBorder,
+                            borderColor: t.secondaryText,
+                            borderWidth: 1.5,
                             '&:hover': {
-                                borderColor: t.uiBorder,
+                                borderColor: t.secondaryText,
+                                borderWidth: 1.5,
                                 backgroundColor: t.primaryBackgroundHover
                             }
                         })
                     }),
 
-                    // Vibe "tertiary" buttons: plain text, grey hover.
+                    // Tertiary buttons: plain text, soft hover.
                     text: ({ ownerState }) => ({
                         ...((ownerState.color === 'primary' || !ownerState.color) && {
                             color: t.primaryText,
@@ -207,7 +211,7 @@ export function buildTheme(darkMode) {
                 styleOverrides: {
 
                     root: {
-                        borderRadius: t.radiusSmall,
+                        borderRadius: t.radiusMedium,
                         backgroundColor: darkMode ? 'transparent' : t.primaryBackground,
                         '& .MuiOutlinedInput-notchedOutline': {
                             borderColor: t.uiBorder
@@ -252,7 +256,7 @@ export function buildTheme(darkMode) {
                 styleOverrides: {
 
                     root: {
-                        borderRadius: t.radiusMedium,
+                        borderRadius: t.radiusBig,
                         border: `1px solid ${t.layoutBorder}`,
                         boxShadow: 'none'
                     }
@@ -434,8 +438,8 @@ export function buildTheme(darkMode) {
                 styleOverrides: {
 
                     root: {
-                        borderRadius: t.radiusSmall,
-                        fontWeight: 400
+                        borderRadius: t.radiusPill,
+                        fontWeight: 600
                     },
 
                     filled: ({ ownerState }) => ({
@@ -467,7 +471,7 @@ export function buildTheme(darkMode) {
                     standardInfo: {
                         backgroundColor: t.primarySelected,
                         color: t.primaryText,
-                        '& .MuiAlert-icon': { color: t.primary }
+                        '& .MuiAlert-icon': { color: t.info }
                     },
 
                     standardSuccess: {
@@ -521,7 +525,7 @@ export function buildTheme(darkMode) {
 
             },
 
-            // Vibe tabs: underline in the primary colour under the selected tab.
+            // Tabs: underline in the primary colour under the selected tab.
             MuiTabs: {
 
                 styleOverrides: {
@@ -544,8 +548,8 @@ export function buildTheme(darkMode) {
                 styleOverrides: {
 
                     root: {
-                        fontWeight: 400,
-                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        fontSize: '0.9375rem',
                         minHeight: 40,
                         color: t.secondaryText,
                         '&:hover': {
@@ -568,9 +572,14 @@ export function buildTheme(darkMode) {
                         borderColor: t.layoutBorder
                     },
 
+                    // Lilac header row with small spaced capitals.
                     head: {
-                        color: t.secondaryText,
-                        fontWeight: 500
+                        backgroundColor: t.uiBackground,
+                        color: t.primaryText,
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.06em'
                     }
 
                 }
@@ -602,7 +611,7 @@ export function buildTheme(darkMode) {
                 styleOverrides: {
                     root: ({ ownerState }) => ({
                         ...(!ownerState.invisible && {
-                            backgroundColor: 'rgba(41, 47, 76, 0.7)'
+                            backgroundColor: 'rgba(62, 52, 71, 0.7)'
                         })
                     })
                 }

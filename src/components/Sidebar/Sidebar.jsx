@@ -1,7 +1,5 @@
 import { NavLink } from "react-router-dom";
 import { useTheme } from "@mui/material/styles";
-import Typography from "@mui/material/Typography";
-import Box from "@mui/material/Box";
 
 import { useLayout } from "../../context/LayoutContext";
 import useAuth from "../../hooks/useAuth";
@@ -38,49 +36,7 @@ function Sidebar() {
         flexDirection: "column",
       }}
     >
-      {sidebarOpen ? (
-        <Typography
-          variant="h5"
-          component="h2"
-          sx={{ textAlign: "center", mb: 4, color: "inherit" }}
-        >
-          Oriel
-        </Typography>
-      ) : (
-        <Box
-          component="h2"
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            m: 0,
-            mb: 4,
-          }}
-        >
-          <Box
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: 2,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              bgcolor: "primary.main",
-            }}
-          >
-            <Typography
-              sx={{
-                color: "common.white",
-                fontWeight: 700,
-                fontSize: "1.05rem",
-                lineHeight: 1,
-              }}
-            >
-              O
-            </Typography>
-          </Box>
-        </Box>
-      )}
-
+      {/* The Oriel logo is in the header, so the sidebar starts with the menu. */}
       <nav
         style={{
           display: "flex",

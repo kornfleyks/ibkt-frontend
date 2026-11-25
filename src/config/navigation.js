@@ -51,7 +51,7 @@ export const navigationItems = [
         roles: ["Admin", "Volunteer"]
     },
     {
-        title: "Rescuers",
+        title: "Rescue Partners",
         path: "/rescuers",
         icon: SecurityIcon,
         roles: ["Admin"]

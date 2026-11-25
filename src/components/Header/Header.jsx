@@ -4,12 +4,12 @@ import { useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
-import Typography from "@mui/material/Typography";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
+import BrandMark from "../Brand/BrandMark";
 import GlobalSearch from "./GlobalSearch";
 import NotificationBell from "./NotificationBell";
 
@@ -65,9 +65,9 @@ function Header() {
                     <MenuIcon />
                 </IconButton>
 
-                <Typography variant="h6" component="h1">
-                    Oriel
-                </Typography>
+                <Box component="h1" sx={{ m: 0, lineHeight: 0 }}>
+                    <BrandMark variant="logo" height={36} />
+                </Box>
 
             </Box>
 
