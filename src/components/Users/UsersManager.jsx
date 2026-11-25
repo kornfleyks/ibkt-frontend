@@ -36,6 +36,7 @@ import {
 } from '../../services/UsersService';
 import { USERS_STATUS_OPTIONS } from '../../constants/statuses/usersStatuses';
 import { isSuperAdminEmail, canDeleteUsers } from '../../constants/roles';
+import FilterChips from '../Common/FilterChips';
 import AddUserDialog from './AddUserDialog';
 import UserStatusDialog from './UserStatusDialog';
 import UserDeleteDialog from './UserDeleteDialog';
@@ -784,17 +785,11 @@ function UsersManager({ include = () => true, roleOptions = ROLE_OPTIONS, showRo
 
                             {onExtraTab ? tabs[tab].extra.content({ reloadUsers, setNotice }) : (<>
                             {chipMode && (
-                                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-                                    {TABS.map((item) => (
-                                        <Chip
-                                            key={item.slug}
-                                            label={`${item.label} (${counts[item.slug]})`}
-                                            color={accountStatus === item.slug ? 'primary' : 'default'}
-                                            variant={accountStatus === item.slug ? 'filled' : 'outlined'}
-                                            onClick={() => setAccountStatus(item.slug)}
-                                        />
-                                    ))}
-                                </Stack>
+                                <FilterChips
+                                    options={TABS.map((item) => ({ value: item.slug, label: item.label, count: counts[item.slug] }))}
+                                    value={accountStatus}
+                                    onChange={setAccountStatus}
+                                />
                             )}
 
                             <TextField

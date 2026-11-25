@@ -194,6 +194,7 @@ function agreementOf(row) {
     signupExpiresAt: row.agreement_signup_expires_at,
     emailStatus: row.agreement_email_status,
     emailError: row.agreement_email_error,
+    emailAt: row.agreement_email_at,
   };
 }
 
@@ -203,7 +204,7 @@ export async function listSubmissions(limit = 50) {
     `select s.*,
             a.id as agreement_id, a.expires_at as agreement_expires_at, a.signed_at as agreement_signed_at, a.signed_name as agreement_signed_name,
             a.signup_expires_at as agreement_signup_expires_at, a.signup_used_at as agreement_signup_used_at,
-            a.email_status as agreement_email_status, a.email_error as agreement_email_error
+            a.email_status as agreement_email_status, a.email_error as agreement_email_error, a.email_at as agreement_email_at
        from wix_rescuer_submissions s
        left join rescuer_agreements a on a.submission_id = s.id
       order by s.received_at desc

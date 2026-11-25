@@ -19,6 +19,7 @@ import {
     TextField,
     Typography,
 } from '@mui/material';
+import FilterChips from '../Common/FilterChips';
 import PreAdoptionQuestion from '../ActiveApplications/AddApplicationDialog/PreAdoptionQuestion';
 import { RESCUER_PAGES } from '../../constants/forms/rescuerApplicationForm';
 import { approveRescuerApplication, rejectRescuerApplication } from '../../services/RescuerApplicationService';
@@ -230,17 +231,7 @@ function RescuerApplications({ applications, loading, error, onChanged, setNotic
         <Stack spacing={2}>
             {error && <Alert severity="error">{error}</Alert>}
 
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-                {FILTERS.map((status) => (
-                    <Chip
-                        key={status}
-                        label={`${status} (${countOf(status)})`}
-                        color={filter === status ? 'primary' : 'default'}
-                        variant={filter === status ? 'filled' : 'outlined'}
-                        onClick={() => setFilter(status)}
-                    />
-                ))}
-            </Stack>
+            <FilterChips options={FILTERS.map((status) => ({ value: status, label: status, count: countOf(status) }))} value={filter} onChange={setFilter} />
 
             {shown.length === 0 ? (
                 <Typography color="text.secondary" sx={{ py: 2 }}>

@@ -55,10 +55,12 @@ function withDates(request) {
   return {
     ...request,
     receivedAt: request.receivedAt ? new Date(request.receivedAt) : null,
+    packEmailSentAt: request.packEmailSentAt ? new Date(request.packEmailSentAt) : null,
     agreement: {
       ...agreement,
       expiresAt: agreement.expiresAt ? new Date(agreement.expiresAt) : null,
       signedAt: agreement.signedAt ? new Date(agreement.signedAt) : null,
+      emailAt: agreement.emailAt ? new Date(agreement.emailAt) : null,
     },
   };
 }

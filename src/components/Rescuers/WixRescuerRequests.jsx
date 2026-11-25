@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
     Alert,
     Button,
-    Chip,
     CircularProgress,
     Dialog,
     DialogActions,
@@ -17,18 +16,20 @@ import {
     TableRow,
     Typography,
 } from '@mui/material';
+import FilterChips from '../Common/FilterChips';
+import StatusTag from '../Common/StatusTag';
 import { approveWixRequest, resendSignupLink } from '../../services/RescuerAgreementService';
 import useDateFormat from '../../hooks/useDateFormat';
 import { visibleScrollbarSx } from '../../utils/scrollbarSx';
 
-// What each agreement status looks like, and the button for it. The agreement
-// is explained in docs/rescuer-agreement.md.
+// The tag of each agreement status (docs/rescuer-agreement.md), with the stage
+// of the journey it belongs to in the Oriel mock-ups: Applied, Approved, Signed.
 const STATUS = {
-    none: { label: 'Not approved', color: 'default' },
-    sent: { label: 'Agreement sent', color: 'info' },
-    expired: { label: 'Link expired', color: 'warning' },
-    signed: { label: 'Signed', color: 'success' },
-    signedUp: { label: 'Signed up', color: 'success' },
+    none: { label: 'Applied', tone: 'butter' },
+    sent: { label: 'Approved', tone: 'lavender' },
+    expired: { label: 'Link expired', tone: 'peach' },
+    signed: { label: 'Signed', tone: 'sage' },
+    signedUp: { label: 'Signed', tone: 'sage' },
 };
 
 const BUTTON = {
@@ -41,10 +42,9 @@ const BUTTON = {
 // The filters above the list: the statuses each one shows.
 const FILTERS = [
     { label: 'All', statuses: null },
-    { label: 'Not approved', statuses: ['none'] },
-    { label: 'Agreement sent', statuses: ['sent', 'expired'] },
-    { label: 'Signed', statuses: ['signed'] },
-    { label: 'Signed up', statuses: ['signedUp'] },
+    { label: 'Applied', statuses: ['none'] },
+    { label: 'Approved', statuses: ['sent', 'expired'] },
+    { label: 'Signed', statuses: ['signed', 'signedUp'] },
 ];
 
 const inFilter = (request, item) => !item.statuses || item.statuses.includes(request.agreement.status);
@@ -61,13 +61,42 @@ function describeAction(request) {
         : `This emails ${request.email} a link to read and sign the Rescuer Agreement. A link sent earlier stops working.`;
 }
 
-// The Wix requests tab of the Rescuers page: the people who filled in the
-// rescuer form on the Wix site. After the call, an Admin approves a request
-// here: the person gets the link to sign the Rescuer Agreement, and after
-// signing the link to sign up to Oriel. `requests` is loaded by the page,
-// which also needs the count; `onChanged` loads it again.
+// What happens next for a request, as two lines: the main one and a quieter one
+// (the "Next step" column of the mock-up).
+function nextStep(request, formatDate) {
+    const { agreement } = request;
+    const day = (date) => (date ? formatDate(date) : null);
+
+    switch (agreement.status) {
+        case 'none':
+            return {
+                main: 'Waiting for your decision',
+                sub: request.packEmailStatus === 'sent' ? `Pack sent ${day(request.packEmailSentAt)}` : `Applied ${day(request.receivedAt)}`,
+            };
+        case 'sent':
+            return {
+                main: `Agreement sent${day(agreement.emailAt) ? ` ${day(agreement.emailAt)}` : ''}, not signed yet`,
+                sub: `The link works until ${day(agreement.expiresAt)}`,
+            };
+        case 'expired':
+            return { main: `The agreement link expired ${day(agreement.expiresAt)}`, sub: 'Send the agreement again' };
+        case 'signed':
+            return { main: `Signed ${day(agreement.signedAt)}`, sub: 'Sign-up link sent, waiting for them to sign up' };
+        case 'signedUp':
+            return { main: `Signed ${day(agreement.signedAt)}`, sub: 'Signed up and can add cats' };
+        default:
+            return { main: '', sub: null };
+    }
+}
+
+// The Wix requests tab of the Rescuers page, shown as the Rescue Partners list
+// of the Oriel mock-ups: the people who filled in the rescuer form on the Wix
+// site. After the call, an Admin approves a request here: the person gets the
+// link to sign the Rescuer Agreement, and after signing the link to sign up to
+// Oriel. `requests` is loaded by the page, which also needs the count;
+// `onChanged` loads it again.
 function WixRescuerRequests({ requests, loading, error, setNotice, onChanged }) {
-    const { formatDateTime } = useDateFormat();
+    const { formatDate } = useDateFormat();
     const [filter, setFilter] = useState('All');
     const [confirming, setConfirming] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -96,24 +125,16 @@ function WixRescuerRequests({ requests, loading, error, setNotice, onChanged }) 
     }
 
     return (
-        <Stack spacing={2}>
-            <Typography variant="body2" color="text.secondary">
-                People who filled in the rescuer form on the Wix site. After your call, approve them to send the Rescuer Agreement.
-            </Typography>
+        <Stack spacing={2.5}>
+            <Typography color="text.secondary">Applied → Approved → Signed. Signed partners can add cats.</Typography>
 
             {error && <Alert severity="error">{error}</Alert>}
 
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-                {FILTERS.map((item) => (
-                    <Chip
-                        key={item.label}
-                        label={`${item.label} (${requests.filter((request) => inFilter(request, item)).length})`}
-                        color={filter === item.label ? 'primary' : 'default'}
-                        variant={filter === item.label ? 'filled' : 'outlined'}
-                        onClick={() => setFilter(item.label)}
-                    />
-                ))}
-            </Stack>
+            <FilterChips
+                options={FILTERS.map((item) => ({ value: item.label, label: item.label, count: requests.filter((request) => inFilter(request, item)).length }))}
+                value={filter}
+                onChange={setFilter}
+            />
 
             {loading ? (
                 <Stack sx={{ alignItems: 'center', py: 4 }}>
@@ -124,16 +145,14 @@ function WixRescuerRequests({ requests, loading, error, setNotice, onChanged }) 
                     {requests.length === 0 ? 'No requests from Wix yet.' : 'No requests with this status.'}
                 </Typography>
             ) : (
-                <TableContainer sx={{ overflowX: 'auto', ...visibleScrollbarSx }}>
-                    <Table size="small">
+                <TableContainer sx={{ overflowX: 'auto', border: 1, borderColor: 'divider', borderRadius: 4, ...visibleScrollbarSx }}>
+                    <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell>Name</TableCell>
-                                <TableCell>Email</TableCell>
-                                <TableCell>Rescues from</TableCell>
+                                <TableCell>Rescue partner</TableCell>
+                                <TableCell>Status</TableCell>
                                 <TableCell>Cats</TableCell>
-                                <TableCell>Received</TableCell>
-                                <TableCell>Agreement</TableCell>
+                                <TableCell>Next step</TableCell>
                                 <TableCell align="right">Action</TableCell>
                             </TableRow>
                         </TableHead>
@@ -143,28 +162,38 @@ function WixRescuerRequests({ requests, loading, error, setNotice, onChanged }) 
                                 const { agreement } = request;
                                 const name = request.fullName || [request.firstName, request.lastName].filter(Boolean).join(' ') || 'N/A';
                                 const status = STATUS[agreement.status] ?? STATUS.none;
+                                const next = nextStep(request, formatDate);
 
                                 return (
-                                    <TableRow key={request.id} hover>
-                                        <TableCell>{name}</TableCell>
-                                        <TableCell>{request.email ?? 'N/A'}</TableCell>
-                                        <TableCell>{request.rescueLocation ?? 'N/A'}</TableCell>
-                                        <TableCell>{request.catsToRehome ?? 'N/A'}</TableCell>
-                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{request.receivedAt ? formatDateTime(request.receivedAt) : 'N/A'}</TableCell>
+                                    <TableRow key={request.id} sx={agreement.status === 'none' ? { bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(240, 132, 130, 0.12)' : '#FBEDEC') } : undefined}>
+                                        <TableCell sx={{ minWidth: 180 }}>
+                                            <Typography sx={{ fontWeight: 800 }}>{name}</Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                {request.rescueLocation ?? request.email ?? ''}
+                                            </Typography>
+                                        </TableCell>
+
                                         <TableCell>
-                                            <Chip size="small" label={status.label} color={status.color} />
-                                            {agreement.signedAt && (
-                                                <Typography variant="caption" display="block" color="text.secondary">
-                                                    {formatDateTime(agreement.signedAt)}
+                                            <StatusTag label={status.label} tone={status.tone} />
+                                        </TableCell>
+
+                                        <TableCell>{request.catsToRehome ?? 'N/A'}</TableCell>
+
+                                        <TableCell sx={{ minWidth: 240 }}>
+                                            <Typography sx={{ fontWeight: 700 }}>{next.main}</Typography>
+                                            {next.sub && (
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {next.sub}
                                                 </Typography>
                                             )}
                                             {agreement.emailStatus && agreement.emailStatus !== 'sent' && (
-                                                <Typography variant="caption" display="block" color="error">
+                                                <Typography variant="body2" color="error">
                                                     Email {agreement.emailStatus}
                                                     {agreement.emailError ? `: ${agreement.emailError}` : ''}
                                                 </Typography>
                                             )}
                                         </TableCell>
+
                                         <TableCell align="right">
                                             {BUTTON[agreement.status] && request.email && (
                                                 <Button
