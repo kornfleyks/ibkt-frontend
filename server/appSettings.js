@@ -144,6 +144,12 @@ export async function getActivityLogPageSize() {
   return getNumericSetting(SETTING_KEYS.ACTIVITY_LOG_PAGE_SIZE, 500);
 }
 
+// The most cats in one bonded group (also the most cats added together). The
+// default matches the frontend's getMaxBondedCats.
+export async function getMaxBondedCats() {
+  return getNumericSetting(SETTING_KEYS.MAX_BONDED_CATS, 5);
+}
+
 // Server-side twin of the frontend's getListSetting - same definitions and
 // parsing (both shared from src/), so a rule the UI shows is exactly the
 // rule the server enforces.

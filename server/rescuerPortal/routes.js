@@ -9,7 +9,8 @@ import { query, ident } from "../database/db.js";
 import { isDatabaseBoard } from "../database/switches.js";
 import { boardFields, StoreError } from "../database/boardStore.js";
 import { InputError, actorOf, optionLabels, send } from "../database/boardRecords.js";
-import { createCatFromInput, listCats, getCat, CREATE_FIELDS } from "../cats.js";
+import { createCatFromInput, listCats, getCat, linkBondedCats, CREATE_FIELDS } from "../cats.js";
+import { getMaxBondedCats } from "../appSettings.js";
 import { addFileToColumn } from "../mondayFiles.js";
 import { refreshFileCopy } from "../database/fileCopies.js";
 import { clearCache } from "../mondayCache.js";
@@ -19,9 +20,10 @@ import { PORTAL_FILE_RULES, NEW_CATS_PER_DAY } from "../../src/constants/rescuer
 // The rescuer portal's server side (docs/rescuer-onboarding.md): what a
 // signed-in Rescuer may do - add cats and see the ones they added.
 //
-//   GET  /api/rescuer-portal/options            { breed: [...], colour: [...] }
+//   GET  /api/rescuer-portal/options            { breed: [...], colour: [...], maxBondedCats }
 //   GET  /api/rescuer-portal/cats               their cats, read-only summaries
 //   POST /api/rescuer-portal/cats               { name, ...allowed fields }
+//   POST /api/rescuer-portal/cat-group          { cats: [{ name, ...allowed fields }, ...] } added together as a bonded group
 //   POST /api/rescuer-portal/cats/:id/files     multipart { kind, file }
 //
 // Rescuers are refused everywhere else (requireAuth), so these use
@@ -159,6 +161,15 @@ export async function cleanCatInput(body) {
   return input;
 }
 
+// Refuses when adding `adding` more cats would take this rescuer over the
+// number of cats they may add in a day.
+async function checkDailyLimit(rescuerId, adding) {
+  const since = Date.now() - DAY_MS;
+  const recent = (await listCats()).filter((cat) => cat.rescuerId === rescuerId && new Date(cat.createdAt ?? 0).getTime() > since).length;
+
+  if (recent + adding > NEW_CATS_PER_DAY) throw new PortalError(`You can add up to ${NEW_CATS_PER_DAY} cats a day. Contact IBKT if you need more.`, 429);
+}
+
 async function ownCat(req, id) {
   if (!ID_PATTERN.test(String(id))) throw new PortalError("Cat not found.", 404);
 
@@ -224,7 +235,11 @@ export function registerRescuerPortalRoutes(app, { requireAnyAuth }) {
   const guard = [requireAnyAuth, onlyRescuers, onlyInDatabase];
 
   app.get("/api/rescuer-portal/options", ...guard, (req, res) =>
-    send(res, Promise.all([optionLabels("cats", C.BREED), optionLabels("cats", C.COLOUR)]).then(([breed, colour]) => ({ breed, colour })), "rescuer portal request"),
+    send(
+      res,
+      Promise.all([optionLabels("cats", C.BREED), optionLabels("cats", C.COLOUR), getMaxBondedCats()]).then(([breed, colour, maxBondedCats]) => ({ breed, colour, maxBondedCats })),
+      "rescuer portal request",
+    ),
   );
 
   app.get("/api/rescuer-portal/cats", ...guard, (req, res) =>
@@ -257,15 +272,69 @@ export function registerRescuerPortalRoutes(app, { requireAnyAuth }) {
       res,
       async () => {
         const rescuerId = await myRescuerId(req);
-        const since = Date.now() - DAY_MS;
-        const recent = (await listCats()).filter((cat) => cat.rescuerId === rescuerId && new Date(cat.createdAt ?? 0).getTime() > since).length;
 
-        if (recent >= NEW_CATS_PER_DAY) throw new PortalError(`You can add up to ${NEW_CATS_PER_DAY} cats a day. Contact IBKT if you need more.`, 429);
+        await checkDailyLimit(rescuerId, 1);
 
         const input = await cleanCatInput(req.body ?? {});
         const cat = await createCatFromInput(actorOf(req), input, { fields: PORTAL_FIELDS, rescuerId });
 
         return { id: cat.id, name: cat.name };
+      },
+      "rescuer portal request",
+    ),
+  );
+
+  // Body: { cats: [{ name, ...allowed fields }, ...] } with at least two cats
+  // and at most the Max Bonded Cats setting. Adds the cats together and links
+  // them as one bonded group, as the staff Add Cat form does. Everything is
+  // checked before the first cat is made. Resolves to { cats: [{ id, name }] }
+  // in the order sent, so the page can upload each cat's files.
+  app.post("/api/rescuer-portal/cat-group", ...guard, (req, res) =>
+    handle(
+      res,
+      async () => {
+        const rescuerId = await myRescuerId(req);
+        const bodies = req.body?.cats;
+
+        if (!Array.isArray(bodies) || bodies.length < 2) throw new PortalError("Send at least two cats to add them together.", 400);
+
+        const max = await getMaxBondedCats();
+
+        if (bodies.length > max) throw new PortalError(`A bonded group can have at most ${max} cats.`, 400);
+
+        await checkDailyLimit(rescuerId, bodies.length);
+
+        const inputs = [];
+
+        for (const [index, body] of bodies.entries()) {
+          if (!body || typeof body !== "object" || Array.isArray(body)) throw new PortalError(`Cat ${index + 1} is not valid.`, 400);
+
+          const input = await cleanCatInput(body);
+
+          if (typeof input.name !== "string" || !input.name.trim()) throw new PortalError(`Cat ${index + 1} needs a name.`, 400);
+
+          inputs.push(input);
+        }
+
+        const actor = actorOf(req);
+        const created = [];
+
+        try {
+          for (const input of inputs) created.push(await createCatFromInput(actor, input, { fields: PORTAL_FIELDS, rescuerId }));
+
+          await linkBondedCats(actor, created.map((cat) => cat.id));
+        } catch (err) {
+          // Nothing made yet: the caller's own error. Otherwise say what exists.
+          if (created.length === 0) throw err;
+
+          console.error("Rescuer portal: adding a group of cats failed part way:", err);
+          throw new PortalError(
+            `${created.map((cat) => cat.name).join(", ")} ${created.length === 1 ? "was" : "were"} added, but the group could not be finished. Contact IBKT before adding them again.`,
+            502,
+          );
+        }
+
+        return { cats: created.map((cat) => ({ id: cat.id, name: cat.name })) };
       },
       "rescuer portal request",
     ),

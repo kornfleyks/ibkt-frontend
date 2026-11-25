@@ -135,6 +135,14 @@ export async function createCatFromInput(actor, body, { fields = CREATE_FIELDS, 
   return record;
 }
 
+// Links every cat in `ids` to all the others as one bonded group (each cat's
+// Bonded With holds the rest). The caller has checked that the ids exist.
+export async function linkBondedCats(actor, ids) {
+  for (const id of ids) {
+    await changeCat(actor, id, { bondedWithIds: ids.filter((other) => other !== id) });
+  }
+}
+
 // The Active fosters, by name, for the foster picker on the cat page.
 async function listFosterOptions() {
   if (!isDatabaseBoard("fosters")) throw new InputError("Fosters are not switched on on this server (add fosters to DATABASE_BOARDS).");
@@ -254,11 +262,7 @@ export function registerCatRoutes(app, { requireAuth }) {
           if (!(await exists(TABLE, id))) throw new InputError(`Unknown cat ${id}.`);
         }
 
-        const actor = actorOf(req);
-
-        for (const id of ids) {
-          await changeCat(actor, id, { bondedWithIds: ids.filter((other) => other !== id) });
-        }
+        await linkBondedCats(actorOf(req), ids);
 
         return { linked: ids.length };
       })(),

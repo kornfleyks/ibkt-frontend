@@ -5,8 +5,8 @@ const MB = 1024 * 1024;
 
 export const PORTAL_FILE_RULES = {
   photos: { label: "Photos", max: 5, maxBytes: 10 * MB, extensions: ["jpg", "jpeg", "png", "gif", "webp", "heic"], accept: "image/*" },
-  videos: { label: "Video", max: 1, maxBytes: 20 * MB, extensions: ["mp4", "mov", "m4v", "webm"], accept: "video/*" },
-  medicalDocuments: { label: "Medical documents", max: 3, maxBytes: 10 * MB, extensions: ["pdf", "jpg", "jpeg", "png", "doc", "docx"], accept: ".pdf,.jpg,.jpeg,.png,.doc,.docx" },
+  videos: { label: "Videos", max: 5, maxBytes: 20 * MB, extensions: ["mp4", "mov", "m4v", "webm"], accept: "video/*" },
+  medicalDocuments: { label: "Medical documents", max: 5, maxBytes: 10 * MB, extensions: ["pdf", "jpg", "jpeg", "png", "doc", "docx"], accept: ".pdf,.jpg,.jpeg,.png,.doc,.docx" },
 };
 
 // How many cats one rescuer may add in a day.

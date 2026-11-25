@@ -3,7 +3,8 @@ import { serverGet, serverPost, serverUpload } from "./MondayService";
 // The rescuer portal's server calls (server/rescuerPortal/routes.js). The
 // server works out who the rescuer is from their login.
 
-// { breed: [...], colour: [...] }
+// { breed: [...], colour: [...], maxBondedCats } - the last is the most cats
+// that can be added together.
 export function getPortalOptions() {
   return serverGet("/api/rescuer-portal/options");
 }
@@ -19,6 +20,13 @@ export async function getMyCats() {
 // Creates the cat (Intake, linked to this rescuer) and resolves to { id, name }.
 export function addPortalCat(input) {
   return serverPost("/api/rescuer-portal/cats", input);
+}
+
+// Creates two or more cats together, linked as a bonded group: `cats` is a
+// list of the same input as addPortalCat. Resolves to { cats: [{ id, name }] }
+// in the order sent.
+export function addPortalCatGroup(cats) {
+  return serverPost("/api/rescuer-portal/cat-group", { cats });
 }
 
 // kind: photos | videos | medicalDocuments
