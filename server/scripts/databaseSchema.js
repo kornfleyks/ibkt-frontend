@@ -525,6 +525,8 @@ await transaction(async (run) => {
   for (const column of [
     "wix_submission_id text",
     "wix_contact_id text",
+    "collection_id text",
+    "full_name text",
     "form_id text",
     "form_name text",
     "submitted_at timestamptz",

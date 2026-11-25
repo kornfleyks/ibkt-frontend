@@ -3,6 +3,7 @@ import { secretMatches } from "../secretMatch.js";
 import { isDatabaseEnabled } from "../database/db.js";
 import { answer, HttpError } from "../httpAnswer.js";
 import { insertSubmission, listSubmissions } from "./store.js";
+import { pullRescuerSubmissions, wixPullConfigured } from "./pull.js";
 
 // The Wix rescuer form talks to the app. In Wix, an Automation triggered by
 // the form's submission runs the action "Send HTTP request" (POST) to
@@ -59,6 +60,14 @@ export function registerWixRescuerFormRoutes(app, { requireAuth, requireAdmin })
       }
     },
   );
+
+  // Admin: read the rescuer requests from Wix now (pull.js).
+  app.post("/api/wix-rescuer-submissions/pull", requireAuth, requireAdmin, (req, res) => {
+    if (!isDatabaseEnabled()) return answer(res, Promise.reject(new HttpError(503, "The database isn't switched on.")), "Wix rescuer pull");
+    if (!wixPullConfigured()) return answer(res, Promise.reject(new HttpError(503, "The Wix key is not set on the server.")), "Wix rescuer pull");
+
+    answer(res, pullRescuerSubmissions(), "Wix rescuer pull");
+  });
 
   app.get("/api/wix-rescuer-submissions", requireAuth, requireAdmin, (req, res) => {
     if (!isDatabaseEnabled()) return answer(res, Promise.reject(new HttpError(503, "The database isn't switched on.")), "Wix rescuer submissions");

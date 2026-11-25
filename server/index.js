@@ -94,6 +94,7 @@ import { registerAdoptionFormRoutes } from "./adoptionForm/routes.js";
 import { registerReferenceCheckRoutes } from "./referenceChecks/routes.js";
 import { registerReviewItemRoutes } from "./reviewItems/routes.js";
 import { startJotformChecks } from "./jotform/poll.js";
+import { startWixRescuerPull } from "./wixRescuerForm/pull.js";
 import { addFileToColumn } from "./mondayFiles.js";
 import { registerReadOnlyBoardRoutes } from "./readOnlyBoards.js";
 import { registerUserRoutes } from "./users.js";
@@ -970,6 +971,8 @@ app.listen(PORT, () => {
         .catch((err) => console.error("Jotform: handling waiting submissions failed.", err));
       // The safety net for missed webhooks: every 30 minutes (jotform/poll.js).
       startJotformChecks();
+      // Every 10 minutes: read the Wix rescuer requests (wixRescuerForm/pull.js).
+      startWixRescuerPull();
       // Daily: ask for news about cats waiting for a home (catUpdates/check.js).
       startCatUpdateChecks();
       // Daily: remind the staff of post-adoption check-ins (postAdoption/reminders.js).

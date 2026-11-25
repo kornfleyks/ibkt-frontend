@@ -15,6 +15,16 @@ The server (`server/wixRescuerForm/`) checks the secret in the address, stores t
 
 An Admin can read what was received with `GET /api/wix-rescuer-submissions`.
 
+## Reading the rescuer requests from Wix
+
+The automation only runs when its trigger fires, so the server also reads the Wix collection `RescuerRequests` (the collection that stores the form's submissions) with the Wix Query Data Items API (`server/wixRescuerForm/pull.js`). It does this every 10 minutes and stores each item that is not stored yet. An item that the automation already delivered is not stored twice.
+
+An Admin can start a read at once with `POST /api/wix-rescuer-submissions/pull`.
+
+The call needs `WIX_API_KEY` (a Wix API key with permission to read Wix Data) and `WIX_SITE_ID`, which the server sends in the `Authorization` and `wix-site-id` headers. The collection can be changed with `WIX_RESCUER_COLLECTION_ID`. Without the key and the site id, nothing is read.
+
+A collection item has the fields `title` (the name), `email`, `phone`, `rescueLocation`, `numberOfCats`, `submissionId`, `submittedOn`, `contactId`, `approve`, `decline` and `emailSent`. The app stores them as columns and keeps the last three as answers. It does not act on `approve`, `decline` or `emailSent`.
+
 ## Why the secret is in the address
 
 Wix's help article for the "Send HTTP request" action does not mention request headers or signing, so the app cannot rely on a header. The Jotform and Monday webhooks of the app also use a secret in the address.
