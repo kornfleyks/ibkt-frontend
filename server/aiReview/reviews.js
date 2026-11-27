@@ -11,6 +11,7 @@ import { listCallFiles } from "../screening/routes.js";
 import { aiProvider, aiProviderName } from "./provider.js";
 import { readApplication, saveReviewFields } from "./applicationFields.js";
 import * as runs from "./runsStore.js";
+import { recordAiUsage } from "../aiUsage/store.js";
 
 // AI reviews of an application: run one (the provider proposes values for
 // the kind's fields), keep it as a draft, and accept it whole or discard
@@ -158,8 +159,12 @@ export async function startReview({ applicationId, kindKey, actor, uploader }) {
     result = await provider.review({ kind: kindKey, fields: fieldsOf(kind), inputs: { application, transcripts } });
   } catch (err) {
     console.error("AI review: the provider failed.", err);
+    // The mock provider calls no AI service, so it is not counted.
+    if (provider.name !== "mock") await recordAiUsage({ provider: provider.name, model: provider.model, ok: false, error: err.message });
     throw new HttpError(502, `The AI couldn't do the ${kind.label.toLowerCase()}. Try again in a moment.`);
   }
+
+  if (provider.name !== "mock") await recordAiUsage({ provider: provider.name, model: result.model, usage: result.usage });
 
   let output;
 

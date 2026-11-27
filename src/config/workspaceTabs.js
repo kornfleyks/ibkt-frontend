@@ -12,6 +12,10 @@ export const workspaceTabs = [
         slug: 'documents'
     },
     {
+        label: 'Advert',
+        slug: 'advert'
+    },
+    {
         label: 'Communications',
         slug: 'communications'
     },

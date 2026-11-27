@@ -6,7 +6,11 @@ import * as mockProvider from "./mockProvider.js";
 //
 // A provider module exports:
 //   name                     e.g. "mock"
-//   review({ kind, fields, inputs }) -> { model, output }
+//   review({ kind, fields, inputs }) -> { model, output, usage? }
+// where `usage` (optional) is the usage object of the AI's response
+// (input_tokens, output_tokens, cache_read_input_tokens,
+// cache_creation_input_tokens), counted on the App Settings usage card
+// (aiUsage/). A provider that calls no AI service leaves it out.
 // where `fields` are AI_REVIEW_FIELDS entries ({ key, label, type, options?,
 // min?, max? }) the output must contain exactly, and `inputs` is:
 //   { application: { form answers, current AI values, ... },

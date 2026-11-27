@@ -28,6 +28,7 @@ import DatabaseUsageCounter from '../../components/Common/DatabaseUsageCounter';
 import ServerHealthStatus from '../../components/Common/ServerHealthStatus';
 import DatabaseStatus from '../../components/Common/DatabaseStatus';
 import SyncStatus from '../../components/Common/SyncStatus';
+import AiUsageStatus from '../../components/Common/AiUsageStatus';
 import {
     getSettings,
     saveSetting,
@@ -584,6 +585,12 @@ function AppSettings() {
                 <Card sx={{ flex: '1 1 260px', maxWidth: 320 }}>
                     <CardContent>
                         <SyncStatus />
+                    </CardContent>
+                </Card>
+
+                <Card sx={{ flex: '1 1 260px', maxWidth: 320 }}>
+                    <CardContent>
+                        <AiUsageStatus />
                     </CardContent>
                 </Card>
             </Box>

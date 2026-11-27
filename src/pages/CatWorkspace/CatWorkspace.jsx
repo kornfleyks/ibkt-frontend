@@ -26,6 +26,7 @@ import { useLoading } from '../../context/LoadingContext';
 import OverviewTab from '../../components/Cats/Workspace/OverviewTab';
 import MedicalTab from '../../components/Cats/Workspace/MedicalTab';
 import DocumentsTab from '../../components/Cats/Workspace/DocumentsTab';
+import AdvertTab from '../../components/Cats/Workspace/AdvertTab';
 import InfoRow from '../../components/Common/InfoRow';
 import { workspaceTabs } from '../../config/workspaceTabs';
 import CatTravelTab from '../../components/Cats/Workspace/CatTravelTab';
@@ -163,6 +164,7 @@ function CatWorkspace() {
         overview: <OverviewTab cat={cat} onCatUpdate={handleCatUpdate} />,
         medical: <MedicalTab cat={cat} onCatUpdate={handleCatUpdate} />,
         documents: <DocumentsTab cat={cat} onCatUpdate={handleCatUpdate} />,
+        advert: <AdvertTab cat={cat} />,
         communications: <CommunicationsTab boardId={CATS.BOARD_ID} itemId={cat.id} />,
         tasks: <TasksTab link={{ catId: cat.id }} noun="cat" pageKey="catTasks" />,
         travel: <CatTravelTab cat={cat} />,

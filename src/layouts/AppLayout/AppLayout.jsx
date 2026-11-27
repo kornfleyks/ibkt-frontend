@@ -6,6 +6,7 @@ import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import AppBreadcrumbs from "../../components/Breadcrumbs";
 import RoleChangeNotice from "../../components/RoleChangeNotice/RoleChangeNotice";
+import AssistantBubble from "../../components/Assistant/AssistantBubble";
 
 const DRAWER_WIDTH = 250;
 const COLLAPSED_DRAWER_WIDTH = 70;
@@ -63,6 +64,8 @@ function AppLayout({ children }) {
                     <RoleChangeNotice />
 
                 </Box>
+
+                <AssistantBubble />
 
             </Box>
 

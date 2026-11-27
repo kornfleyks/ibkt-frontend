@@ -23,6 +23,7 @@ import { maskCat, maskCats, refuseSensitiveCatChanges } from "./sensitiveFields.
 import { READY_REQUIRED_FOR, readinessProblems, problemsText } from "../src/constants/catReadiness.js";
 import { evaluateAdoptionReady } from "./adoptionReadyGate.js";
 import { logActivity } from "./activityLog.js";
+import { startAdvertDraft } from "./adverts/generate.js";
 
 // Cats kept in the database ("cats" in DATABASE_BOARDS; database-first plan
 // 4.2). Same records as src/services/mappers/CatMapper.js makes from
@@ -131,6 +132,8 @@ export async function createCatFromInput(actor, body, { fields = CREATE_FIELDS, 
   const record = await createRecord(TABLE, CAT_FIELDS, { name: name.slice(0, 255), values });
 
   logCreated({ actor, table: TABLE, boardName: "Cats", record, raw: values });
+  // The AI writes a draft advert in the background (adverts/); every way of adding a cat comes through here.
+  startAdvertDraft(record);
 
   return record;
 }

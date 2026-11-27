@@ -581,6 +581,40 @@ await transaction(async (run) => {
     created_at timestamptz not null default now()
   )`);
 
+  // What Oriel's calls to the Claude API used, for each day, provider and
+  // model (aiUsage/store.js), shown on the App Settings page. App-only.
+  await run(`create table if not exists ai_usage_daily (
+    day date not null,
+    provider text not null,
+    model text not null,
+    calls integer not null default 0,
+    failed integer not null default 0,
+    input_tokens bigint not null default 0,
+    output_tokens bigint not null default 0,
+    cache_read_tokens bigint not null default 0,
+    cache_write_tokens bigint not null default 0,
+    last_error text,
+    last_error_at timestamptz,
+    last_call_at timestamptz,
+    primary key (day, provider, model)
+  )`);
+
+  // Draft adverts for cats, written by the AI (adverts/). One row for each
+  // generation, so a regenerated draft keeps the history. App-only.
+  await run(`create table if not exists cat_advert_drafts (
+    id bigserial primary key,
+    cat_id bigint not null,
+    status text not null check (status in ('draft', 'failed')),
+    body text,
+    error text,
+    model text,
+    reason text not null,
+    created_by_id text,
+    created_by_name text,
+    created_at timestamptz not null default now()
+  )`);
+  await run("create index if not exists cat_advert_drafts_cat on cat_advert_drafts (cat_id, created_at desc)");
+
   // Each referee's "Reference Check - IBKT" answers about an application
   // (jotform/referenceCheck/handler.js, referenceChecks/). App-only: never
   // sent to Monday.
@@ -720,7 +754,7 @@ await transaction(async (run) => {
   // Reachable only by this server's connection; Supabase's public API
   // (anon / authenticated keys) gets nothing without policies. Every app table
   // is listed here, so add a new table to this list when creating it.
-  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "rescuer_applications", "foster_applications", "foster_cat_profiles", "reference_checks", "review_items", "cat_share_links", "wix_rescuer_submissions", "rescuer_agreements", "email_log", "ai_runs", "application_calls", "call_transcripts", "cat_update_clock", "file_uploads", "jotform_submissions", "jotform_webhook_events", "post_adoption_chase", "post_adoption_testimonial", ...MIRRORED_BOARDS.map((board) => board.table)]) {
+  for (const table of ["monday_columns", "column_options", "monday_outbox", "sync_runs", "sync_lock", "pending_creations", "monday_sync_columns", "communications", "application_form_answers", "adoption_form_invites", "rescuer_applications", "foster_applications", "foster_cat_profiles", "reference_checks", "review_items", "cat_share_links", "wix_rescuer_submissions", "rescuer_agreements", "ai_usage_daily", "cat_advert_drafts", "email_log", "ai_runs", "application_calls", "call_transcripts", "cat_update_clock", "file_uploads", "jotform_submissions", "jotform_webhook_events", "post_adoption_chase", "post_adoption_testimonial", ...MIRRORED_BOARDS.map((board) => board.table)]) {
     await run(`alter table if exists ${ident(table)} enable row level security`);
   }
 });
