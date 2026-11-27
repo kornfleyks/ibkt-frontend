@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, CircularProgress, Stack, TextField, Typography } from "@mui/material";
+import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Stack, TextField, Typography } from "@mui/material";
 import SectionCard from "../../Common/SectionCard";
 import useDateFormat from "../../../hooks/useDateFormat";
-import { getAdvertDraft, regenerateAdvertDraft, saveAdvertDraftEdit } from "../../../services/AdvertDraftService";
+import useAuth from "../../../hooks/useAuth";
+import { approveAdvertDraft, getAdvertDraft, regenerateAdvertDraft, saveAdvertDraftEdit } from "../../../services/AdvertDraftService";
 
 // The AI's draft advert for the cat: made when the cat was added, and again
-// each time someone asks for a new one. It is only a draft; accepting,
-// editing and publishing it are separate steps.
+// each time someone asks for a new one. Staff can edit it. An Admin approves
+// it, which locks it: it can no longer be edited or replaced. Publishing is a
+// separate step that is not built yet.
 function AdvertTab({ cat }) {
   const { formatDateTime } = useDateFormat();
+  const { isAdmin } = useAuth();
+  const [confirmingApproval, setConfirmingApproval] = useState(false);
   const [state, setState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
@@ -49,6 +53,31 @@ function AdvertTab({ cat }) {
     } catch (err) {
       console.error("Failed to save the advert:", err);
       setError(err?.message || "Failed to save the advert.");
+
+      // The advert may have been approved by someone else meanwhile.
+      getAdvertDraft(cat.id)
+        .then(setState)
+        .catch(() => {});
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function handleApprove() {
+    setWorking(true);
+    setError(null);
+
+    try {
+      setState(await approveAdvertDraft(cat.id));
+      setConfirmingApproval(false);
+    } catch (err) {
+      console.error("Failed to approve the advert:", err);
+      setError(err?.message || "Failed to approve the advert.");
+      setConfirmingApproval(false);
+
+      getAdvertDraft(cat.id)
+        .then(setState)
+        .catch(() => {});
     } finally {
       setWorking(false);
     }
@@ -86,11 +115,13 @@ function AdvertTab({ cat }) {
   const draft = state.draft;
   const failed = draft?.status === "failed";
   const edited = draft?.reason === "edit";
+  const locked = draft?.status === "approved";
+  const isEditing = editing && !locked;
 
   return (
-    <SectionCard title="Draft advert">
+    <SectionCard title={locked ? "Advert" : "Draft advert"}>
       <Stack spacing={2}>
-        {!state.enabled && (
+        {!state.enabled && !locked && (
           <Alert severity="info">Draft adverts are not switched on on this server, so no new draft is made.</Alert>
         )}
 
@@ -100,7 +131,7 @@ function AdvertTab({ cat }) {
 
         {failed && <Alert severity="warning">{`The last attempt failed: ${draft.error}`}</Alert>}
 
-        {editing && (
+        {isEditing && (
           <TextField
             multiline
             minRows={8}
@@ -113,7 +144,17 @@ function AdvertTab({ cat }) {
           />
         )}
 
-        {!editing && draft?.status === "draft" && (
+        {locked && (
+          <>
+            <Typography sx={{ whiteSpace: "pre-wrap", maxWidth: 720 }}>{draft.body}</Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              {`Approved by ${draft.createdBy?.name ?? "an Admin"} ${formatDateTime(new Date(draft.createdAt))}. This advert is locked and cannot be edited.`}
+            </Typography>
+          </>
+        )}
+
+        {!isEditing && draft?.status === "draft" && (
           <>
             <Typography sx={{ whiteSpace: "pre-wrap", maxWidth: 720 }}>{draft.body}</Typography>
 
@@ -125,8 +166,9 @@ function AdvertTab({ cat }) {
           </>
         )}
 
+        {!locked && (
         <Stack direction="row" spacing={1}>
-          {editing ? (
+          {isEditing ? (
             <>
               <Button variant="contained" size="small" onClick={handleSave} disabled={working || !text.trim()}>
                 {working ? "Saving..." : "Save"}
@@ -143,10 +185,33 @@ function AdvertTab({ cat }) {
               <Button variant="outlined" size="small" onClick={handleRegenerate} disabled={working || !state.enabled}>
                 {working ? "Writing..." : draft ? "Write a new draft" : "Write a draft"}
               </Button>
+              {isAdmin && draft?.status === "draft" && (
+                <Button variant="contained" size="small" onClick={() => setConfirmingApproval(true)} disabled={working}>
+                  Approve
+                </Button>
+              )}
             </>
           )}
         </Stack>
+        )}
       </Stack>
+
+      <Dialog open={confirmingApproval} onClose={() => !working && setConfirmingApproval(false)}>
+        <DialogTitle>Approve this advert?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Once approved, the advert is locked. It cannot be edited or replaced, and nobody can unlock it in Oriel.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmingApproval(false)} disabled={working}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleApprove} disabled={working}>
+            {working ? "Approving..." : "Approve and lock"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </SectionCard>
   );
 }

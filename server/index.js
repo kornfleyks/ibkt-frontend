@@ -568,7 +568,7 @@ registerSettingsRoutes(app, { requireAuth, requireAdmin });
 registerActivityRoutes(app, { requireAuth });
 registerTaskRoutes(app, { requireAuth });
 registerCatRoutes(app, { requireAuth });
-registerAdvertRoutes(app, { requireAuth });
+registerAdvertRoutes(app, { requireAuth, requireAdmin });
 registerAssistantRoutes(app, { requireAuth });
 registerApplicationRoutes(app, { requireAuth });
 registerPreAdoptionRoutes(app, { requireAuth });

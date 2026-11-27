@@ -604,7 +604,7 @@ await transaction(async (run) => {
   await run(`create table if not exists cat_advert_drafts (
     id bigserial primary key,
     cat_id bigint not null,
-    status text not null check (status in ('draft', 'failed')),
+    status text not null,
     body text,
     error text,
     model text,
@@ -613,6 +613,10 @@ await transaction(async (run) => {
     created_by_name text,
     created_at timestamptz not null default now()
   )`);
+  // 'approved' locks the advert. The check was first made without it, so it is
+  // replaced here (the same statements run on a new and on an existing database).
+  await run("alter table cat_advert_drafts drop constraint if exists cat_advert_drafts_status_check");
+  await run("alter table cat_advert_drafts add constraint cat_advert_drafts_status_check check (status in ('draft', 'failed', 'approved'))");
   await run("create index if not exists cat_advert_drafts_cat on cat_advert_drafts (cat_id, created_at desc)");
 
   // Each referee's "Reference Check - IBKT" answers about an application

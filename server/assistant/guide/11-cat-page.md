@@ -70,8 +70,9 @@ The Advert tab shows the "Draft advert" for the cat. The AI writes the first dra
 - "Write it yourself" appears instead of "Edit" when there is no draft yet.
 - "Write a draft" or "Write a new draft" asks the AI to write another draft. This button is disabled when draft adverts are switched off. In that case the tab says that draft adverts are not switched on. Editing still works.
 - If the last attempt failed, the tab shows a warning with the reason.
+- "Approve" appears only for Admins and the Super Admin, next to the other buttons, when the advert is a draft. Oriel asks "Approve this advert?" and says that the advert will be locked. Click "Approve and lock" to confirm. After that the tab is called "Advert" and shows "Approved by" followed by the name and the time. An approved advert cannot be edited or replaced, and nobody can unlock it in Oriel, so check the text before approving. The "Edit", "Write a draft" and "Write a new draft" buttons are no longer shown.
 
-The AI uses only the cat's description and medical details. It does not use contact details, the location, the microchip number or photos. Accepting or rejecting a draft is not available yet.
+The AI uses only the cat's description and medical details. It does not use contact details, the location, the microchip number or photos. Rejecting a draft is not available yet.
 
 ## Communications tab
 

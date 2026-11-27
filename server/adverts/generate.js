@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import { isDatabaseEnabled } from "../database/db.js";
 import { recordAiUsage } from "../aiUsage/store.js";
-import { saveDraft, generationsToday } from "./store.js";
+import { saveDraft, latestDraft, generationsToday, AdvertLockedError } from "./store.js";
 
 // Draft adverts for cats, written by Claude (docs/cat-adverts.md). A draft is
 // made when a cat is added and again when staff ask for a new one. It is
@@ -102,6 +102,7 @@ export async function generateAdvertDraft(cat, { reason, by = null } = {}) {
 
   if (!isDatabaseEnabled()) throw new AdvertError(503, "The database is not set up on this server.");
   if (!settings.enabled) throw new AdvertError(503, "Draft adverts are not switched on on this server.");
+  if ((await latestDraft(cat.id))?.status === "approved") throw new AdvertError(409, "This advert is approved and locked, so a new draft cannot be written.");
   if (inFlight.has(String(cat.id))) throw new AdvertError(409, "A draft advert is already being written for this cat.");
   if ((await generationsToday()) >= settings.maxPerDay) throw new AdvertError(429, `The limit of ${settings.maxPerDay} draft adverts a day was reached. Try again tomorrow.`);
 
@@ -155,6 +156,6 @@ export function startAdvertDraft(cat) {
   if (!advertSettings().enabled) return;
 
   generateAdvertDraft(cat, { reason: "added" }).catch((err) => {
-    if (!(err instanceof AdvertError)) console.error(`Advert draft: failed for cat ${cat.id}.`, err);
+    if (!(err instanceof AdvertError) && !(err instanceof AdvertLockedError)) console.error(`Advert draft: failed for cat ${cat.id}.`, err);
   });
 }

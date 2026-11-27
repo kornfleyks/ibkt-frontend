@@ -15,3 +15,8 @@ export function saveAdvertDraftEdit(catId, body) {
 export function regenerateAdvertDraft(catId) {
   return serverPost(`/api/cats/${encodeURIComponent(catId)}/advert-draft`, {});
 }
+
+// Approves the newest draft and locks the advert for good (Admins only).
+export function approveAdvertDraft(catId) {
+  return serverPost(`/api/cats/${encodeURIComponent(catId)}/advert-draft/approve`, {});
+}

@@ -1,6 +1,6 @@
 # Draft adverts for cats
 
-When a cat is added, Claude writes a draft adoption advert for it. The draft is shown on the Advert tab of the cat page, where staff can ask for a new one. A draft is never published. Accepting and rejecting a draft are separate steps that are not built yet.
+When a cat is added, Claude writes a draft adoption advert for it. The draft is shown on the Advert tab of the cat page, where staff can ask for a new one. A draft is never published. An Admin can approve the advert, which locks it for good. Rejecting a draft, and publishing an approved advert, are separate steps that are not built yet.
 
 ## How it works
 
@@ -9,6 +9,7 @@ When a cat is added, Claude writes a draft adoption advert for it. The draft is 
 - Each generation is one row in the table `cat_advert_drafts`, either a draft or a failure with its error. The newest row is the one shown.
 - Staff ask for a new draft with `POST /api/cats/:id/advert-draft`. `GET` on the same path returns the newest draft. Both are limited to staff roles.
 - Staff can edit the draft by hand with the Edit button, or write one from scratch. `POST /api/cats/:id/advert-draft/edit` saves the text as a new row with the reason `edit`, so the AI's text stays in the history. Edits work when drafts are switched off and do not count towards the daily cap.
+- An Admin approves the advert with the Approve button, after a confirmation. `POST /api/cats/:id/advert-draft/approve` saves an `approved` row with the same text. An approved advert is locked for good: the edit and new-draft routes refuse it, and the insert of a new row is refused by the database query itself, so a draft that finishes after the approval cannot replace it. There is no unlock in the app, by decision. A change would need a developer to edit the database. Approving does not count towards the daily cap.
 - Every call is counted on the Claude card of the App Settings page (`server/aiUsage/`).
 
 ## Mia's instructions
